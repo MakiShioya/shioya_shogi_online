@@ -150,7 +150,7 @@ function initGameSequence() {
 
     const cutInImg = document.getElementById("skillCutIn");
     const isSente = (myRole !== "white");
-    const imgPath = isSente ? "script/image/sente.png" : "script/image/gote.png";
+    const imgPath = isSente ? "script/image/sente.PNG" : "script/image/gote.PNG";
     const audioPath = isSente ? "script/audio/sente.mp3" : "script/audio/gote.mp3";
 
     const audio = new Audio(audioPath);
@@ -798,10 +798,10 @@ function playGameEndEffect(winnerColor) {
     const iAmWinner = (winnerColor === myRole) || (myRole === "spectator" && winnerColor === "black");
     
     if (winnerColor === myRole) {
-        imgPath = "script/image/shori.png";
+        imgPath = "script/image/shori.PNG";
         audioPath = "script/audio/shori.mp3";
     } else {
-        imgPath = "script/image/haiboku.png";
+        imgPath = "script/image/haiboku.PNG";
         audioPath = "script/audio/haiboku.mp3";
     }
 
