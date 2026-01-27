@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>しおや将棋</title>
+      <link rel="icon" href="script/image/komiya_icon.png"> 
+  <style>
+    /* 背景画像の設定 */
+    body {
+      background-image: url('script/image/shogi_title.PNG');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-attachment: fixed;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    /* メニューコンテナのスタイル */
+    #menu, #practiceMenu, #onePlayerModeSelect, #onePlayerNormalMenu, #onePlayerHardMenu, #onePlayerExpertMenu {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+
+    /* 初期状態で非表示にするメニュー */
+    #practiceMenu, #onePlayerModeSelect, #onePlayerNormalMenu, #onePlayerHardMenu, #onePlayerExpertMenu {
+      display: none;
+      margin-bottom: 300px;
+    }
+
+    h1, h2 {
+      font-size: 5rem;
+      color: #FFB347;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 5px rgba(0, 128, 0, 0.7), -2px -2px 5px rgba(0, 128, 0, 0.7);
+    }
+
+    /* 通常ボタンの共通スタイル */
+    button {
+      width: 200px;
+      height: 70px;
+      margin: 10px 0;
+      font-size: 20px;
+      cursor: pointer;
+      border-radius: 5px;
+      color: white;
+      border: none;
+      background-color: rgba(0, 0, 0, 0.5);
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    /* もどるボタン専用のスタイル */
+    button.back-btn {
+      width: 120px;
+      height: 50px;
+      font-size: 16px;
+      background-color: rgba(255, 165, 0, 0.5);
+      margin-top: 30px;
+    }
+
+    button.back-btn:hover {
+      background-color: #1e7e34;
+    }
+
+    /* お知らせボックス */
+    #announcementBox {
+      width: 300px;
+      height: 200px;
+      background-color: rgba(255, 165, 0, 0.5);
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+      text-align: center;
+      overflow-y: auto; 
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #announcementBox h3 {
+      margin: 0;
+      font-size: 24px;
+      color: white;
+    }
+
+    #announcementBox p {
+      font-size: 18px;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="menu">
+    <h1>しおや将棋</h1>
+    <button onclick="goToCharacterSelect('practice')">れんしゅう</button>
+    <button onclick="goToCharacterSelect('cpu')">ひとりで</button>
+    <button onclick="goToCharacterSelect('pvp')">ふたりで</button>
+
+    <div id="announcementBox">
+      <h3>お知らせ</h3>
+      <p>
+        「ひとりで」に最強CPUを実装しました。<br>
+        「試験実装」からあそべます。<br><br>
+        様々な演出を変更しました。<br><br>
+        必殺技の効果を調整しました。<br><br>
+        棋譜のコピー機能を実装。<br><br>
+        最終更新<br>
+        2026年1月26日 8時34分
+      </p>
+    </div>
+  </div>
+
+  <div id="practiceMenu">
+    <h2>練習相手選択</h2>
+    <button onclick="startGame('saijaku')">たわむれ</button>
+    <button onclick="startGame('easy')">おあそび</button>
+    <button onclick="startGame('normal')">たしなみ</button>
+    <br>
+    <button class="back-btn" onclick="backToMain()">もどる</button>
+  </div>
+
+  <div id="onePlayerModeSelect">
+    <h2>モード選択</h2>
+    <button onclick="showOnePlayerNormal()">ふつう</button>
+    <button onclick="showOnePlayerHard()">ほんき</button>
+    <button onclick="showOnePlayerExpert()">試験実装</button>
+    <br>
+    <button class="back-btn" onclick="backToMain()">もどる</button>
+  </div>
+
+  <div id="onePlayerNormalMenu">
+    <h2>対戦相手選択</h2>
+    <button onclick="startGame('hard1')">こみや</button>
+    <button onclick="startGame('hard2')">しおや</button>
+    <br>
+    <button class="back-btn" onclick="backToOnePlayerMode()">もどる</button>
+  </div>
+
+  <div id="onePlayerHardMenu">
+    <h2>対戦相手選択</h2>
+    <button onclick="startGame('ex_hard1')">こみや２</button>
+    <button onclick="startGame('ex_hard2')">しおや２</button>
+    <br>
+    <button class="back-btn" onclick="backToOnePlayerMode()">もどる</button>
+  </div>
+  
+  <div id="onePlayerExpertMenu">
+    <h2>対戦相手選択</h2>
+    <button onclick="startGame('ex_hard3')">試験実装１</button>
+    <br>
+    <button class="back-btn" onclick="backToOnePlayerMode()">もどる</button>
+  </div>
+
+  <script>
+    // --- ページ読み込み時の処理 ---
+    // character.html から戻ってきたときのパラメータをチェックする
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const menu = urlParams.get('menu');
+
+      if (menu === 'practice') {
+        // れんしゅうメニューを直接開く
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('practiceMenu').style.display = 'block';
+      } else if (menu === 'cpu') {
+        // ひとりでモード選択を直接開く
+        document.getElementById('menu').style.display = 'none';
+        document.getElementById('onePlayerModeSelect').style.display = 'block';
+      }
+      // 'pvp' の場合は character.html から直接ゲーム画面へ飛ぶため、ここには戻ってきません
+    };
+
+    // --- 画面遷移（キャラクター選択へ） ---
+    function goToCharacterSelect(mode) {
+      // mode: 'practice', 'cpu', 'pvp'
+      window.location.href = "character.html?mode=" + mode;
+    }
+
+    // --- 内部画面遷移（進む） ---
+    
+    function showOnePlayerNormal() {
+      document.getElementById('onePlayerModeSelect').style.display = 'none';
+      document.getElementById('onePlayerNormalMenu').style.display = 'block';
+    }
+
+    function showOnePlayerHard() {
+      document.getElementById('onePlayerModeSelect').style.display = 'none';
+      document.getElementById('onePlayerHardMenu').style.display = 'block';
+    }
+    
+    function showOnePlayerExpert() {
+      document.getElementById('onePlayerModeSelect').style.display = 'none';
+      document.getElementById('onePlayerExpertMenu').style.display = 'block';
+    }
+
+    // --- 内部画面遷移（もどる） ---
+
+    // タイトル画面（メインメニュー）に戻る
+    function backToMain() {
+      // 全てのサブメニューを非表示にする
+      document.getElementById('practiceMenu').style.display = 'none';
+      document.getElementById('onePlayerModeSelect').style.display = 'none';
+      // メインメニューを表示
+      document.getElementById('menu').style.display = 'block';
+      
+      // URLのパラメータをクリアする（リロード時に再度メニューが開くのを防ぐため）
+      // history.replaceState を使ってURLを index.html だけに書き換える
+      if (window.history.replaceState) {
+        window.history.replaceState(null, null, window.location.pathname);
+      }
+    }
+
+    // 「ひとりで」のモード選択画面に戻る
+    function backToOnePlayerMode() {
+      document.getElementById('onePlayerNormalMenu').style.display = 'none';
+      document.getElementById('onePlayerHardMenu').style.display = 'none';
+      document.getElementById('onePlayerExpertMenu').style.display = 'none';
+      document.getElementById('onePlayerModeSelect').style.display = 'block';
+    }
+
+    // --- ゲーム開始 ---
+
+    function startGame(difficulty) {
+      if (difficulty === 'saijaku') {
+        window.location.href = "cpu_tawamure.html";
+      } else if (difficulty === 'easy') {
+        window.location.href = "cpu_oasobi.html";
+      } else if (difficulty === 'normal') {
+        window.location.href = "cpu_tashinami.html";
+      } else if (difficulty === 'hard1') {
+        window.location.href = "cpu_komiya.html";
+      } else if (difficulty === 'hard2') {
+        window.location.href = "cpu_shioya.html";
+      } else if (difficulty === 'ex_hard1') {
+        window.location.href = "ex_cpu_komiya.html";
+      } else if (difficulty === 'ex_hard2') {
+        window.location.href = "ex_cpu_shioya.html";
+      } else if (difficulty === 'ex_hard3') {
+        window.location.href = "cpu_yaneuraou.html";
+      }
+    }
+  </script>
+
+
+
+<script src="/socket.io/socket.io.js"></script>
+
+</body>
+
+</html>
+

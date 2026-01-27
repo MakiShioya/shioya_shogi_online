@@ -1,0 +1,399 @@
+body {
+  font-family: sans-serif;
+  background: url('image/haikei.PNG'); /* 背景画像を指定 */
+  background-repeat: repeat; /* 画像を繰り返して表示 */
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+  padding: 20px;
+}
+
+#game { display: flex; gap: 20px; }
+#center { text-align: center; }
+#status { font-weight: bold; margin-bottom: 5px; }
+#checkStatus { color: red; font-weight: bold; margin-bottom: 10px; }
+table { border-collapse: collapse; background: #deb887; }
+td { width: 50px; height: 50px; border: 1px solid #333; text-align: center; vertical-align: middle; font-size: 24px; cursor: pointer; user-select: none; }
+td.selected { background: orange; }/* 持った時の色 */
+td.move { background: rgba(255, 165, 0, 0.5); }/* 移動できる場所 */
+
+/* 駒台の設定 */
+
+.hand {
+  width: 160px;
+  height: 320px;
+  border: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.hand.active {
+  box-shadow: 0 0 15px 5px gold;
+  border-color: gold;
+}
+
+
+/* 後手 */
+.white-hand {
+  background-image: url('image/karui_2p.PNG');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* 先手 */
+.black-hand {
+  background-image: url('image/karui_1p.PNG');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+
+.hand div {
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  justify-items: center;
+  align-content: start; 
+}
+
+.hand h3 {
+  margin: 0 0 5px 0;
+  font-size: 14px;
+  text-align: center;
+  color: black;
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white;
+}
+
+.hand span {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #333;
+  cursor: pointer;
+  font-size: 18px;
+  background: #f5deb3;
+}
+
+.hand span.selected { background: orange; }
+#controls { margin-top: 10px; text-align: center; }
+button { padding: 6px 12px; font-size: 14px; cursor: pointer; }
+
+#game {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+#kifu {
+  width: 400px;
+  height: 200px;
+  overflow-y: auto; 
+  border: 1px solid #333;
+  padding: 6px;
+  background: #deb887;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.side {
+  display: flex;
+
+  flex-direction: column;
+  justify-content: space-between;
+  height: 500px;
+}
+
+.side.left {
+  align-items: flex-end;
+}
+
+.side.right {
+  align-items: flex-start;
+}
+
+
+/* 待ったボタンのスタイル */
+#undoBtn {
+  width: 160px;
+  height: 160px;
+  font-size: 36px;
+  font-weight: bold;
+  border-radius: 10px;
+  cursor: pointer;
+  background-image: url('image/hyoshiki_red.PNG'); /* 「待った」用の画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #0C2CB9;
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white;
+  transition: all 0.3s; /* 滑らかに変化させる */
+}
+
+/* 待ったボタン：ホバー時 */
+#undoBtn:hover {
+  background-image: url('image/hyoshiki.PNG');
+  box-shadow: 0 0 15px 5px red; /* 赤く光る */
+}
+
+/* 投了ボタンのスタイル */
+#resignBtn {
+  width: 160px;
+  height: 160px;
+  font-size: 36px;
+  font-weight: bold;
+  border-radius: 10px;
+  cursor: pointer;
+  background-image: url('image/hyoshiki.PNG'); /* 「投了」用の画像 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #B90C2C;
+  text-shadow:
+    -1px -1px 0 white,
+     1px -1px 0 white,
+    -1px  1px 0 white,
+     1px  1px 0 white;
+  transition: all 0.3s; /* 滑らかに変化させる */
+}
+
+/* 投了ボタン：ホバー時 */
+#resignBtn:hover {
+  background-image: url('image/hyoshiki_red.PNG');
+  box-shadow: 0 0 15px 5px blue; /* 青く光る */
+}
+
+
+/* 移動した場所に色をつける */
+.moved {
+  background-color: #71b569; /* 明るい黄色 */
+}
+
+/* --- ここから追加 --- */
+
+/* 緑色に光るアニメーション (飛車成用) */
+@keyframes flashGreenAnim {
+  0% { box-shadow: 0 0 50px 20px limegreen; border: 2px solid limegreen; }
+  20% { box-shadow: 0 0 50px 20px limegreen; border: 2px solid limegreen; }
+  100% { box-shadow: none; border: 1px solid #333; }
+}
+
+/* オレンジ色に光るアニメーション (角成用) */
+@keyframes flashOrangeAnim {
+  0% { box-shadow: 0 0 50px 20px orange; border: 2px solid orange; }
+  20% { box-shadow: 0 0 50px 20px orange; border: 2px solid orange; }
+  100% { box-shadow: none; border: 1px solid #333; }
+}
+
+
+
+/* JavaScriptから付与するクラス */
+.flash-green {
+  animation: flashGreenAnim 2s ease-out forwards;
+}
+
+.flash-orange {
+  animation: flashOrangeAnim 2s ease-out forwards;
+}
+
+
+/* =========================================
+   ★★★ 必殺技・演出用アニメーション（元に戻す） ★★★
+   ========================================= */
+
+/* --- 1. 必殺技カットイン画像 --- */
+#skillCutIn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px; /* 以前のHTMLに書いてあったサイズ */
+  z-index: 1000;
+  pointer-events: none;
+  
+  /* 最初は隠しておく */
+  display: none; 
+}
+
+/* JSでクラスがついた時だけ表示してアニメーション */
+.cut-in-active {
+  display: block !important;
+  animation: cut-in-anim 2.5s ease-out forwards;
+}
+
+/* 以前の動き：中央から拡大して登場 */
+@keyframes cut-in-anim {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  20% { transform: translate(-50%, -50%) scale(1.0); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+}
+
+/* --- 2. 盤面の光（以前の色設定） --- */
+
+/* 銀（シルバーアーマー） */
+@keyframes flash-silver-anim {
+  0% { background-color: transparent; box-shadow: none; }
+  10% { background-color: rgba(192, 192, 192, 0.6); box-shadow: 0 0 50px 20px rgba(192, 192, 192, 0.8); }
+  100% { background-color: transparent; box-shadow: none; }
+}
+.flash-silver { animation: flash-silver-anim 1.5s ease-out; }
+
+/* 赤（熱烈な応援） */
+@keyframes flash-red-anim {
+  0% { background-color: transparent; box-shadow: none; }
+  10% { background-color: rgba(255, 0, 0, 0.5); box-shadow: 0 0 50px 20px rgba(255, 69, 0, 0.8); }
+  100% { background-color: transparent; box-shadow: none; }
+}
+.flash-red { animation: flash-red-anim 1.5s ease-out; }
+
+/* 青（冷静） */
+@keyframes flash-blue-anim {
+  0% { background-color: transparent; box-shadow: none; }
+  10% { background-color: rgba(0, 191, 255, 0.5); box-shadow: 0 0 50px 20px rgba(135, 206, 250, 0.8); }
+  100% { background-color: transparent; box-shadow: none; }
+}
+.flash-blue { animation: flash-blue-anim 1.5s ease-out; }
+
+/* --- ポップアップ（モーダル）のスタイル --- */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* 背景を半透明の黒に */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; /* 最前面に表示 */
+}
+
+.modal-content {
+  background: #fff8dc; /* 将棋っぽい背景色 */
+  padding: 30px;
+  border: 4px solid #8b4513;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* =========================================
+   「成りますか？」専用のデザイン設定
+   ========================================= */
+
+/* 背景の黒い膜（ここは共通でOK） */
+/* もしここも変えたいなら #promoteModal.modal-overlay { ... } と書きます */
+
+/* ★ポップアップの本体（必殺技とは別管理！） */
+#promoteModal .modal-content {
+  /* 現状は必殺技と同じデザイン */
+  background: #fff8dc;
+  padding: 30px;
+  border: 4px solid #8b4513;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+
+  /* 将来ここを変えれば、必殺技には影響しません */
+}
+
+/* ボタンの並び（ここも専用設定にしておく） */
+#promoteModal .modal-buttons {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+/* --- 必殺技ターゲット選択中の盤面スタイル --- */
+.skill-targeting-mode {
+  /* 背景を薄いライトグリーンに（!importantで強制適用） */
+  background-color: #d0f0c0 !important;
+  
+  /* 枠線を濃い緑にして強調 */
+  border: 4px solid #32cd32 !important;
+  
+  /* 全体を緑色にぼんやり光らせる */
+  box-shadow: 0 0 20px rgba(50, 205, 50, 0.8);
+  
+  /* 変化を滑らかにする */
+  transition: all 0.3s ease;
+}
+
+/* --- 修正版：後手番用 盤面反転 --- */
+/* 盤面全体を180度回すだけにする */
+body.view-white #board {
+    transform: rotate(180deg);
+}
+
+/* 親要素は relative にして、子要素の絶対配置の基準にする */
+#shogi-board-container {
+    position: relative;
+    /* 必要に応じて width/height を指定 */
+}
+
+/* 通知画像のスタイル */
+#start-notification {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%); /* 盤の真ん中に配置 */
+    z-index: 100; /* 駒や盤より前面に出す */
+    
+    /* 必要に応じてサイズ調整 */
+    width: 200px; 
+    pointer-events: none; /* 画像がクリックを邪魔しないようにする */
+}
+
+// 対局開始処理（二人そろったタイミングで呼び出される関数）
+function initGameSequence(isSente) {
+    const notificationImg = document.getElementById('start-notification');
+    
+    // 1. 手番に応じて画像パスを設定
+    if (isSente) {
+        notificationImg.src = 'script/image/sente.png';
+    } else {
+        notificationImg.src = 'script/image/gote.png';
+    }
+
+    // 2. 画像を表示
+    notificationImg.style.display = 'block';
+
+    // 3. 1秒 (1000ms) 待ってからゲーム本編を開始
+    setTimeout(() => {
+        // 画像を消す
+        notificationImg.style.display = 'none';
+
+        // ★ここで実際のゲーム開始処理を呼ぶ
+        startGameAndTimer(); 
+        
+    }, 1000);
+}
+
+// 既存のゲーム開始・タイマー開始処理
+function startGameAndTimer() {
+    console.log("対局開始！タイマースタート");
+    // タイマー開始の関数呼び出し (例: startTimer())
+    // 盤面操作のロック解除など
+}

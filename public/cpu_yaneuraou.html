@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>しおや将棋 vs試験実装AI</title>
+<link rel="stylesheet" href="script/style.css">
+<link rel="icon" href="script/image/komiya_icon.png"> 
+<script src="coi-serviceworker.js"></script>
+</head>
+<body>
+<div id="game">
+
+  <div class="side left">
+    <div class="hand white-hand" id="whiteHandBox">
+      <h3>後手の持ち駒</h3>
+      <div id="whiteHand"></div>
+    </div>
+    <button id="undoBtn" class="square-btn" onclick="undoMove()">待った</button>
+  </div>
+
+<div id="center">
+    <div id="status">やねうら王 起動準備中...</div>
+
+    <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
+      考慮時間: 0秒
+    </div>
+
+    <div id="checkStatus"></div>
+    
+    <div style="position: relative; display: inline-block;">
+      
+      <img id="skillCutIn" src="" alt="">
+
+      <table id="board"></table>
+      
+    </div>
+    <div style="position: absolute; bottom: -90px; left: 0; width: 100%; text-align: center; pointer-events: none;">
+
+    </div>
+
+  </div>
+
+  <div class="side right">
+    <button id="resignBtn" class="square-btn">投了</button>
+    <div class="hand black-hand" id="blackHandBox">
+      <h3>先手の持ち駒</h3>
+      <div id="blackHand"></div>
+    </div>
+  </div>
+
+</div>
+
+
+    <button id="skillBtn" class="square-btn" style="display: none; margin-top: 15px;" onclick="toggleSkillMode()">必殺技</button>
+
+<div style="text-align: center; margin: 10px 0;">
+    <button onclick="toggleGraph()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; background-color: #fff; border: 2px solid #333; border-radius: 5px; font-weight: bold;">
+        評価値情報を表示 / 非表示
+    </button>
+</div>
+
+<div id="graphArea" style="display: block;">
+
+    <div style="width: 100%; max-width: 600px; margin: 20px auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            
+            <span id="numericEval" style="font-weight: bold; font-size: 16px; color: #333;">
+                評価値: 0 / 勝率: 50%
+            </span>
+            
+            <div style="text-align: right; font-size: 14px;">
+                <label style="margin-right: 2px;">モード:</label>
+                <select id="modeSelect" onchange="updateChartSettings()" style="padding: 2px; margin-right: 10px;">
+                    <option value="score">評価値 (点数)</option>
+                    <option value="winrate">期待勝率 (%)</option>
+                </select>
+
+                <label style="margin-right: 2px;">範囲:</label>
+                <select id="scaleSelect" onchange="updateChartSettings()" style="padding: 2px;">
+                    <option value="500" selected>±500</option>
+                    <option value="1000">±1000</option>
+                    <option value="2000">±2000</option>
+                    <option value="5000">±5000</option>
+                    <option value="10000">±10000</option>
+                    <option value="auto">自動</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="position: relative; height: 200px; width: 100%;">
+            <canvas id="evalChart"></canvas>
+        </div>
+
+    </div>
+</div>
+
+<div style="text-align: center; margin: 15px 0 10px 0;">
+    <button onclick="toggleKifu()" style="padding: 8px 16px; font-size: 14px; cursor: pointer; background-color: #fff; border: 2px solid #333; border-radius: 5px; font-weight: bold;">
+        📝 棋譜を表示 / 非表示
+    </button>
+</div>
+
+<div id="kifuArea" style="display: none;">
+    <div style="width: 100%; max-width: 600px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+            <span style="font-weight: bold; color: #333;">【 棋譜 】</span>
+            <button onclick="copyKifuText()" style="padding: 4px 10px; font-size: 12px; cursor: pointer;">📋 コピー</button>
+        </div>
+        
+        <div id="kifu" style="width: 100% !important; height: 200px; box-sizing: border-box; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #deb887; margin-top: 0; font-family: monospace; font-size: 14px; line-height: 1.6; color: #000; text-align: left;"></div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<div id="skillModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <p style="font-size: 20px; font-weight: bold; margin-bottom: 20px;">必殺技を発動しますか？</p>
+    <div class="modal-buttons">
+      <button class="square-btn" style="background: red; color: white;" onclick="confirmSkillActivate()">発動</button>
+      <button class="square-btn" style="background: gray; color: white;" onclick="closeSkillModal()">やめる</button>
+    </div>
+  </div>
+</div>
+
+<div id="promoteModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <p style="font-size: 20px; font-weight: bold; margin-bottom: 20px;">成りますか？</p>
+    <div class="modal-buttons">
+      <button class="square-btn" style="background: #ff4500; color: white;" onclick="resolvePromotion(true)">成</button>
+      <button class="square-btn" style="background: gray; color: white;" onclick="resolvePromotion(false)">不成</button>
+    </div>
+  </div>
+</div>
+
+
+
+<audio id="bgm" src="script/audio/natsu2.mp3" loop></audio>
+<audio id="moveSound" src="script/audio/move.mp3"></audio>
+<audio id="promoteSound" src="script/audio/promote.mp3"></audio>
+<audio id="skillSound" src=""></audio>
+
+<script src="script/globals.js"></script>
+<script src="script/rules.js"></script>
+<script src="script/kifu.js"></script>
+<script src="script/skills/SilverArmor.js"></script>
+<script src="script/skills/PassionateSupport.js"></script>
+<script src="script/skills/BluePrint.js"></script>
+<script src="script/characters/Itsumono.js"></script>
+<script src="script/characters/Nekketsu.js"></script>
+<script src="script/characters/Reisei.js"></script>
+
+<script src="script/yaneuraou_main.js"></script>
+
+<script src="script/sfen_converter.js"></script>
+<script src="script/engine_bridge.js"></script>
+
+</body>
+</html>

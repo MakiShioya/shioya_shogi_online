@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>キャラクター選択 - しおや将棋</title>
+      <link rel="icon" href="script/image/komiya_icon.png"> 
+  <style>
+    /* 全体のデザイン（index.htmlのテイストに合わせつつ、選択画面用に調整） */
+    body {
+      background-color: #f0f0f0; /* もし背景画像があれば index.html と同じ設定にしてください */
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding-top: 50px;
+    }
+
+    h1 {
+      color: #FFB347;
+      text-shadow: 2px 2px 5px rgba(0, 128, 0, 0.7);
+      font-size: 3rem;
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      color: #333;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+
+    /* キャラクターカードの並び */
+    .char-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap; /* 画面が狭いときに折り返す */
+      gap: 30px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* キャラクターカード単体のデザイン */
+    .char-card {
+      background: white;
+      border: 5px solid #ccc;
+      border-radius: 15px;
+      padding: 15px;
+      cursor: pointer;
+      width: 220px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    /* ホバー時のエフェクト */
+    .char-card:hover {
+      border-color: #45a049; /* 選択カラー（緑） */
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+
+    .char-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      object-fit: contain; /* 画像比率を保持 */
+    }
+
+    .char-name {
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    /* メッセージエリア（PvP時の案内など） */
+    #messageArea {
+      margin-bottom: 20px;
+      font-size: 1.2rem;
+      color: #555;
+      min-height: 1.5em;
+    }
+    
+    /* もどるボタン */
+    .back-btn-container {
+      margin-top: 50px;
+      margin-bottom: 30px;
+    }
+    button.back-btn {
+      width: 150px;
+      height: 50px;
+      font-size: 18px;
+      color: white;
+      background-color: rgba(255, 165, 0, 0.8);
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button.back-btn:hover {
+      background-color: #e69500;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 id="pageTitle">プレイヤーを選択</h1>
+  
+  <div id="messageArea">お好みのキャラクターを選んでください</div>
+
+  <div class="char-container">
+    
+    <div class="char-card" onclick="onCharSelected('default')">
+      <img src="script/image/karui_1p.PNG" alt="通常">
+      <div class="char-name">キャラA</div>
+    </div>
+
+    <div class="char-card" onclick="onCharSelected('char_a')">
+      <img src="script/image/char_a.png" alt="キャラA画像">
+      <div class="char-name">キャラB</div>
+    </div>
+
+    <div class="char-card" onclick="onCharSelected('char_b')">
+      <img src="script/image/char_b.png" alt="キャラB画像">
+      <div class="char-name">キャラC</div>
+    </div>
+
+    </div>
+
+  <div class="back-btn-container">
+    <button class="back-btn" onclick="goBack()">キャンセル</button>
+  </div>
+
+<script>
+  // --- 初期化処理 ---
+  
+  // URLパラメータを取得
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get('mode');   // 'cpu', 'practice', 'pvp'
+  const phase = urlParams.get('phase'); // PvP用の段階 ('1' or '2')
+
+  // PvPの2人目（後手）選択中かどうか
+  const isPvpSecondPick = (mode === 'pvp' && phase === '2');
+
+  // 画面読み込み時に表示を調整
+  window.onload = function() {
+    const title = document.getElementById('pageTitle');
+    const msg = document.getElementById('messageArea');
+
+    if (mode === 'pvp') {
+      if (!isPvpSecondPick) {
+        // ▼ PvP 1人目（先手）選択時
+        title.textContent = "1Pキャラクター選択";
+        msg.textContent = "先手（1P）のキャラクターを選んでください";
+        title.style.color = "#FFB347"; // オレンジ
+        
+        // 最初の選択なので、ゴミデータが残らないようにクリア
+        sessionStorage.removeItem('char_black');
+        sessionStorage.removeItem('char_white');
+      } else {
+        // ▼ PvP 2人目（後手）選択時（戻ってきたとき）
+        title.textContent = "2Pキャラクター選択";
+        msg.textContent = "後手（2P）のキャラクターを選んでください";
+        title.style.color = "#45a049"; // 緑
+
+        // ページトップへスクロール
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else {
+      // ▼ シングルプレイ（CPU / 練習）
+      title.textContent = "キャラクター選択";
+      msg.textContent = "あなたのキャラクターを選んでください";
+      
+      // 自分のデータだけクリア
+      sessionStorage.removeItem('char_black'); 
+    }
+  };
+
+  // --- キャラクターカードがクリックされたら ---
+  // ここで直接保存せず、詳細ページへ飛ばします
+  function onCharSelected(charId) {
+    let targetUrl = `character_detail.html?id=${charId}&mode=${mode}`;
+
+    // PvPの場合は「今はどっちの手番を選んでいるか」も教える
+    if (mode === 'pvp') {
+      if (isPvpSecondPick) {
+        targetUrl += "&phase=2"; // 後手を選んだ
+      } else {
+        targetUrl += "&phase=1"; // 先手を選んだ
+      }
+    }
+
+    // 詳細ページへ移動
+    window.location.href = targetUrl;
+  }
+
+  // --- キャンセル（戻る）ボタン ---
+  function goBack() {
+    // もしPvPの2人目選択中にキャンセルしたら、最初（タイトル）に戻るか、1人目選択に戻すか
+    // ここではシンプルにタイトルに戻します
+    window.location.href = "index.html";
+  }
+</script>
+</body>
+</html>
