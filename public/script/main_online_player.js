@@ -718,13 +718,38 @@ function processSkillAfterEffect(skillObj, result, playerColor) {
   startTimer();
 }
 
+// --- 修正：投了ボタンを押したときの処理 ---
 function resignGame() {
     if (gameOver) return;
-    if (myRole === "spectator") return; 
-    if (!confirm("本当に投了しますか？")) return;
-    socket.emit('game resign', { loser: myRole });
+    if (myRole === "spectator") return; // 観戦者は投了不可
+    
+    // 今までの confirm(...) をやめて、自作ポップアップを表示
+    const modal = document.getElementById("resignModal");
+    if (modal) {
+        modal.style.display = "flex";
+    }
+}
+
+// --- 追加：ポップアップで「投了する」を選んだときの処理 ---
+function executeResign() {
+    closeResignModal(); // まず箱を閉じる
+
+    // 1. サーバーに「自分が負けた」と伝える
+    if (socket) {
+        socket.emit('game resign', { loser: myRole });
+    }
+
+    // 2. 自分の画面の処理を行う（自分が負けたので、勝者は相手）
     const winColor = (myRole === "black") ? "white" : "black";
     resolveResignation(winColor);
+}
+
+// --- 追加：ポップアップを閉じる処理 ---
+function closeResignModal() {
+    const modal = document.getElementById("resignModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
 }
 
 function resolvePromotion(doPromote) {
@@ -815,5 +840,55 @@ function playGameEndEffect(winnerColor) {
         void cutInImg.offsetWidth; 
         cutInImg.classList.add("cut-in-active");
         setTimeout(() => { cutInImg.classList.remove("cut-in-active"); }, 3000);
+    }
+}
+
+
+// --- 棋譜表示・コピー機能 ---
+
+// 棋譜エリアの表示/非表示を切り替えるボタンの処理
+function toggleKifu() {
+    const area = document.getElementById("kifuArea");
+    if (!area) return; // エラー回避
+
+    if (area.style.display === "none" || area.style.display === "") {
+        area.style.display = "block";
+        // スクロールを一番下（最新の手）に合わせる
+        const scrollBox = area.querySelector("div");
+        if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+    } else {
+        area.style.display = "none";
+    }
+}
+
+// 棋譜をクリップボードにコピーする機能
+function copyKifuText() {
+    const kifuDiv = document.getElementById("kifu");
+    if (kifuDiv) {
+        navigator.clipboard.writeText(kifuDiv.innerText).then(() => {
+            alert("棋譜をコピーしました！");
+        }).catch(err => {
+            console.error("コピーに失敗しました", err);
+        });
+    }
+}
+
+
+// --- 待ったボタンの処理（ポップアップ版） ---
+function undoMove() {
+    const modal = document.getElementById("undoModal");
+    if (modal) {
+        modal.style.display = "flex"; // ポップアップを表示
+    } else {
+        // 万が一HTMLがないときはアラートで代用
+        alert("このキャラは「待った」スキルを持っていません。");
+    }
+}
+
+// ポップアップを閉じる関数
+function closeUndoModal() {
+    const modal = document.getElementById("undoModal");
+    if (modal) {
+        modal.style.display = "none"; // 非表示にする
     }
 }
