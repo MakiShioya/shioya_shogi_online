@@ -146,7 +146,7 @@ function initGameSequence() {
     // 自分の役割から「画像」と「音声」のパスを決定
     // ※観戦者(spectator)の場合は、とりあえず先手用を使う設定
     const isSente = (myRole !== "white");
-    const imgPath = isSente ? "script/image/sente.png" : "script/image/gote.png";
+    const imgPath = isSente ? "script/image/sente.PNG" : "script/image/gote.PNG";
     const audioPath = isSente ? "script/audio/sente.mp3" : "script/audio/gote.mp3";
 
     // 1. 音声を再生
@@ -1042,12 +1042,12 @@ function playGameEndEffect(winnerColor) {
     
     // 自分が勝った場合
     if (winnerColor === myRole) {
-        imgPath = "script/image/shori.png";
+        imgPath = "script/image/shori.PNG";
         audioPath = "script/audio/shori.mp3";
     } 
     // 自分が負けた場合（相手が勝った場合）
     else {
-        imgPath = "script/image/haiboku.png";
+        imgPath = "script/image/haiboku.PNG";
         audioPath = "script/audio/haiboku.mp3";
     }
 
