@@ -1,0 +1,21 @@
+{
+  "name": "しおや将棋",
+  "short_name": "しおや将棋",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#deb887",
+  "theme_color": "#deb887",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "script/image/komiya_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "script/image/komiya_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
