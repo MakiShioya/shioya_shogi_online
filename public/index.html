@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>しおや将棋</title>
       <link rel="icon" href="script/image/komiya_icon.png"> 
   <style>
@@ -40,6 +41,11 @@
       text-shadow: 2px 2px 5px rgba(0, 128, 0, 0.7), -2px -2px 5px rgba(0, 128, 0, 0.7);
     }
 
+    /* スマホ画面用にタイトルのサイズを調整 */
+    @media (max-width: 600px) {
+      h1, h2 { font-size: 3rem; }
+    }
+
     /* 通常ボタンの共通スタイル */
     button {
       width: 200px;
@@ -52,6 +58,13 @@
       border: none;
       background-color: rgba(0, 0, 0, 0.5);
       transition: background-color 0.3s;
+    }
+
+    /* オンラインボタンを目立たせる（オプション） */
+    button.online-btn {
+        background-color: rgba(0, 100, 255, 0.6); /* 青っぽくする */
+        font-weight: bold;
+        border: 2px solid #fff;
     }
 
     button:hover {
@@ -101,6 +114,10 @@
 
   <div id="menu">
     <h1>しおや将棋</h1>
+    
+    <button class="online-btn" onclick="goToCharacterSelect('online')">オンライン</button>
+    <br>
+
     <button onclick="goToCharacterSelect('practice')">れんしゅう</button>
     <button onclick="goToCharacterSelect('cpu')">ひとりで</button>
     <button onclick="goToCharacterSelect('pvp')">ふたりで</button>
@@ -108,13 +125,12 @@
     <div id="announcementBox">
       <h3>お知らせ</h3>
       <p>
+        オンライン対戦機能を<br>
+        追加しました！<br><br>
         「ひとりで」に最強CPUを実装しました。<br>
         「試験実装」からあそべます。<br><br>
-        様々な演出を変更しました。<br><br>
-        必殺技の効果を調整しました。<br><br>
-        棋譜のコピー機能を実装。<br><br>
         最終更新<br>
-        2026年1月26日 8時34分
+        2026年1月28日
       </p>
     </div>
   </div>
@@ -162,31 +178,27 @@
 
   <script>
     // --- ページ読み込み時の処理 ---
-    // character.html から戻ってきたときのパラメータをチェックする
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
       const menu = urlParams.get('menu');
 
       if (menu === 'practice') {
-        // れんしゅうメニューを直接開く
         document.getElementById('menu').style.display = 'none';
         document.getElementById('practiceMenu').style.display = 'block';
       } else if (menu === 'cpu') {
-        // ひとりでモード選択を直接開く
         document.getElementById('menu').style.display = 'none';
         document.getElementById('onePlayerModeSelect').style.display = 'block';
       }
-      // 'pvp' の場合は character.html から直接ゲーム画面へ飛ぶため、ここには戻ってきません
+      // 'online' や 'pvp' の場合はここには戻ってきません
     };
 
     // --- 画面遷移（キャラクター選択へ） ---
     function goToCharacterSelect(mode) {
-      // mode: 'practice', 'cpu', 'pvp'
+      // mode には 'online', 'practice', 'cpu', 'pvp' が入ります
       window.location.href = "character.html?mode=" + mode;
     }
 
     // --- 内部画面遷移（進む） ---
-    
     function showOnePlayerNormal() {
       document.getElementById('onePlayerModeSelect').style.display = 'none';
       document.getElementById('onePlayerNormalMenu').style.display = 'block';
@@ -203,23 +215,16 @@
     }
 
     // --- 内部画面遷移（もどる） ---
-
-    // タイトル画面（メインメニュー）に戻る
     function backToMain() {
-      // 全てのサブメニューを非表示にする
       document.getElementById('practiceMenu').style.display = 'none';
       document.getElementById('onePlayerModeSelect').style.display = 'none';
-      // メインメニューを表示
       document.getElementById('menu').style.display = 'block';
       
-      // URLのパラメータをクリアする（リロード時に再度メニューが開くのを防ぐため）
-      // history.replaceState を使ってURLを index.html だけに書き換える
       if (window.history.replaceState) {
         window.history.replaceState(null, null, window.location.pathname);
       }
     }
 
-    // 「ひとりで」のモード選択画面に戻る
     function backToOnePlayerMode() {
       document.getElementById('onePlayerNormalMenu').style.display = 'none';
       document.getElementById('onePlayerHardMenu').style.display = 'none';
@@ -228,7 +233,6 @@
     }
 
     // --- ゲーム開始 ---
-
     function startGame(difficulty) {
       if (difficulty === 'saijaku') {
         window.location.href = "cpu_tawamure.html";
@@ -250,11 +254,7 @@
     }
   </script>
 
-
-
-<script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
 </body>
-
 </html>
-
