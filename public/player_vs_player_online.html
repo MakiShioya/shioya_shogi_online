@@ -2,9 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<link rel="manifest" href="manifest.json">
 <title>しおや将棋 オンライン対戦</title>
 <link rel="stylesheet" href="script/style.css">
       <link rel="icon" href="script/image/komiya_icon.png"> 
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
     /* --- 待機画面（オーバーレイ）のスタイル --- */
@@ -189,6 +194,8 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="script/main_online_player.js"></script>
+
+<script src="script/auth.js"></script>
 
 </body>
 </html>
