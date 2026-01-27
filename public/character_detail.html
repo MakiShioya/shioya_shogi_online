@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>キャラクター詳細</title>
-      <link rel="icon" href="script/image/komiya_icon.png"> 
+    <link rel="icon" href="script/image/komiya_icon.png"> 
     <link rel="stylesheet" href="script/style.css">
     <style>
         body {
@@ -80,7 +80,80 @@
     </div>
 </div>
 
-<script src="script/character_detail.js"></script>
+<script>
+    // --- キャラクターデータ一覧 ---
+    // ※新しいキャラを追加するときはここを増やすだけでOK
+    const CHAR_DATA = {
+        'default': {
+            name: 'キャラA',
+            img: 'script/image/karui_1p.PNG',
+            skill: 'なし',
+            desc: '特別な能力はありません。正々堂々と戦います。'
+        },
+        'char_a': {
+            name: 'キャラB',
+            img: 'script/image/char_a.png',
+            skill: 'カニ囲い崩し',
+            desc: '【効果】相手の玉周辺の金を1枚消滅させる（1回のみ使用可）。'
+        },
+        'char_b': {
+            name: 'キャラC',
+            img: 'script/image/char_b.png',
+            skill: '飛車成り',
+            desc: '【効果】自分の飛車がどこにいても「龍」に成ることができる。'
+        }
+    };
+
+    // URLパラメータを取得
+    const urlParams = new URLSearchParams(window.location.search);
+    const charId = urlParams.get('id') || 'default';
+    const mode = urlParams.get('mode') || 'practice';
+    const phase = urlParams.get('phase'); // PvP用
+
+    // 画面にデータを反映
+    const data = CHAR_DATA[charId] || CHAR_DATA['default'];
+    document.getElementById('charName').textContent = data.name;
+    document.getElementById('charImage').src = data.img;
+    document.getElementById('skillName').textContent = data.skill;
+    document.getElementById('skillDesc').textContent = data.desc;
+
+    // --- 決定ボタンを押した時の処理 ---
+    function decideCharacter() {
+        
+        // ★★★ ここが最重要！ オンライン対戦への分岐を追加 ★★★
+        if (mode === 'online') {
+            // オンライン対戦時は、自分の選んだキャラを保存して対戦画面へ
+            sessionStorage.setItem('my_character', charId);
+            // オンライン対戦用のHTMLへ移動
+            window.location.href = 'player_vs_player_online.html';
+            return;
+        }
+
+        // --- 以下は既存のオフライン用の処理 ---
+
+        if (mode === 'pvp') {
+            // オフライン2人対戦の処理
+            if (phase === '1') {
+                // 先手が決まったら、次は後手の選択へ
+                sessionStorage.setItem('char_black', charId);
+                window.location.href = "character.html?mode=pvp&phase=2";
+            } else {
+                // 後手も決まったら、いざ対戦開始！
+                sessionStorage.setItem('char_white', charId);
+                window.location.href = "player_vs_player.html";
+            }
+
+        } else {
+            // CPU対戦や練習モードの処理
+            // 自分のキャラを保存
+            sessionStorage.setItem('char_black', charId);
+            
+            // index.html に戻って「難易度選択」をさせる
+            // ※パラメータを付けて、自動でメニューが開くようにする
+            window.location.href = "index.html?menu=" + mode;
+        }
+    }
+</script>
 
 </body>
 </html>
