@@ -659,16 +659,27 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
   moveCount++;
 
   // 終了判定
+  // 終了判定
   if (moveCount >= 500) {
     gameOver = true;
     winner = null;
     statusDiv.textContent = "500手に達したため、引き分けです。";
+    // 引き分けは保存しない、または "draw" として保存も可能（今回は何もしない）
     render();
     return;
   }
+
+  // ★★★ 詰み判定（ここに保存処理を追加） ★★★
   if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
+
+    // ★追加：戦績保存処理
+    if (typeof saveGameResult === "function" && (myRole === "black" || myRole === "white")) {
+        const result = (winner === myRole) ? "win" : "lose";
+        saveGameResult(result, "オンラインの誰か", "online");
+    }
+
     render();
     return;
   }
@@ -813,6 +824,13 @@ function resolveResignation(winnerColor) {
     const winnerName = (winner === "black") ? "先手" : "後手";
     endReason = "投了により、" + winnerName + "の勝ちです。";
     if (typeof showKifu === "function") showKifu();
+    
+    // ★★★ 追加：戦績保存処理 ★★★
+    if (typeof saveGameResult === "function" && (myRole === "black" || myRole === "white")) {
+        const result = (winner === myRole) ? "win" : "lose";
+        saveGameResult(result, "オンラインの誰か", "online");
+    }
+
     render();
 }
 
