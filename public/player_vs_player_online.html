@@ -5,8 +5,65 @@
 <title>しおや将棋 オンライン対戦</title>
 <link rel="stylesheet" href="script/style.css">
       <link rel="icon" href="script/image/komiya_icon.png"> 
+
+<style>
+    /* --- 待機画面（オーバーレイ）のスタイル --- */
+    #waitingOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.95); /* ほぼ真っ黒な背景 */
+      z-index: 9999; /* 最前面に表示 */
+      display: flex; /* 最初は表示しておく */
+      justify-content: center;
+      align-items: center;
+      color: white;
+      text-align: center;
+      transition: opacity 0.5s ease; /* ふわっと消える演出 */
+    }
+
+    .waiting-content h2 {
+      font-size: 2rem;
+      margin-bottom: 20px;
+    }
+
+    .waiting-content p {
+      font-size: 1.5rem;
+    }
+
+    /* くるくる回るローディングアニメーション */
+    .spinner {
+      margin: 30px auto;
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.3);
+      border-top: 5px solid #FFB347;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+
 </head>
 <body>
+
+  <div id="waitingOverlay">
+    <div class="waiting-content">
+      <h2>対戦相手を待っています...</h2>
+      <p>あなたの使用キャラ：<span id="myCharNameDisplay" style="color: #FFB347; font-weight: bold;">---</span></p>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <div id="status"></div>
+
 <div id="game">
 
   <div class="side left">
