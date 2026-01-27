@@ -38,6 +38,18 @@ window.isCaptureRestricted = false;
 window.addEventListener("load", () => {
   cpuEnabled = false;
   bgm = document.getElementById("bgm");
+  
+  // ★★★ 追加：待機画面に自分のキャラ名を表示する処理 ★★★
+  const myCharId = sessionStorage.getItem('my_character') || 'default';
+  const charNameMap = {
+      'default': 'キャラA', // ※あなたのゲームでの正しい名前に書き換えてください
+      'char_a': 'キャラB',
+      'char_b': 'キャラC'
+  };
+  const myCharName = charNameMap[myCharId] || "不明なキャラ";
+  const displaySpan = document.getElementById("myCharNameDisplay");
+  if (displaySpan) displaySpan.textContent = myCharName;
+
   moveSound = document.getElementById("moveSound");
   promoteSound = document.getElementById("promoteSound");
 
@@ -127,6 +139,15 @@ socket.on('game reset', () => {
 
 // 開始演出
 function initGameSequence() {
+  // ★★★ 追加：待機画面を隠す処理 ★★★
+    const overlay = document.getElementById("waitingOverlay");
+    if (overlay) {
+        overlay.style.opacity = "0"; // 透明にする
+        setTimeout(() => {
+            overlay.style.display = "none"; // 完全に消す
+        }, 500);
+    }
+
     const cutInImg = document.getElementById("skillCutIn");
     const isSente = (myRole !== "white");
     const imgPath = isSente ? "script/image/sente.png" : "script/image/gote.png";
