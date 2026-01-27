@@ -15,7 +15,7 @@ const charData = {
     name: "キャラB",
     image: "script/image/char_a.png",
     skillName: "熱烈な応援",
-    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。<br>発動条件：なし / 1局に2回のみ"
+    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。必殺技を使った手番中は、相手の駒を取ることはできなくなる。<br>発動条件：なし / 1局に2回のみ"
   },
 
   // ■冷静（char_b）
@@ -23,7 +23,7 @@ const charData = {
     name: "キャラC",
     image: "script/image/char_b.png",
     skillName: "ブループリント",
-    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。<br>発動条件：振り飛車 / 1局に1回のみ"
+    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。必殺技を使った手番中は、相手の駒を取ることはできなくなる。<br>発動条件：振り飛車 / 1局に1回のみ"
   }
 };
 
@@ -54,7 +54,7 @@ window.onload = function() {
 function decideCharacter() {
   // 1. URLパラメータからモードとフェーズ（段階）を取得
   const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get('mode');  // 'practice', 'cpu', 'pvp'
+  const mode = urlParams.get('mode');  // 'online', 'practice', 'cpu', 'pvp'
   const phase = urlParams.get('phase'); // PvP用: '1' or '2'
 
   // 2. 選択されたキャラIDを取得
@@ -62,7 +62,14 @@ function decideCharacter() {
 
   // --- モードごとの分岐 ---
 
-  if (mode === 'practice') {
+  // ★★★ 追加：オンラインモードの処理 ★★★
+  if (mode === 'online') {
+    // 自分のキャラとして保存
+    sessionStorage.setItem('my_character', charId);
+    // オンライン対戦画面へ移動
+    window.location.href = 'player_vs_player_online.html';
+  }
+  else if (mode === 'practice') {
     // ■ 練習モード
     sessionStorage.setItem('char_black', charId);
     window.location.href = 'index.html?menu=practice';
@@ -90,5 +97,4 @@ function decideCharacter() {
     // エラー時はタイトルへ
     window.location.href = 'index.html';
   }
-
 }
