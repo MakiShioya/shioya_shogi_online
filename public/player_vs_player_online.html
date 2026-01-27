@@ -146,7 +146,30 @@
   </div>
 </div>
 
+<div id="undoModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <p style="font-size: 20px; font-weight: bold; color: #8b4513;">
+      このキャラは「待った」スキルを持っていません。
+    </p>
+    <div class="modal-buttons">
+      <button onclick="closeUndoModal()" style="background-color: #d32f2f; color: white;">閉じる</button>
+    </div>
+  </div>
+</div>
 
+<div id="resignModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <p style="font-size: 20px; font-weight: bold; color: #8b4513;">
+      本当に投了しますか？<br>
+      <span style="font-size: 16px; color: #d32f2f;">※この操作は取り消せません</span>
+    </p>
+    <div class="modal-buttons">
+      <button onclick="executeResign()" style="background-color: #d32f2f; color: white; border: 2px solid #800000; padding: 10px 20px; font-weight: bold;">投了する</button>
+      
+      <button onclick="closeResignModal()" style="background-color: #ccc; border: 1px solid #999; padding: 10px 20px;">やめる</button>
+    </div>
+  </div>
+</div>
 
 <audio id="skillSound" src=""></audio>
 <audio id="bgm" src="script/audio/natsu2.mp3" loop></audio>
