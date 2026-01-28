@@ -674,10 +674,10 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
 
-    // ★追加：戦績保存処理
-    if (typeof saveGameResult === "function" && (myRole === "black" || myRole === "white")) {
+    // 観戦者ではなく、自分が対局者（black or white）の場合のみ保存を実行
+    if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
-        saveGameResult(result, "オンラインの誰か", "online");
+        saveGameResult(result);
     }
 
     render();
@@ -823,12 +823,13 @@ function resolveResignation(winnerColor) {
     winner = winnerColor;
     const winnerName = (winner === "black") ? "先手" : "後手";
     endReason = "投了により、" + winnerName + "の勝ちです。";
+    
     if (typeof showKifu === "function") showKifu();
     
-    // ★★★ 追加：戦績保存処理 ★★★
-    if (typeof saveGameResult === "function" && (myRole === "black" || myRole === "white")) {
+    // 自分が対局者の場合のみ保存を実行
+    if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
-        saveGameResult(result, "オンラインの誰か", "online");
+        saveGameResult(result);
     }
 
     render();
@@ -909,4 +910,39 @@ function closeUndoModal() {
     if (modal) {
         modal.style.display = "none"; // 非表示にする
     }
+}
+
+/**
+ * オンライン対戦の結果をFirestoreに保存する関数
+ * @param {string} resultStatus - "win" または "lose"
+ */
+function saveGameResult(resultStatus) {
+    const user = auth.currentUser;
+    if (!user) {
+        console.log("未ログインのため、オンライン対戦の記録は保存されません。");
+        return; 
+    }
+
+    const opponentDisplayName = "オンライン対戦"; 
+    const isWin = (resultStatus === "win");
+    
+    const gameRecord = {
+        date: new Date(), 
+        opponent: opponentDisplayName,
+        moves: moveCount,
+        result: isWin ? "WIN" : "LOSE",
+        mode: "online",  
+        kifuData: kifu // グローバルの棋譜配列
+    };
+
+    // Firestoreのユーザーデータを更新
+    db.collection("users").doc(user.uid).update({
+        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).then(() => {
+        console.log("オンライン対戦の記録（棋譜含む）を保存しました");
+    }).catch((error) => {
+        console.error("オンライン対戦の保存失敗:", error);
+    });
 }
