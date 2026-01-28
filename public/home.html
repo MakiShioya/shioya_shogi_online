@@ -18,12 +18,72 @@
       padding: 0;
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
       overflow: hidden;
-      background-image: url('script/image/shogi_title.PNG'); /* 背景画像 */
+      background-image: url('script/image/shogi_title.PNG');
       background-color: #2c3e50;
       background-size: cover;
       background-position: center;
       height: 100vh;
       width: 100vw;
+    }
+
+    /* 吹き出し本体の設定 */
+    .speech-bubble {
+      display: none;             /* 最初は隠しておく（JSで表示させる） */
+      position: absolute;        /* 画面全体に対して自由な位置に配置する設定 */
+      
+      /* --- 位置調整のメイン --- */
+      bottom: 50vh;              /* 下から数えて「画面の高さの58%」の位置に配置（小さくすると下へ） */
+      left: 50%;                 /* 左から数えて「画面の幅の45%」の位置に配置（キャラの左右位置に合わせる） */
+      transform: translateX(-50%); /* 自分の幅の半分だけ左にずらして、leftの位置に「中心」を合わせる */
+      
+      /* --- 見た目の装飾 --- */
+      background: #fff8dc;       /* 吹き出しの中の色（和紙っぽいベージュ） */
+      border: 3px solid #8b4513; /* 3pxの太さの「実線」で「茶色」の枠線 */
+      border-radius: 20px;       /* 角の丸み（大きくするともっと丸くなる） */
+      padding: 12px 20px;        /* 文字と枠線の間の余白（上下12px、左右20px） */
+      
+      /* --- サイズの制限 --- */
+      min-width: 160px;          /* 横幅がこれより小さくならないようにする */
+      max-width: 220px;          /* 横幅がこれより大きくならないようにする（自動で改行される） */
+      
+      /* --- 文字のデザイン --- */
+      color: #333;               /* 文字の色（濃いグレー） */
+      font-weight: bold;         /* 文字を太字にする */
+      font-size: 0.95rem;        /* 文字の大きさ */
+      
+      /* --- その他 --- */
+      z-index: 100;              /* 重なり順。キャラ(z-index:1)より大きい数字にして手前に出す */
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* 下方向に4px、ぼかし10pxの影をつける */
+      pointer-events: none;      /* 吹き出しをクリックしても「下のキャラ」にクリックが届くようにする */
+      
+      /* アニメーション：pop-inという名前の動きを0.3秒かけて行う */
+      animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+      white-space: pre-wrap;    /* ★これを入れると \n が改行として反映されます */
+      line-height: 1.4;         /* 改行した時の行間を少し広げると読みやすいです */
+    }
+
+    /* 吹き出しの「しっぽ（三角）」を上側に変更 */
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      
+      /* --- 三角を出す位置（上側に変更） --- */
+      top: auto;                 /* 下側の指定を解除するために一応設定 */
+      bottom: 100%;              /* 本体の真上（外側）に配置 */
+      left: auto;                /* 左側の指定を解除 */
+      right: 20%;                /* 右端から20%の位置（向きに合わせて調整） */
+      
+      /* --- 三角形を「上向き」にする設定 --- */
+      border-left: 10px solid transparent;  /* 左側を透明に */
+      border-right: 10px solid transparent; /* 右側を透明に */
+      border-top: none;                     /* 下向き用の設定を削除 */
+      border-bottom: 15px solid #8b4513;    /* 下側の枠線に色をつけると「上向き」になります */
+    }
+
+    @keyframes pop-in {
+      0% { transform: translateX(-50%) scale(0); opacity: 0; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
     }
 
     /* キャラクタースタンド */
@@ -35,10 +95,11 @@
       height: 85vh;
       width: auto;
       max-width: 95%;
-      pointer-events: none;
       z-index: 1;
       content: url('script/image/komiya_touka.png'); 
       filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+      cursor: pointer; /* クリック可能であることを示す */
+      pointer-events: auto; /* クリックを有効化 */
     }
 
     /* 上部：ユーザー情報バー */
@@ -154,7 +215,9 @@
     </div>
   </div>
 
-  <img class="character-stand" src="script/image/char_a.png" alt="Character">
+  <div id="characterBubble" class="speech-bubble"></div>
+
+  <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
 
   <div class="bottom-menu">
     <button class="menu-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
@@ -189,10 +252,8 @@
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">音量設定</h3>
       <div style="margin: 20px 0;">
-        <p>BGM</p>
-        <input type="range" style="width:80%;">
-        <p>効果音</p>
-        <input type="range" style="width:80%;">
+        <p>BGM</p><input type="range" style="width:80%;">
+        <p>効果音</p><input type="range" style="width:80%;">
       </div>
       <button class="sub-btn" style="background:#666;" onclick="switchModal('volumeMenu', 'settingsMainMenu')">もどる</button>
     </div>
@@ -264,15 +325,17 @@
 
   <script src="script/auth.js"></script>
   <script>
+    // --- モーダル操作 ---
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     function switchModal(closeId, openId) { closeModal(closeId); openModal(openId); }
 
     function openAccountFromSettings() {
       closeModal('settingsMainMenu');
-      showAuthModal(); // auth.jsの関数
+      showAuthModal(); 
     }
 
+    // --- 画面遷移 ---
     function goToCharacterSelect(mode) { window.location.href = "character.html?mode=" + mode; }
 
     function startGame(difficulty) {
@@ -286,6 +349,31 @@
       else if (difficulty === 'ex_hard2') target = "ex_cpu_shioya.html";
       else if (difficulty === 'ex_hard3') target = "cpu_yaneuraou.html";
       if(target) window.location.href = target;
+    }
+
+    // ★キャラクターの喋り機能
+    let bubbleTimer = null;
+    function talkCharacter() {
+      const bubble = document.getElementById("characterBubble");
+      // ユーザー名の取得
+      const name = document.getElementById("userNameDisplay").textContent || "ゲスト";
+
+      const charMessages = [
+        `お手合わせ、よろしくお願いします！${name}さん！`,
+        `${name}さん、こんにちは！\n今日も将棋ですか？`,
+        `次の一手、\nじっくり考えましょう…`,
+        `将棋は楽しむことが一番ですよね！${name}さん！`,
+        `さあ、対局を始めましょう！${name}さん！`
+      ];
+
+      const randomMsg = charMessages[Math.floor(Math.random() * charMessages.length)];
+      bubble.textContent = randomMsg;
+      bubble.style.display = "block";
+
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => {
+        bubble.style.display = "none";
+      }, 3000);
     }
 
     window.onload = function() {
