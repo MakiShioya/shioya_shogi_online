@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>しおや将棋 - 棋譜解析</title>
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    /* ホーム画面のスタイルを完全継承 */
+    body {
+      margin: 0; padding: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      overflow: hidden;
+      background-image: url('script/image/shogi_title.PNG');
+      background-color: #2c3e50;
+      background-size: cover;
+      background-position: center;
+      height: 100vh; width: 100vw;
+    }
+
+    /* 吹き出し設定 */
+    .speech-bubble {
+      position: absolute;
+      bottom: 50vh; left: 50%;
+      transform: translateX(-50%);
+      background: #fff8dc;
+      border: 3px solid #8b4513;
+      border-radius: 20px;
+      padding: 12px 20px;
+      min-width: 180px; max-width: 250px;
+      color: #333; font-weight: bold; font-size: 0.95rem;
+      z-index: 100;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      white-space: pre-wrap; line-height: 1.4;
+      animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .speech-bubble::after {
+      content: ''; position: absolute;
+      bottom: 100%; right: 20%;
+      border-left: 10px solid transparent; border-right: 10px solid transparent;
+      border-bottom: 15px solid #8b4513;
+    }
+
+    @keyframes pop-in {
+      0% { transform: translateX(-50%) scale(0); opacity: 0; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
+
+    .character-stand {
+      position: absolute; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      height: 80vh; width: auto;
+      z-index: 1;
+      filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+    }
+
+    /* 解析用入力パネル */
+    .analysis-panel {
+      position: absolute;
+      bottom: 30px;
+      width: 90%; max-width: 400px;
+      left: 50%; transform: translateX(-50%);
+      background: rgba(255, 248, 220, 0.95);
+      border: 4px solid #8b4513;
+      border-radius: 15px;
+      padding: 20px;
+      box-sizing: border-box;
+      z-index: 10;
+      text-align: center;
+    }
+
+    .panel-title { color: #8b4513; font-weight: bold; margin-bottom: 10px; }
+
+    #kifuInput {
+      width: 100%; height: 120px;
+      border: 2px solid #deb887;
+      border-radius: 8px;
+      padding: 10px;
+      box-sizing: border-box;
+      font-size: 0.9rem;
+      resize: none;
+      margin-bottom: 15px;
+      background: #fff;
+    }
+
+    .action-btn {
+      width: 100%; height: 55px;
+      background: linear-gradient(to bottom, #bdc3c7 0%, #2c3e50 100%);
+      border: 2px solid white;
+      border-radius: 10px;
+      color: white; font-weight: bold; font-size: 1.2rem;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      margin-bottom: 10px;
+    }
+    .action-btn:active { transform: scale(0.98); }
+
+    .back-btn {
+      background: none; border: none; color: #8b4513;
+      text-decoration: underline; cursor: pointer; font-size: 0.9rem;
+    }
+
+    /* ユーザー情報バー */
+    .user-info-bar {
+      position: absolute; top: 0; width: 100%;
+      padding: 10px 20px; background: rgba(0, 0, 0, 0.6);
+      color: white; display: flex; justify-content: space-between;
+      align-items: center; box-sizing: border-box; z-index: 5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="user-info-bar">
+    <div>
+      <span id="userNameDisplay" style="font-weight:bold;">ゲスト</span> さん
+    </div>
+    <div style="font-size: 0.9rem; color: #bdc3c7;">棋譜解析センター</div>
+  </div>
+
+  <div id="kaisekiBubble" class="speech-bubble">どんな熱戦だったんですか？<br>一緒に振り返りましょう！</div>
+
+  <img class="character-stand" src="script/image/komiya_touka.png" alt="Character">
+
+  <div class="analysis-panel">
+    <div class="panel-title">解析したい棋譜を貼り付けてください</div>
+    <textarea id="kifuInput" placeholder="ここに棋譜をペースト"></textarea>
+    
+    <button class="action-btn" onclick="startAnalysis()">解析を開始する</button>
+    <button class="back-btn" onclick="window.location.href='home.html'">ホームに戻る</button>
+  </div>
+
+  <script>
+    // ホーム画面から名前を継承（localStorageやFirebaseから取得する想定）
+    document.addEventListener("DOMContentLoaded", () => {
+        const name = localStorage.getItem("shogi_username") || "ゲスト";
+        document.getElementById("userNameDisplay").textContent = name;
+    });
+
+    /**
+     * 解析開始処理
+     */
+    function startAnalysis() {
+        const kifu = document.getElementById("kifuInput").value.trim();
+        if (!kifu) {
+            alert("棋譜を入力してください。");
+            return;
+        }
+
+        // 棋譜データをセッションストレージに保存（replay.htmlがこれを読み込む）
+        sessionStorage.setItem("replayKifu", kifu);
+
+        // 解析ワークステーションへ移動
+        window.location.href = "replay.html";
+    }
+
+    // キャラクターのセリフをランダムに変更
+    const messages = [
+        "どんな熱戦だったんですか？\n一緒に振り返りましょう！",
+        "どこで流れが変わったのか、\n分析してみましょう。",
+        "意外な一手が\n見つかるかもしれませんね。",
+        "解析が終わったら、\n感想戦をしましょうね。"
+    ];
+    setInterval(() => {
+        const bubble = document.getElementById("kaisekiBubble");
+        bubble.textContent = messages[Math.floor(Math.random() * messages.length)];
+    }, 5000);
+  </script>
+
+</body>
+</html>
