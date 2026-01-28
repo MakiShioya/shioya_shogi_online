@@ -9,6 +9,7 @@ let evalChart = null;  // グラフのインスタンス
 let isPondering = false; // 先読み中かどうか
 let ponderTimer = null;  // 休憩用のタイマー
 let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
+let hasShownEndEffect = false;
 // ★追加：必殺技を使用したかどうかのフラグ
 window.skillUsed = false;
 // ★追加：このターン、駒取りを禁止するかどうかのフラグ
@@ -259,21 +260,41 @@ function updateTimerDisplay() {
 
 function render() {
   if (gameOver) {
-    if (winner === "black") statusDiv.textContent = "先手の勝ちです！";
-    else if (winner === "white") statusDiv.textContent = "後手の勝ちです！";
-    else statusDiv.textContent = "千日手です。引き分け。";
+    // 1. 勝敗メッセージ
+    if (winner === "black") statusDiv.textContent = "あなたの勝ちです！";
+    else if (winner === "white") statusDiv.textContent = "AI（試験実装）の勝ちです！";
+    else statusDiv.textContent = "引き分けです。";
     checkStatusDiv.textContent = "";
+
+    // 2. 演出（1回のみ）
+    if (!hasShownEndEffect) {
+        if (winner === "black") {
+            playSkillEffect("shori.PNG", "shori.mp3", null);
+        } else if (winner === "white") {
+            // 負け演出（もし画像があれば shori.PNG の代わりに指定してください）
+            playSkillEffect("haiboku.PNG", "haiboku.mp3", null);
+        }
+        hasShownEndEffect = true; 
+    }
+
+    // 3. ホームに戻るボタン
+    if (!document.getElementById("resetBtn")) {
+        const btn = document.createElement("button");
+        btn.id = "resetBtn";
+        btn.textContent = "ホームに戻る"; 
+        btn.style.cssText = "padding:10px 20px; margin-top:15px; font-size:16px; background-color:#d32f2f; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;";
+        btn.onclick = () => { window.location.href = "home.html"; };
+        statusDiv.appendChild(document.createElement("br"));
+        statusDiv.appendChild(btn);
+    }
   } else {
+    // 進行中の表示（既存の駒取り禁止メッセージなどはそのまま）
     if (!isSkillTargeting) {
-      // 駒取り禁止中の場合、メッセージを表示すると親切
       let msg = "現在の手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
-      if (window.isCaptureRestricted) {
-          msg += " 【攻撃禁止中】";
-      }
+      if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
       msg += (isKingInCheck(turn) ? "　王手！" : "");
       statusDiv.textContent = msg;
     }
-    checkStatusDiv.textContent = "";
   }
 
   board.innerHTML = "";
@@ -614,12 +635,14 @@ function checkGameOver() {
     gameOver = true;
     winner = null;
     statusDiv.textContent = "500手に達したため、引き分けです。";
+    saveGameResult(null); // ★追加：引き分けとして保存
     if (typeof showKifu === "function") showKifu();
     render(); return;
   }
   if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner); // ★追加：詰みによる勝敗を保存
     if (typeof showKifu === "function") showKifu();
     render(); return;
   }
@@ -629,6 +652,7 @@ function checkGameOver() {
   if (positionHistory[key] >= 4) {
     gameOver = true;
     statusDiv.textContent = "千日手です。引き分け。";
+    saveGameResult(null); // ★追加shori
     if (typeof showKifu === "function") showKifu();
     render();
   }
@@ -1129,4 +1153,91 @@ function copyKifuText() {
             alert("棋譜をコピーしました！");
         });
     }
+}
+
+// ==========================================
+// 終了・保存ロジック (yaneuraou_main.js 末尾用)
+// ==========================================
+
+/**
+ * 1. 投了ボタンの挙動を書き換え
+ * (HTMLの投了ボタンから直接呼ばれる関数)
+ */
+function resignGame() {
+    if (gameOver) return;
+    // HTMLに追加した「resignModal」を表示する
+    const modal = document.getElementById("resignModal");
+    if (modal) {
+        modal.style.display = "flex";
+    } else {
+        // 万が一モーダルがない場合はブラウザ標準の確認を出す
+        if (confirm("投了しますか？")) executeResign();
+    }
+}
+
+/**
+ * 2. 投了の実行
+ * (モーダルの「投了」ボタンが押された時に実行)
+ */
+function executeResign() {
+    closeResignModal();
+    gameOver = true;
+    stopTimer();
+    
+    // 自分が投了するので、勝者は「後手(white)」
+    winner = "white"; 
+    
+    // Firebaseに結果を保存
+    saveGameResult(winner);
+    
+    // 演出と「ホームに戻る」ボタンを表示
+    render();
+    if (typeof showKifu === "function") showKifu();
+}
+
+/**
+ * 3. 投了モーダルを閉じる
+ */
+function closeResignModal() {
+    const modal = document.getElementById("resignModal");
+    if (modal) modal.style.display = "none";
+}
+
+/**
+ * 4. Firebaseへの保存処理本体
+ */
+function saveGameResult(res) {
+    const user = auth.currentUser; // Firebaseのログインユーザーを確認
+    if (!user) {
+        console.log("未ログインのため、記録は保存されません。");
+        return; 
+    }
+
+    // HTML側で設定した名前（window.opponentName）を優先
+    const opponentDisplayName = window.opponentName || "試験実装AI (最強)"; 
+    
+    // あなた（先手/black）が勝ったかどうか
+    const isWin = (res === "black"); 
+    
+    // 保存するデータのカタマリを作成
+    const gameRecord = {
+        date: new Date(),                // 対局日時
+        opponent: opponentDisplayName,   // 相手の名前
+        moves: moveCount,                // 合計手数
+        result: isWin ? "WIN" : "LOSE",  // 勝敗
+        kifuData: kifu                   // 記録された指し手（配列）
+    };
+
+    // Firestoreの「users/ユーザーID」ドキュメントを更新
+    db.collection("users").doc(user.uid).update({
+        // 勝敗数を+1（インクリメント）
+        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+        // 履歴配列の最後にデータを追加
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).then(() => {
+        console.log("対局データが正常に保存されました。");
+    }).catch((error) => {
+        console.error("保存失敗:", error);
+    });
 }
