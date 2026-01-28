@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>しおや将棋 棋譜解析</title>
+<link rel="stylesheet" href="script/style.css">
+<link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+<style>
+  /* --- 基本レイアウト --- */
+  body { background-color: #f4f4f9; font-family: sans-serif; margin: 0; padding: 20px; }
+  .current-move-info { font-weight: bold; font-size: 1.1em; color: #d32f2f; margin-bottom: 10px; text-align: center; }
+
+  /* --- 盤面・駒送り演出 --- */
+  #board-container { position: relative; display: inline-block; }
+  .move-from { background-color: rgba(255, 0, 0, 0.3) !important; }
+  .move-to { background-color: rgba(0, 255, 0, 0.3) !important; }
+  .recommended-cell { color: #1e90ff !important; font-weight: bold !important; background-color: rgba(30, 144, 255, 0.1); }
+  
+  .control-btn { padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; background: #fff; transition: background 0.2s; }
+  .control-btn:hover { background: #f0f0f0; }
+
+  /* --- 解析ダッシュボード --- */
+  .analysis-dashboard {
+      width: 95%;
+      max-width: 900px; /* ヘルプ追加分、少しだけ広げました */
+      margin: 20px auto;
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex; 
+      overflow: hidden;
+  }
+
+  .dashboard-left { flex: 0 0 160px; background: #fcfcfc; border-right: 1px solid #eee; padding: 15px; display: flex; flex-direction: column; gap: 5px; }
+  .dashboard-right { flex: 1; display: flex; flex-direction: column; }
+  .dashboard-controls { display: flex; justify-content: center; align-items: center; gap: 15px; padding: 15px; background: #fff; border-bottom: 1px solid #eee; }
+  .dashboard-graph { padding: 15px; }
+  .control-group { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .group-label { font-size: 10px; font-weight: bold; color: #aaa; text-transform: uppercase; margin-bottom: 2px; }
+
+  #kifuInputArea { flex: 1; min-height: 280px; font-size: 11px; padding: 8px; border-radius: 4px; border: 1px solid #eee; resize: none; background: #fff; color: #555; line-height: 1.5; }
+
+  /* --- ボタン高さ統一設定 --- */
+  .auto-btn, .recommend-btn, .help-btn {
+      height: 36px; /* 高さを揃える */
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+  }
+
+  .auto-btn-row { display: flex; gap: 4px; }
+  .auto-btn { padding: 0 10px; color: white; }
+  .auto-btn.semi { background: #81c784; }
+  .auto-btn.pro { background: #4caf50; }
+  .auto-btn.legend { background: #2e7d32; }
+  .auto-btn.stop { background: #e57373; }
+
+  .recommend-btn { background: #ff9800; color: white; padding: 0 15px; }
+  .help-btn { background: #95a5a6; color: white; padding: 0 15px; }
+
+  /* --- ヘルプモーダル --- */
+  .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;
+  }
+  .modal-content {
+      background: white; padding: 25px; border-radius: 12px; max-width: 400px; width: 90%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative;
+  }
+  .modal-header { font-weight: bold; font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #f4f4f9; padding-bottom: 10px; }
+  .help-list { list-style: none; padding: 0; margin: 0; font-size: 14px; line-height: 1.8; }
+  .help-list b { color: #2c3e50; width: 70px; display: inline-block; }
+  .close-modal-btn {
+      margin-top: 20px; width: 100%; padding: 10px; background: #3498db; color: white;
+      border: none; border-radius: 6px; cursor: pointer; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div class="side left"><div class="hand white-hand" id="whiteHandBox"><h3>後手</h3><div id="whiteHand"></div></div></div>
+  <div id="center">
+    <div id="status" class="current-move-info">解析システム起動中</div>
+    <div id="board-container">
+        <img id="skillCutIn" src="" alt="">
+        <table id="board"></table>
+        <svg id="arrow-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;"></svg>
+    </div>
+  </div>
+  <div class="side right"><div class="hand black-hand" id="blackHandBox"><h3>先手</h3><div id="blackHand"></div></div></div>
+</div>
+
+<div class="analysis-dashboard">
+    <div class="dashboard-left">
+        <div class="group-label">棋譜</div>
+        <textarea id="kifuInputArea" readonly placeholder="棋譜データを読み込み中..."></textarea>
+    </div>
+
+    <div class="dashboard-right">
+        <div class="dashboard-controls">
+            <div class="control-group">
+                <div class="group-label">ナビ</div>
+                <div style="display: flex; gap: 3px; align-items: center;">
+                    <button class="control-btn" onclick="goToStart()">I◀</button>
+                    <button class="control-btn" onclick="prevStep()">◀</button>
+                    <button class="control-btn" onclick="nextStep()">▶</button>
+                    <button class="control-btn" onclick="goToEnd()">▶I</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="border-left: 1px solid #eee; padding-left: 15px;">
+                <div class="group-label">自動解析</div>
+                <div class="auto-btn-row">
+                    <button class="auto-btn semi" onclick="startAutoAnalysis(1000)">セミプロ</button>
+                    <button class="auto-btn pro" onclick="startAutoAnalysis(5000)">プロ</button>
+                    <button class="auto-btn legend" onclick="startAutoAnalysis(10000)">レジェンド</button>
+                    <button id="stopAutoBtn" class="auto-btn stop" onclick="stopAutoAnalysis()" style="display: none;">停止</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="border-left: 1px solid #eee; padding-left: 15px;">
+                <div class="group-label">次の一手</div>
+                <button id="recommendBtn" class="recommend-btn" onclick="getRecommendation()">おすすめ</button>
+            </div>
+
+            <div class="control-group" style="border-left: 1px solid #eee; padding-left: 15px;">
+                <div class="group-label">操作ガイド</div>
+                <button class="help-btn" onclick="toggleModal(true)">ヘルプ</button>
+            </div>
+        </div>
+
+        <div class="dashboard-graph">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span id="numericEval" style="font-weight: bold; font-size: 14px; color: #333;">評価値: --</span>
+                <div style="display: flex; gap: 8px;">
+                    <span style="font-size: 11px; color: #666; align-self: center;">表示範囲</span>
+                    <select id="scaleSelect" onchange="updateChartSettings()" style="font-size: 11px;">
+                        <option value="1000" selected>±1000</option>
+                        <option value="2000">±2000</option>
+                        <option value="5000">±5000</option>
+                        <option value="10000">±10000</option>
+                        <option value="auto">自動</option>
+                    </select>
+                </div>
+            </div>
+            <div style="position: relative; height: 210px; width: 100%;">
+                <canvas id="evalChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="confirmModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">全自動解析の確認</div>
+        <p id="confirmMessage" style="font-size: 14px; line-height: 1.6; color: #333; margin: 10px 0;"></p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="confirmCancelBtn" class="close-modal-btn" style="background: #95a5a6; flex: 1; margin-top: 0;">キャンセル</button>
+            <button id="confirmOkBtn" class="close-modal-btn" style="background: #27ae60; flex: 1; margin-top: 0;">開始する</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="helpModal" class="modal-overlay" onclick="toggleModal(false)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">操作方法</div>
+        <ul class="help-list">
+            <li>ナビで左右に動かすと解析されます。</li>
+            <li>一度解析された評価値は自動解析でしか上書きされません。</li>
+            <li><b>ボタン説明</b></li>
+            <li><b>I◀</b> 開始局面に戻る</li>
+            <li><b>◀</b> 一手戻る</li>
+            <li><b>▶</b> 一手進む</li>
+            <li><b>▶I</b> 最終局面へ進む</li>
+            <li><b>セミプロ</b> 高速自動解析</li>
+            <li><b>プロ</b> 標準自動解析</li>
+            <li><b>レジェンド</b> 正確自動解析</li>
+            <li><b>おすすめ</b> AIおすすめの一手を表示</li>
+        </ul>
+        <button class="close-modal-btn" onclick="toggleModal(false)">閉じる</button>
+    </div>
+</div>
+
+<script>
+    // ヘルプ用
+    function toggleModal(show) {
+        document.getElementById('helpModal').style.display = show ? 'flex' : 'none';
+    }
+
+    // 【新設】カスタム確認ダイアログ用の関数
+    function showCustomConfirm(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmModal');
+            const msgElem = document.getElementById('confirmMessage');
+            const okBtn = document.getElementById('confirmOkBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+
+            msgElem.innerText = message;
+            modal.style.display = 'flex';
+
+            const cleanup = (result) => {
+                modal.style.display = 'none';
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+                resolve(result);
+            };
+
+            okBtn.onclick = () => cleanup(true);
+            cancelBtn.onclick = () => cleanup(false);
+        });
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="coi-serviceworker.js"></script>
+<script src="script/globals.js"></script>
+<script src="script/rules.js"></script>
+<script src="script/kifu.js"></script>
+<script src="script/sfen_converter.js"></script>
+<script src="script/engine_bridge.js"></script>
+<script src="script/replay_logic.js"></script>
+
+</body>
+</html>
