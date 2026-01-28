@@ -1,7 +1,6 @@
 // script/auth.js
-// Firebaseの機能を使いやすくするためのファイル
 
-// --- 1. Firebaseの設定 ---
+// ★★★ あなたのFirebase設定 ★★★
 const firebaseConfig = {
   apiKey: "AIzaSyCUjxd4L8mnnBw6RRvvimbMZ_V1BaRZxQw",
   authDomain: "shioya-shogi.firebaseapp.com",
@@ -12,196 +11,241 @@ const firebaseConfig = {
   measurementId: "G-K9ZLW8L09J"
 };
 
-// Firebaseを初期化（使える状態にする）
-firebase.initializeApp(firebaseConfig);
-
-// 認証機能を使う準備
+// 初期化
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 const auth = firebase.auth();
 
-// ★★★ 追加：データベース機能を使う準備 ★★★
-const db = firebase.firestore();
+// ----------------------
+// ユーザー状態監視
+// ----------------------
+// script/auth.js 内の該当箇所をチェック
 
-// --- 2. ログイン状態を監視する（ページを開いたときに自動でチェック） ---
-auth.onAuthStateChanged((user) => {
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const userInfo = document.getElementById("userInfo");
-    const userNameDisplay = document.getElementById("userNameDisplay");
+auth.onAuthStateChanged(async (user) => {
+    const nameDisplay = document.getElementById("userNameDisplay");
+    const editBtn = document.getElementById("editNameBtn"); // ✏️ボタン
 
     if (user) {
-        // ■ ログインしているとき
-        console.log("ログイン中:", user.email);
-        
-        // ボタンの表示切り替え
-        if (loginBtn) loginBtn.style.display = "none";
-        if (logoutBtn) logoutBtn.style.display = "inline-block";
-        
-        // ユーザー名（メールアドレス）を表示
-        if (userInfo) userInfo.style.display = "block";
-        if (userNameDisplay) userNameDisplay.textContent = user.email;
+        // 【ログイン中】
+        let displayName = user.displayName;
+        if (!displayName) {
+            try {
+                const doc = await db.collection("users").doc(user.uid).get();
+                if (doc.exists && doc.data().name) displayName = doc.data().name;
+            } catch(e) { console.error(e); }
+        }
+        if (!displayName) displayName = user.email.split("@")[0];
 
-        // 次回以降のために、ユーザーIDを保存しておく（戦績保存などで使う）
-        sessionStorage.setItem('firebase_uid', user.uid);
+        if (nameDisplay) nameDisplay.textContent = displayName;
+        
+        // ★重要：ログイン中だけ「名前変更ボタン」を表示する
+        if (editBtn) editBtn.style.display = "inline-block";
+
+        if (typeof loadUserStats === "function") loadUserStats(user.uid);
 
     } else {
-        // ■ ログインしていないとき
-        console.log("ログアウト状態");
-
-        // ボタンの表示切り替え
-        if (loginBtn) loginBtn.style.display = "inline-block";
-        if (logoutBtn) logoutBtn.style.display = "none";
-        if (userInfo) userInfo.style.display = "none";
+        // 【未ログイン（ゲスト）】
+        console.log("未ログイン：ゲストモード");
         
-        sessionStorage.removeItem('firebase_uid');
+        // ★重要：名前をゲストに固定し、変更ボタンを完全に隠す
+        if (nameDisplay) nameDisplay.textContent = "ゲスト";
+        if (editBtn) editBtn.style.display = "none";
+        
+        // 戦績などもリセット
+        if (document.getElementById("statsWin")) document.getElementById("statsWin").textContent = "0";
+        if (document.getElementById("statsLose")) document.getElementById("statsLose").textContent = "0";
     }
 });
 
-// --- 3. 新規登録の処理 ---
+// ----------------------
+// 基本機能（モーダル・ログイン等）
+// ----------------------
+
+// ★★★ 修正：ログイン状態に応じて表示を切り替える ★★★
+function showAuthModal() {
+    const modal = document.getElementById("authModal");
+    const user = auth.currentUser;
+    const inputs = document.getElementById("authInputs");
+    const logoutBtn = document.getElementById("logoutBtnInModal");
+    const title = document.getElementById("authTitle");
+
+    if (modal) {
+        modal.style.display = "flex";
+
+        if (user) {
+            // ■ ログイン中の場合
+            // 入力欄を隠す
+            if (inputs) inputs.style.display = "none";
+            // ログアウトボタンを出す
+            if (logoutBtn) logoutBtn.style.display = "block";
+            // タイトルを変える
+            if (title) title.textContent = `${user.displayName || "ユーザー"} さんの設定`;
+        } else {
+            // ■ 未ログインの場合
+            // 入力欄を出す
+            if (inputs) inputs.style.display = "block";
+            // ログアウトボタンを隠す
+            if (logoutBtn) logoutBtn.style.display = "none";
+            // タイトルを戻す
+            if (title) title.textContent = "ログイン / 新規登録";
+        }
+    }
+}
+
+function closeAuthModal() {
+    const modal = document.getElementById("authModal");
+    if (modal) modal.style.display = "none";
+}
+
+// 新規登録
 function registerUser() {
     const email = document.getElementById("authEmail").value;
     const pass = document.getElementById("authPass").value;
+    const nameInput = document.getElementById("authName") ? document.getElementById("authName").value : "";
 
-    if (!email || !pass) {
-        alert("メールアドレスとパスワードを入力してください。");
-        return;
-    }
+    if (!email || !pass) { alert("メールとパスワードを入力してください"); return; }
+    if (pass.length < 6) { alert("パスワードは6文字以上で設定してください"); return; }
 
     auth.createUserWithEmailAndPassword(email, pass)
-        .then((userCredential) => {
-            // 成功したとき
-            alert("登録しました！自動的にログインします。");
-            closeAuthModal();
+        .then((cred) => {
+            const user = cred.user;
+            const displayName = nameInput || "名無し棋士";
+
+            user.updateProfile({ displayName: displayName }).then(() => {
+                return db.collection("users").doc(user.uid).set({
+                    name: displayName,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    win: 0, lose: 0, history: []
+                });
+            }).then(() => {
+                alert("登録しました！");
+                closeAuthModal();
+                location.reload(); 
+            });
         })
-        .catch((error) => {
-            // 失敗したとき
-            console.error(error);
-            if (error.code === 'auth/email-already-in-use') {
-                alert("そのメールアドレスは既に登録されています。");
-            } else if (error.code === 'auth/weak-password') {
-                alert("パスワードは6文字以上にしてください。");
-            } else {
-                alert("登録エラー: " + error.message);
-            }
-        });
+        .catch((error) => { alert("登録失敗: " + error.message); });
 }
 
-// --- 4. ログインの処理 ---
+// ログイン
 function loginUser() {
     const email = document.getElementById("authEmail").value;
     const pass = document.getElementById("authPass").value;
 
-    if (!email || !pass) {
-        alert("メールアドレスとパスワードを入力してください。");
-        return;
-    }
+    if (!email || !pass) { alert("メールとパスワードを入力してください"); return; }
 
     auth.signInWithEmailAndPassword(email, pass)
-        .then((userCredential) => {
-            // 成功したとき
+        .then(() => {
             alert("ログインしました！");
             closeAuthModal();
+            if (!document.getElementById("userNameDisplay")) window.location.href = "home.html";
         })
-        .catch((error) => {
-            // 失敗したとき
-            console.error(error);
-            alert("ログインに失敗しました。\nメールアドレスかパスワードが間違っています。");
-        });
+        .catch((error) => { alert("ログイン失敗: IDかパスワードが違います"); });
 }
 
-// --- 5. ログアウトの処理 ---
+// ログアウト
 function logoutUser() {
     if(!confirm("ログアウトしますか？")) return;
-    
     auth.signOut().then(() => {
-        alert("ログアウトしました。");
-    }).catch((error) => {
-        console.error(error);
+        alert("ログアウトしました");
+        location.reload();
     });
 }
 
-// --- 6. モーダルウィンドウの表示・非表示 ---
-function showAuthModal() {
-    document.getElementById("authModal").style.display = "flex";
-}
+// ----------------------
+// 名前変更機能
+// ----------------------
 
-function closeAuthModal() {
-    document.getElementById("authModal").style.display = "none";
-}
-
-
-// --- ★★★ 追加：戦績を保存する機能 ★★★ ---
-function saveGameResult(result, opponentName, mode) {
-    const user = auth.currentUser;
-    
-    if (user) {
-        // ログインしている場合、データベースに保存
-        // "users" というコレクションの中の "自分のID" の中の "history" にデータを足す
-        db.collection("users").doc(user.uid).collection("history").add({
-            result: result,       // "win" か "lose"
-            opponent: opponentName, // "しおや" とか "オンラインの誰か"
-            mode: mode,           // "cpu" とか "online"
-            date: new Date()      // 今の日時
-        })
-        .then(() => {
-            console.log("戦績を保存しました！");
-        })
-        .catch((error) => {
-            console.error("保存失敗:", error);
-        });
-
-    } else {
-        console.log("ログインしていないため、戦績は保存されません。");
-    }
-}
-
-// --- ★★★ 追加：戦績データを取得して表示する機能 ★★★ ---
-function showMyStats() {
+function showNameEditModal() {
     const user = auth.currentUser;
     if (!user) return;
 
-    // データベースから自分の履歴をすべて取得
-    db.collection("users").doc(user.uid).collection("history")
-      .orderBy("date", "desc") // 新しい順に並べる
-      .limit(50) // 最近の50戦分だけ（読み込みすぎ防止）
-      .get()
-      .then((querySnapshot) => {
-          let win = 0;
-          let lose = 0;
-          let historyHtml = "";
-
-          querySnapshot.forEach((doc) => {
-              const data = doc.data();
-              // 勝敗をカウント
-              if (data.result === "win") win++;
-              if (data.result === "lose") lose++;
-
-              // 日付をきれいに変換
-              const dateObj = data.date.toDate();
-              const dateStr = `${dateObj.getMonth()+1}/${dateObj.getDate()} ${dateObj.getHours()}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
-              
-              // 履歴リストのHTMLを作成
-              const resultColor = (data.result === "win") ? "red" : "blue";
-              const resultText = (data.result === "win") ? "勝ち" : "負け";
-              historyHtml += `<li style="border-bottom:1px solid #ccc; padding:5px;">
-                  <span style="font-size:12px; color:#666;">${dateStr}</span><br>
-                  <b style="color:${resultColor}">${resultText}</b> vs ${data.opponent} (${data.mode})
-              </li>`;
-          });
-
-          // 画面に表示
-          document.getElementById("statsWin").textContent = win;
-          document.getElementById("statsLose").textContent = lose;
-          document.getElementById("statsHistory").innerHTML = historyHtml;
-          
-          // モーダルを開く
-          document.getElementById("statsModal").style.display = "flex";
-      })
-      .catch((error) => {
-          console.error("データの取得に失敗:", error);
-          alert("戦績の読み込みに失敗しました。");
-      });
+    const currentName = document.getElementById("userNameDisplay").textContent;
+    document.getElementById("newNameInput").value = currentName;
+    document.getElementById("nameEditModal").style.display = "flex";
 }
 
+function closeNameEditModal() {
+    document.getElementById("nameEditModal").style.display = "none";
+}
+
+function saveNewName() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const newName = document.getElementById("newNameInput").value;
+    if (!newName) {
+        alert("名前を入力してください");
+        return;
+    }
+
+    user.updateProfile({
+        displayName: newName
+    }).then(() => {
+        return db.collection("users").doc(user.uid).set({
+            name: newName
+        }, { merge: true });
+    }).then(() => {
+        document.getElementById("userNameDisplay").textContent = newName;
+        closeNameEditModal();
+    }).catch((error) => {
+        console.error("名前変更エラー", error);
+        alert("変更に失敗しました: " + error.message);
+    });
+}
+
+
+// ----------------------
+// 戦績機能
+// ----------------------
+function loadUserStats(userId) {
+    if (!document.getElementById("statsWin")) return;
+
+    db.collection("users").doc(userId).onSnapshot((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            if (document.getElementById("statsWin")) document.getElementById("statsWin").textContent = data.win || 0;
+            if (document.getElementById("statsLose")) document.getElementById("statsLose").textContent = data.lose || 0;
+
+            const historyList = document.getElementById("statsHistory");
+            if (historyList) {
+                historyList.innerHTML = "";
+                if (data.history && data.history.length > 0) {
+                    const reversed = [...data.history].reverse();
+                    reversed.forEach(h => {
+                        const li = document.createElement("li");
+                        let dateStr = "";
+                        if (h.date && h.date.toDate) {
+                            const d = h.date.toDate();
+                            dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes()}`;
+                        }
+                        li.textContent = `[${h.result}] vs ${h.opponent || "不明"} (${dateStr})`;
+                        li.style.borderBottom = "1px solid #eee";
+                        li.style.padding = "5px";
+                        li.style.color = (h.result === "WIN") ? "red" : "blue";
+                        historyList.appendChild(li);
+                    });
+                } else {
+                    historyList.innerHTML = "<li>対局履歴はありません</li>";
+                }
+            }
+        }
+    });
+}
+
+function showMyStats() {
+    const user = auth.currentUser;
+    if (!user) {
+        alert("ログインしていません。");
+        showAuthModal();
+        return;
+    }
+    const modal = document.getElementById("statsModal");
+    if (modal) modal.style.display = "flex";
+}
 function closeStatsModal() {
-    document.getElementById("statsModal").style.display = "none";
+    const modal = document.getElementById("statsModal");
+    if (modal) modal.style.display = "none";
 }
