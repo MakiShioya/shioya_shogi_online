@@ -764,6 +764,7 @@ function saveGameResult(res) {
         opponent: opponentDisplayName,
         moves: moveCount,
         result: resultStatus,
+        mode: "online_p",
         kifuData: kifu 
     };
 
