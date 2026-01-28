@@ -529,6 +529,7 @@ let bubbleTimer = null;
     <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
     <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
     <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラクターについて</button>
+    <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・ご要望</button>
     <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
   </div>
 </div>
@@ -573,6 +574,21 @@ let bubbleTimer = null;
       <p>キャラクターはそれぞれ独自の<strong>「必殺技」</strong>を持っており、対局を有利に進めることができます。</p>
     </div>
     <button class="sub-btn" style="background:#666;" onclick="switchModal('helpChar', 'helpMainMenu')">もどる</button>
+  </div>
+</div>
+
+<div id="helpContact" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513;">不具合・ご要望</h3>
+    <div style="margin: 20px 0; line-height: 1.6;">
+      <p>こちらからいつでも受け付けております。</p>
+      
+      <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
+        onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform?usp=publish-editor', '_blank')">
+        回答フォームを開く ↗
+      </button>
+    </div>
+    <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
   </div>
 </div>
 
