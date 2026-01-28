@@ -74,29 +74,45 @@
 
   <div id="authModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
     <div style="background: #fff8dc; padding: 30px; border: 4px solid #8b4513; border-radius: 10px; text-align: center; width: 300px;">
-      <h2 style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
-      <div style="text-align: left; margin: 15px 0;">
-        <label>メールアドレス</label><br>
-        <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+      
+      <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
+      
+      <div id="authInputs">
+        <div style="text-align: left; margin: 15px 0;">
+          <label>お名前（新規登録時のみ）</label><br>
+          <input type="text" id="authName" placeholder="あきら" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        <div style="text-align: left; margin: 15px 0;">
+          <label>メールアドレス</label><br>
+          <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        <div style="text-align: left; margin: 15px 0;">
+          <label>パスワード（6文字以上）</label><br>
+          <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+          <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">ログイン</button>
+          <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">新規登録</button>
+        </div>
       </div>
-      <div style="text-align: left; margin: 15px 0;">
-        <label>パスワード（6文字以上）</label><br>
-        <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+
+      <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+         <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-size: 16px; cursor:pointer;">ログアウト</button>
       </div>
-      <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
-        <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 40px; font-size: 16px;">ログイン</button>
-        <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 40px; font-size: 16px;">新規登録</button>
-      </div>
-      <button onclick="closeAuthModal()" style="margin-top: 15px; background: #ccc; border: none; color: black; width: 100px; height: 30px; font-size: 14px;">閉じる</button>
+
+      <button onclick="closeAuthModal()" style="margin-top: 15px; background: #ccc; border: none; color: black; width: 100px; height: 30px; font-size: 14px; cursor:pointer;">閉じる</button>
     </div>
   </div>
 
   <script src="script/auth.js"></script>
   <script>
     function goToHome() {
-      // ホーム画面（別ファイル）へ移動
       window.location.href = "home.html";
     }
+
+    // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
+    // これにより script/auth.js の「賢い方」の関数が使われます。
   </script>
 </body>
 </html>
