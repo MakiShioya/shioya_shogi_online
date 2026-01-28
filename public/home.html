@@ -57,30 +57,22 @@
       z-index: 5;
     }
     .user-name { font-weight: bold; font-size: 1.1rem; }
-    .stats-btn {
-      background: #ff9800;
+    
+    /* 上部ボタン共通スタイル */
+    .top-btn {
       border: none;
       color: white;
       border-radius: 20px;
       padding: 5px 15px;
       font-size: 0.9rem;
       cursor: pointer;
+      margin-left: 5px;
+      font-weight: bold;
     }
-
-    /* お知らせ */
-    .news-ticker {
-      position: absolute;
-      top: 70px;
-      right: 10px;
-      width: 220px;
-      background: rgba(255, 255, 255, 0.95);
-      border-radius: 8px;
-      padding: 10px;
-      font-size: 0.85rem;
-      color: #333;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      z-index: 2;
-    }
+    /* 戦績ボタン（オレンジ） */
+    .stats-btn { background: #ff9800; }
+    /* お知らせボタン（緑） */
+    .news-btn { background: #28a745; }
 
     /* 下部メニュー */
     .bottom-menu {
@@ -158,15 +150,9 @@
       <span style="font-size:0.8rem; color:#ccc;">Player Name</span><br>
       <span id="userNameDisplay" class="user-name">ゲスト</span> さん
     </div>
-    <button class="stats-btn" onclick="showMyStats()">戦績</button>
-  </div>
-
-  <div class="news-ticker">
-    <b style="color:#d35400;">🔔 最新情報</b><br>
-    <div style="margin-top:5px; line-height:1.4;">
-      ・オンライン対戦 実装！<br>
-      ・最強CPU「試験実装」追加<br>
-      ・戦績保存機能に対応
+    <div>
+      <button class="top-btn news-btn" onclick="openModal('newsModal')">お知らせ</button>
+      <button class="top-btn stats-btn" onclick="showMyStats()">戦績</button>
     </div>
   </div>
 
@@ -179,6 +165,19 @@
     <button class="menu-btn main-action" onclick="goToCharacterSelect('online')">オンライン<br>対戦</button>
     <button class="menu-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
   </div>
+
+  <div id="newsModal" class="overlay">
+    <div class="modal-box">
+      <h3 style="color:#d35400; margin-top:0;">🔔 最新情報</h3>
+      <div style="text-align: left; margin: 20px 0; line-height: 1.6; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 5px;">
+        ・オンライン対戦 実装！<br>
+        ・最強CPU「試験実装」追加<br>
+        ・戦績保存機能に対応
+      </div>
+      <button onclick="closeModal('newsModal')" style="background: #ccc; border: none; color: black; padding: 10px 20px; border-radius: 5px; cursor: pointer;">閉じる</button>
+    </div>
+  </div>
+
 
   <div id="practiceMenu" class="overlay">
     <div class="modal-box">
@@ -273,18 +272,16 @@
       if(target) window.location.href = target;
     }
 
-// --- ★追記：URLパラメータに応じて自動でモーダルを開く処理 ---
+    // --- URLパラメータに応じて自動でモーダルを開く処理 ---
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
       const openMenuId = urlParams.get('open');
       
       if (openMenuId) {
-        // 指定されたIDのメニューを開く（practiceMenu など）
         const menuEl = document.getElementById(openMenuId);
         if (menuEl) {
           menuEl.style.display = 'flex';
           
-          // URLをきれいにする（?open=... を消す）
           if (window.history.replaceState) {
             window.history.replaceState(null, null, window.location.pathname);
           }
@@ -294,4 +291,3 @@
   </script>
 </body>
 </html>
-
