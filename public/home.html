@@ -152,7 +152,7 @@
       border-radius: 10px;
       color: white;
       font-weight: bold;
-      font-size: 1rem;
+      font-size: 1.3rem;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
@@ -197,6 +197,27 @@
       border-radius: 5px;
       cursor: pointer;
     }
+
+/* 青色（オフライン用） */
+.offline-color {
+  background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%) !important;
+}
+
+/* ピンク色（オンライン用） */
+.online-color {
+  background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%) !important;
+}
+
+/* 黄色〜オレンジ系（マイページ用） */
+.mypage-color {
+  background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%) !important;
+}
+
+/* グレー系（準備中用） */
+.ready-color {
+  background: linear-gradient(to bottom, #bdc3c7 0%, #2c3e50 100%) !important;
+}
+
   </style>
 </head>
 <body>
@@ -221,12 +242,13 @@
 
   <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
 
-  <div class="bottom-menu">
-    <button class="menu-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
-    <button class="menu-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
-    <button class="menu-btn main-action" onclick="goToCharacterSelect('online')">オンライン<br>対戦</button>
-    <button class="menu-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
-  </div>
+<div class="bottom-menu">
+  <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
+  <button class="menu-btn online-color" onclick="goToCharacterSelect('online')">オンライン</button>
+  <button class="menu-btn ready-color" onclick="window.location.href='xxx.html'">現在準備中</button>
+  <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
+
+</div>
 
   <div id="newsModal" class="overlay">
     <div class="modal-box">
@@ -592,6 +614,15 @@ let bubbleTimer = null;
   </div>
 </div>
 
+<div id="offlineMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">オフライン対戦</h3>
+    <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+    <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
+    <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('offlineMenu')">戻る</button>
+  </div>
+</div>
 
 </body>
 </html>
