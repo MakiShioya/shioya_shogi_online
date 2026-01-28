@@ -739,6 +739,7 @@ function saveGameResult(res) {
         opponent: opponentDisplayName, // 変数名に合わせる
         moves: moveCount,
         result: isWin ? "WIN" : "LOSE",
+        mode: "offline", // ★ここを追加
         kifuData: kifu 
     };
 
