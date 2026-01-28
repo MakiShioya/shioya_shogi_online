@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>しおや将棋 - ホーム</title>
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      overflow: hidden;
+      background-image: url('script/image/shogi_title.PNG'); /* 背景画像 */
+      background-color: #2c3e50;
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    /* キャラクタースタンド */
+    .character-stand {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      height: 85vh;
+      width: auto;
+      max-width: 95%;
+      pointer-events: none;
+      z-index: 1;
+      /* 仮の画像 */
+      content: url('script/image/char_a.png'); 
+      filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
+    }
+
+    /* 上部：ユーザー情報バー */
+    .user-info-bar {
+      position: absolute;
+      top: 0;
+      width: 100%;
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-sizing: border-box;
+      z-index: 5;
+    }
+    .user-name { font-weight: bold; font-size: 1.1rem; }
+    .stats-btn {
+      background: #ff9800;
+      border: none;
+      color: white;
+      border-radius: 20px;
+      padding: 5px 15px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    /* お知らせ */
+    .news-ticker {
+      position: absolute;
+      top: 70px;
+      right: 10px;
+      width: 220px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.85rem;
+      color: #333;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
+
+    /* 下部メニュー */
+    .bottom-menu {
+      position: absolute;
+      bottom: 20px;
+      width: 96%;
+      left: 2%;
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .menu-btn {
+      flex: 1;
+      height: 60px;
+      background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
+      border: 2px solid white;
+      border-radius: 10px;
+      color: white;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    .menu-btn:active { transform: scale(0.95); }
+
+    .menu-btn.main-action {
+      background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%);
+      height: 75px; /* ここだけ大きく */
+      flex: 1.3;
+      font-size: 1.2rem;
+      margin-bottom: 5px;
+    }
+
+    /* モーダル（共通スタイル） */
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-box {
+      background: #fff8dc;
+      padding: 20px;
+      border-radius: 10px;
+      border: 4px solid #8b4513;
+      text-align: center;
+      width: 85%;
+      max-width: 320px;
+    }
+    .sub-btn {
+      display: block;
+      width: 100%;
+      margin: 10px 0;
+      padding: 12px;
+      font-size: 1.1rem;
+      background: #8b4513;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="user-info-bar">
+    <div>
+      <span style="font-size:0.8rem; color:#ccc;">Player Name</span><br>
+      <span id="userNameDisplay" class="user-name">ゲスト</span> さん
+    </div>
+    <button class="stats-btn" onclick="showMyStats()">戦績</button>
+  </div>
+
+  <div class="news-ticker">
+    <b style="color:#d35400;">🔔 最新情報</b><br>
+    <div style="margin-top:5px; line-height:1.4;">
+      ・オンライン対戦 実装！<br>
+      ・最強CPU「試験実装」追加<br>
+      ・戦績保存機能に対応
+    </div>
+  </div>
+
+  <img class="character-stand" src="script/image/char_a.png" alt="Character">
+
+  <div class="bottom-menu">
+    <button class="menu-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+    <button class="menu-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
+    
+    <button class="menu-btn main-action" onclick="goToCharacterSelect('online')">オンライン<br>対戦</button>
+    <button class="menu-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
+  </div>
+
+  <div id="practiceMenu" class="overlay">
+    <div class="modal-box">
+      <h3>練習相手選択</h3>
+      <button class="sub-btn" onclick="startGame('saijaku')">たわむれ</button>
+      <button class="sub-btn" onclick="startGame('easy')">おあそび</button>
+      <button class="sub-btn" onclick="startGame('normal')">たしなみ</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('practiceMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="onePlayerModeSelect" class="overlay">
+    <div class="modal-box">
+      <h3>CPUモード選択</h3>
+      <button class="sub-btn" onclick="switchModal('onePlayerModeSelect','onePlayerNormalMenu')">ふつう</button>
+      <button class="sub-btn" onclick="switchModal('onePlayerModeSelect','onePlayerHardMenu')">ほんき</button>
+      <button class="sub-btn" onclick="switchModal('onePlayerModeSelect','onePlayerExpertMenu')">試験実装</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('onePlayerModeSelect')">もどる</button>
+    </div>
+  </div>
+
+  <div id="onePlayerNormalMenu" class="overlay">
+    <div class="modal-box">
+      <h3>対戦相手</h3>
+      <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
+      <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('onePlayerNormalMenu','onePlayerModeSelect')">もどる</button>
+    </div>
+  </div>
+  <div id="onePlayerHardMenu" class="overlay">
+    <div class="modal-box">
+      <h3>対戦相手</h3>
+      <button class="sub-btn" onclick="startGame('ex_hard1')">こみや２</button>
+      <button class="sub-btn" onclick="startGame('ex_hard2')">しおや２</button>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('onePlayerHardMenu','onePlayerModeSelect')">もどる</button>
+    </div>
+  </div>
+  <div id="onePlayerExpertMenu" class="overlay">
+    <div class="modal-box">
+      <h3>対戦相手</h3>
+      <button class="sub-btn" onclick="startGame('ex_hard3')">試験実装１</button>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('onePlayerExpertMenu','onePlayerModeSelect')">もどる</button>
+    </div>
+  </div>
+
+  <div id="statsModal" class="overlay">
+    <div class="modal-box" style="max-height: 80vh; display: flex; flex-direction: column;">
+      <h2 style="margin-top: 0; color: #8b4513;">あなたの戦績</h2>
+      <div style="display: flex; justify-content: space-around; font-size: 24px; margin-bottom: 15px;">
+        <div style="color: red;">勝: <span id="statsWin">0</span></div>
+        <div style="color: blue;">敗: <span id="statsLose">0</span></div>
+      </div>
+      <div style="text-align: left; background: white; border: 1px solid #ccc; flex-grow: 1; overflow-y: auto; padding: 10px; margin-bottom: 15px;">
+        <ul id="statsHistory" style="list-style: none; padding: 0; margin: 0;"></ul>
+      </div>
+      <button onclick="closeStatsModal()" style="background: #ccc; border: none; color: black; padding: 10px;">閉じる</button>
+    </div>
+  </div>
+
+  <script src="script/auth.js"></script>
+
+  <script>
+    // --- メニュー操作用 ---
+    function openModal(id) {
+      document.getElementById(id).style.display = 'flex';
+    }
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+    function switchModal(closeId, openId) {
+      closeModal(closeId);
+      openModal(openId);
+    }
+
+    // --- 画面遷移（キャラ選択など） ---
+    function goToCharacterSelect(mode) {
+      window.location.href = "character.html?mode=" + mode;
+    }
+
+    // --- ゲーム開始（CPUなど） ---
+    function startGame(difficulty) {
+      let target = "";
+      if (difficulty === 'saijaku') target = "cpu_tawamure.html";
+      else if (difficulty === 'easy') target = "cpu_oasobi.html";
+      else if (difficulty === 'normal') target = "cpu_tashinami.html";
+      else if (difficulty === 'hard1') target = "cpu_komiya.html";
+      else if (difficulty === 'hard2') target = "cpu_shioya.html";
+      else if (difficulty === 'ex_hard1') target = "ex_cpu_komiya.html";
+      else if (difficulty === 'ex_hard2') target = "ex_cpu_shioya.html";
+      else if (difficulty === 'ex_hard3') target = "cpu_yaneuraou.html";
+      
+      if(target) window.location.href = target;
+    }
+
+// --- ★追記：URLパラメータに応じて自動でモーダルを開く処理 ---
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const openMenuId = urlParams.get('open');
+      
+      if (openMenuId) {
+        // 指定されたIDのメニューを開く（practiceMenu など）
+        const menuEl = document.getElementById(openMenuId);
+        if (menuEl) {
+          menuEl.style.display = 'flex';
+          
+          // URLをきれいにする（?open=... を消す）
+          if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.pathname);
+          }
+        }
+      }
+    };
+  </script>
+</body>
+</html>
