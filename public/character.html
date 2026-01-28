@@ -3,12 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title>キャラクター選択 - しおや将棋</title>
-      <link rel="icon" href="script/image/komiya_icon.png"> 
-      <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
   <style>
-    /* 全体のデザイン（index.htmlのテイストに合わせつつ、選択画面用に調整） */
+    /* 全体のデザイン */
     body {
-      background-color: #f0f0f0; /* もし背景画像があれば index.html と同じ設定にしてください */
+      background-image: url('script/image/haikei.PNG'); /* ホームと同じ背景に統一 */
+      background-color: #2c3e50;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed; /* スクロールしても背景固定 */
       font-family: Arial, sans-serif;
       text-align: center;
       margin: 0;
@@ -17,22 +22,32 @@
 
     h1 {
       color: #FFB347;
-      text-shadow: 2px 2px 5px rgba(0, 128, 0, 0.7);
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8); /* 文字を見やすく黒縁取り */
       font-size: 3rem;
-      margin-bottom: 40px;
+      margin-bottom: 20px;
+    }
+
+    /* メッセージエリア */
+    #messageArea {
+      margin-bottom: 30px;
+      font-size: 1.2rem;
+      color: white; /* 背景が暗いので白文字に */
+      text-shadow: 1px 1px 3px black;
+      min-height: 1.5em;
     }
 
     h2 {
-      color: #333;
+      color: white;
       font-size: 1.5rem;
       margin-bottom: 20px;
+      text-shadow: 1px 1px 3px black;
     }
 
     /* キャラクターカードの並び */
     .char-container {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap; /* 画面が狭いときに折り返す */
+      flex-wrap: wrap; 
       gap: 30px;
       max-width: 1000px;
       margin: 0 auto;
@@ -47,14 +62,14 @@
       cursor: pointer;
       width: 220px;
       transition: all 0.2s ease;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
 
     /* ホバー時のエフェクト */
     .char-card:hover {
       border-color: #45a049; /* 選択カラー（緑） */
       transform: translateY(-5px) scale(1.05);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
     }
 
     .char-card img {
@@ -62,21 +77,13 @@
       height: auto;
       border-radius: 5px;
       margin-bottom: 15px;
-      object-fit: contain; /* 画像比率を保持 */
+      object-fit: contain; 
     }
 
     .char-name {
       font-size: 1.4rem;
       font-weight: bold;
       color: #333;
-    }
-
-    /* メッセージエリア（PvP時の案内など） */
-    #messageArea {
-      margin-bottom: 20px;
-      font-size: 1.2rem;
-      color: #555;
-      min-height: 1.5em;
     }
     
     /* もどるボタン */
@@ -123,7 +130,7 @@
       <div class="char-name">キャラC</div>
     </div>
 
-    </div>
+  </div>
 
   <div class="back-btn-container">
     <button class="back-btn" onclick="goBack()">キャンセル</button>
@@ -134,7 +141,7 @@
   
   // URLパラメータを取得
   const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get('mode');   // 'cpu', 'practice', 'pvp'
+  const mode = urlParams.get('mode');   // 'online', 'cpu', 'practice', 'pvp'
   const phase = urlParams.get('phase'); // PvP用の段階 ('1' or '2')
 
   // PvPの2人目（後手）選択中かどうか
@@ -159,13 +166,13 @@
         // ▼ PvP 2人目（後手）選択時（戻ってきたとき）
         title.textContent = "2Pキャラクター選択";
         msg.textContent = "後手（2P）のキャラクターを選んでください";
-        title.style.color = "#45a049"; // 緑
+        title.style.color = "#45a049"; // 緑（背景が暗い場合見にくいかもなので調整可）
 
         // ページトップへスクロール
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } else {
-      // ▼ シングルプレイ（CPU / 練習）
+      // ▼ シングルプレイ（CPU / 練習 / オンライン）
       title.textContent = "キャラクター選択";
       msg.textContent = "あなたのキャラクターを選んでください";
       
@@ -175,7 +182,6 @@
   };
 
   // --- キャラクターカードがクリックされたら ---
-  // ここで直接保存せず、詳細ページへ飛ばします
   function onCharSelected(charId) {
     let targetUrl = `character_detail.html?id=${charId}&mode=${mode}`;
 
@@ -194,9 +200,8 @@
 
   // --- キャンセル（戻る）ボタン ---
   function goBack() {
-    // もしPvPの2人目選択中にキャンセルしたら、最初（タイトル）に戻るか、1人目選択に戻すか
-    // ここではシンプルにタイトルに戻します
-    window.location.href = "index.html";
+    // ★修正：新しいホーム画面に戻るように変更
+    window.location.href = "home.html";
   }
 </script>
 </body>
