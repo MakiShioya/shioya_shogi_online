@@ -1225,6 +1225,7 @@ function saveGameResult(res) {
         opponent: opponentDisplayName,   // 相手の名前
         moves: moveCount,                // 合計手数
         result: isWin ? "WIN" : "LOSE",  // 勝敗
+        mode: "yaneuraou", 
         kifuData: kifu                   // 記録された指し手（配列）
     };
 
