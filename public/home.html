@@ -351,29 +351,38 @@
       if(target) window.location.href = target;
     }
 
-    // ★キャラクターの喋り機能
+// ★キャラクターの喋り機能（エラー修正版）
+    // ★キャラクターの喋り機能（変数名の衝突を回避した修正版）
     let bubbleTimer = null;
+
     function talkCharacter() {
-      const bubble = document.getElementById("characterBubble");
-      // ユーザー名の取得
-      const name = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        const bubble = document.getElementById("characterBubble");
+        
+        // 変数名を userName に変更してブラウザ標準機能との衝突を防ぐ
+        const userName = document.getElementById("userNameDisplay").textContent || "ゲスト";
 
-      const charMessages = [
-        `お手合わせ、よろしくお願いします！${name}さん！`,
-        `${name}さん、こんにちは！\n今日も将棋ですか？`,
-        `次の一手、\nじっくり考えましょう…`,
-        `将棋は楽しむことが一番ですよね！${name}さん！`,
-        `さあ、対局を始めましょう！${name}さん！`
-      ];
+        // メッセージ集を関数の中に配置（クリックするたびに最新の名前を読み込む）
+        const charMessages = [
+            `お手合わせ、よろしくお願いします！${userName}さん！`,
+            `${userName}さん、こんにちは！\n今日も将棋ですか？`,
+            `次の一手、\nじっくり考えましょう…`,
+            `将棋は楽しむことが一番ですよね！${userName}さん！`,
+            `さあ、対局を始めましょう！\n${userName}さん！`,
+            `ここはどこでしょうか…？`,
+            `対局が終わったら、\nカレーを食べましょう…`
+        ];
 
-      const randomMsg = charMessages[Math.floor(Math.random() * charMessages.length)];
-      bubble.textContent = randomMsg;
-      bubble.style.display = "block";
+        // ランダムに選んで表示
+        const randomMsg = charMessages[Math.floor(Math.random() * charMessages.length)];
+        
+        bubble.textContent = randomMsg;
+        bubble.style.display = "block";
 
-      clearTimeout(bubbleTimer);
-      bubbleTimer = setTimeout(() => {
-        bubble.style.display = "none";
-      }, 3000);
+        // 3秒後に自動で隠す（連打対策としてタイマーをリセット）
+        clearTimeout(bubbleTimer);
+        bubbleTimer = setTimeout(() => {
+            bubble.style.display = "none";
+        }, 3000);
     }
 
     window.onload = function() {
