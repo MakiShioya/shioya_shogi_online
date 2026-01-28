@@ -13,6 +13,8 @@ let lastSkillKifu = "";
 // ★★★ 成り・不成の保留用変数 ★★★
 let pendingMove = null;
 
+let hasShownEndEffect = false; // 演出が実行されたかどうかのフラグ
+
 // ★追加：必殺技を使用したかどうかのフラグ（衝突防止のためwindowプロパティにする）
 window.skillUsed = false;
 // ★追加：このターン、駒取りを禁止するかどうかのフラグ
@@ -144,17 +146,55 @@ function updateTimerDisplay() {
 
 function render() {
   if (gameOver) {
-    if (winner === "black") statusDiv.textContent = "先手の勝ちです！";
-    else if (winner === "white") statusDiv.textContent = "後手の勝ちです！";
-    else statusDiv.textContent = "千日手です。引き分け。";
+    // 1. メッセージ表示
+    if (winner === "black") {
+        statusDiv.textContent = "先手（あなた）の勝ちです！";
+    } else if (winner === "white") {
+        statusDiv.textContent = "後手（CPU）の勝ちです！"; // 投了時もここを通る
+    } else {
+        statusDiv.textContent = "引き分けです。";
+    }
     checkStatusDiv.textContent = "";
+
+    // 2. 演出（1回のみ）
+    if (!hasShownEndEffect) {
+        if (winner === "black") {
+            playSkillEffect("shori.PNG", "shori.mp3", null);
+        } else if (winner === "white") {
+            // 負け演出（もし画像があれば shori.PNG の代わりに指定してください）
+            playSkillEffect("haiboku.PNG", "haiboku.mp3", null);
+        }
+        hasShownEndEffect = true; 
+    }
+
+    // 3. ホームに戻るボタン（負けても必ず出す）
+    if (!document.getElementById("resetBtn")) {
+        const btn = document.createElement("button");
+        btn.id = "resetBtn";
+        btn.textContent = "ホームに戻る"; 
+        btn.style.cssText = `
+            padding: 10px 20px;
+            margin-top: 15px;
+            font-size: 16px;
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-block;
+        `;
+        btn.onclick = () => { window.location.href = "home.html"; };
+        
+        statusDiv.appendChild(document.createElement("br"));
+        statusDiv.appendChild(btn);
+    }
+
   } else {
+    // --- 進行中の表示（ここはそのまま） ---
     if (!isSkillTargeting) {
-      // 駒取り禁止中の場合、メッセージを表示すると親切
-      let msg = "現在の手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
-      if (window.isCaptureRestricted) {
-          msg += " 【攻撃禁止中】";
-      }
+      let msg = "手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
+      if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
       msg += (isKingInCheck(turn) ? "　王手！" : "");
       statusDiv.textContent = msg;
     }
@@ -485,12 +525,14 @@ function executeMove(sel, x, y, doPromote) {
     gameOver = true;
     winner = null;
     statusDiv.textContent = "500手に達したため、引き分けです。";
+    saveGameResult(null); // 引き分け保存
     if (typeof showKifu === "function") showKifu();
     render(); return;
   }
   if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner); // 勝者を渡して保存
     if (typeof showKifu === "function") showKifu();
     render(); return;
   }
@@ -505,15 +547,33 @@ function executeMove(sel, x, y, doPromote) {
   }
 }
 
+// 投了ボタンが押された時（モーダルを開く）
 function resignGame() {
-  if (gameOver) return;
-  if (!confirm("投了しますか？")) return;
-  gameOver = true;
-  stopTimer();
-  winner = turn === "black" ? "white" : "black";
-  statusDiv.textContent = "投了により、" + (winner === "black" ? "先手" : "後手") + "の勝ちです。";
-  checkStatusDiv.textContent = "";
-  if (typeof showKifu === "function") showKifu();
+    if (gameOver) return;
+    const modal = document.getElementById("resignModal");
+    if (modal) {
+        modal.style.display = "flex";
+    } else {
+        if (confirm("投了しますか？")) executeResign();
+    }
+}
+
+// 投了を実行する
+function executeResign() {
+    closeResignModal();
+    gameOver = true;
+    stopTimer();
+    winner = "white"; // CPUの勝ちにする
+    
+    // Firebaseに保存（負けとして記録）
+    if (typeof saveGameResult === "function") saveGameResult(winner);
+    
+    render(); // 演出とボタンを表示
+}
+
+function closeResignModal() {
+    const modal = document.getElementById("resignModal");
+    if (modal) modal.style.display = "none";
 }
 
 function toggleSkillMode() {
@@ -661,4 +721,32 @@ function copyKifuText() {
             alert("棋譜をコピーしました！");
         });
     }
+}
+
+// script/main.js の一番下にある関数をこのように修正
+function saveGameResult(res) {
+    const user = auth.currentUser;
+    if (!user) return; 
+
+
+    // これにより、既存の cpu_tawamure.html は書き換え不要になります
+    const opponentDisplayName = window.opponentName || "CPU対局"; 
+    
+    const isWin = (res === "black"); 
+    
+    const gameRecord = {
+        date: new Date(), 
+        opponent: opponentDisplayName, // 変数名に合わせる
+        moves: moveCount,
+        result: isWin ? "WIN" : "LOSE",
+        kifuData: kifu 
+    };
+
+    db.collection("users").doc(user.uid).update({
+        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).then(() => {
+        console.log(opponentDisplayName + " との対局を保存しました");
+    });
 }
