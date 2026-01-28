@@ -15,7 +15,7 @@ const charData = {
     name: "キャラB",
     image: "script/image/char_a.png",
     skillName: "熱烈な応援",
-    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。必殺技を使った手番中は、相手の駒を取ることはできなくなる。<br>発動条件：なし / 1局に2回のみ"
+    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。<br>発動条件：なし / 1局に2回のみ"
   },
 
   // ■冷静（char_b）
@@ -23,7 +23,7 @@ const charData = {
     name: "キャラC",
     image: "script/image/char_b.png",
     skillName: "ブループリント",
-    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。必殺技を使った手番中は、相手の駒を取ることはできなくなる。<br>発動条件：振り飛車 / 1局に1回のみ"
+    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。<br>発動条件：振り飛車 / 1局に1回のみ"
   }
 };
 
@@ -62,39 +62,40 @@ function decideCharacter() {
 
   // --- モードごとの分岐 ---
 
-  // ★★★ 追加：オンラインモードの処理 ★★★
   if (mode === 'online') {
-    // 自分のキャラとして保存
+    // ■ オンライン対戦
     sessionStorage.setItem('my_character', charId);
-    // オンライン対戦画面へ移動
     window.location.href = 'player_vs_player_online.html';
   }
   else if (mode === 'practice') {
     // ■ 練習モード
     sessionStorage.setItem('char_black', charId);
-    window.location.href = 'index.html?menu=practice';
+    // ★修正：home.html に戻り、自動的に「練習相手選択メニュー」を開かせる
+    // (home.html側でこのURLパラメータを検知する処理が必要です。後述します)
+    window.location.href = 'home.html?open=practiceMenu';
   } 
   else if (mode === 'cpu') {
     // ■ ひとりで（CPU）モード
     sessionStorage.setItem('char_black', charId);
-    window.location.href = 'index.html?menu=cpu';
+    // ★修正：home.html に戻り、自動的に「CPUモード選択メニュー」を開かせる
+    window.location.href = 'home.html?open=onePlayerModeSelect';
   } 
   else if (mode === 'pvp') {
     // ■ ふたりで（PvP）モード
     
     if (phase === '2') {
       // 2人目（後手）を選んだ場合
-      sessionStorage.setItem('char_white', charId); // ★後手として保存
-      window.location.href = 'player_vs_player.html'; // ゲーム開始
+      sessionStorage.setItem('char_white', charId); 
+      window.location.href = 'player_vs_player.html'; 
     } else {
-      // 1人目（先手）を選んだ場合、または phase がない場合
-      sessionStorage.setItem('char_black', charId); // ★先手として保存
-      // 後手を選んでもらうために一覧画面へ戻る（phase=2をつける）
+      // 1人目（先手）を選んだ場合
+      sessionStorage.setItem('char_black', charId); 
+      // 後手を選んでもらうために一覧画面へ戻る
       window.location.href = 'character.html?mode=pvp&phase=2';
     }
   } 
   else {
-    // エラー時はタイトルへ
-    window.location.href = 'index.html';
+    // エラー時はホームへ
+    window.location.href = 'home.html';
   }
 }
