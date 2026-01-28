@@ -52,26 +52,69 @@
       z-index: 2;
     }
 
-    .kifu-box {
-      background: #fff8dc;
-      padding: 15px;
-      border-radius: 10px;
-      border: 4px solid #8b4513;
-      width: 85%;
-      max-width: 350px;
+    /* --- 基本設定（スマホ用：画面幅が狭いとき） --- */
+.kifu-box {
+  background: #fff8dc;
+  padding: 12px;
+  border-radius: 10px;
+  border: 4px solid #8b4513;
+  width: 90%;         /* スマホで左右の余白を少し調整 */
+  max-width: 380px;   /* スマホでの最大幅は維持 */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  transition: max-width 0.3s ease; /* サイズ変化を滑らかに */
+}
+
+/* --- メディアクエリ（PC・タブレット用：画面幅が 600px 以上のとき） --- */
+@media (min-width: 600px) {
+  .kifu-box {
+    max-width: 480px; /* 横幅を 800px まで広げる */
+    width: 95%;       /* 画面を広く使う */
+    padding: 20px;    /* 中の余白も少し広げてゆったりさせる */
+  }
+
+  /* ついでに中のリストアイテムも少し見やすく調整する場合 */
+  .kifu-item {
+    padding: 15px 20px;
+  }
+}
+
+    /* --- タブメニューのスタイル --- */
+    .tab-menu {
       display: flex;
-      flex-direction: column;
-      height: 100%;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      gap: 3px;
+      margin-bottom: 10px;
+      overflow-x: auto; /* 横スクロール可能にする */
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 5px;
+    }
+    .tab-menu::-webkit-scrollbar {
+      height: 4px;
+    }
+    .tab-menu::-webkit-scrollbar-thumb {
+      background: #8b4513;
+      border-radius: 10px;
     }
 
-    .kifu-header {
-      color: #8b4513;
-      margin: 0 0 10px 0;
-      text-align: center;
-      font-size: 1.2rem;
-      border-bottom: 2px solid #8b4513;
-      padding-bottom: 5px;
+    .tab-btn {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      background: #d2b48c;
+      border: 1px solid #8b4513;
+      border-radius: 5px 5px 0 0;
+      cursor: pointer;
+      color: #5d2e0a;
+      transition: 0.2s;
+    }
+    .tab-btn.active {
+      background: #8b4513;
+      color: white;
+      border-bottom-color: #8b4513;
     }
 
     .stats-summary {
@@ -82,7 +125,7 @@
       border-radius: 5px;
       margin-bottom: 15px;
       font-weight: bold;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .kifu-list {
@@ -102,15 +145,17 @@
       justify-content: space-between;
       align-items: center;
       animation: fadeIn 0.3s ease-out forwards;
+      cursor: pointer;
     }
+    .kifu-item:active { background-color: #f0f0f0; }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(5px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .kifu-info { font-size: 0.85rem; line-height: 1.4; }
-    .kifu-date { color: #888; font-size: 0.75rem; }
+    .kifu-info { font-size: 0.8rem; line-height: 1.4; }
+    .kifu-date { color: #888; font-size: 0.7rem; }
     .kifu-opponent { font-weight: bold; color: #333; }
     
     .result-win { color: #d32f2f; font-weight: bold; }
@@ -128,13 +173,13 @@
     .menu-btn {
       width: 90%;
       max-width: 300px;
-      height: 60px;
+      height: 55px;
       background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%);
       border: 2px solid white;
       border-radius: 10px;
       color: white;
       font-weight: bold;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
@@ -145,25 +190,36 @@
     }
     .menu-btn:active { transform: scale(0.95); }
 
-    .kifu-list::-webkit-scrollbar { width: 6px; }
-    .kifu-list::-webkit-scrollbar-thumb { background: #8b4513; border-radius: 3px; }
+    /* モーダル用 */
+    .overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center;
+    }
+    .modal-box {
+      background: #fff8dc; padding: 20px; border-radius: 10px; width: 85%;
+    }
   </style>
 </head>
 <body>
 
   <div class="user-info-bar">
     <div>
-      <span style="font-size:0.8rem; color:#ccc;">Player Name</span><br>
+      <span style="font-size:0.75rem; color:#ccc;">Player Name</span><br>
       <span id="userNameDisplay" class="user-name">ゲスト</span> さん
     </div>
-    <div style="font-size: 0.8rem; text-align: right;">
-      棋譜一覧
-    </div>
+    <div style="font-size: 0.8rem; text-align: right;">棋譜一覧</div>
   </div>
 
   <div class="main-container">
     <div class="kifu-box">
-      <h3 class="kifu-header">対局の記録</h3>
+      <div class="tab-menu" id="tabMenu">
+        <button class="tab-btn active" data-mode="all" onclick="switchMode('all')">すべて</button> 
+        <button class="tab-btn" data-mode="online" onclick="switchMode('online')">オンライン</button>
+        <button class="tab-btn" data-mode="online_p" onclick="switchMode('online_p')">対人(オフ)</button>
+        <button class="tab-btn" data-mode="offline" onclick="switchMode('offline')">CPU戦</button>
+        <button class="tab-btn" data-mode="yaneuraou" onclick="switchMode('yaneuraou')">やねうら王</button>
+       
+      </div>
       
       <div class="stats-summary">
         <span style="color: #d32f2f;">勝: <span id="displayWin">-</span></span>
@@ -172,9 +228,7 @@
       </div>
 
       <div class="kifu-list" id="fullKifuList">
-        <div style="text-align:center; padding:20px; color:#888;">
-          読み込み中...
-        </div>
+        <div style="text-align:center; padding:20px; color:#888;">読み込み中...</div>
       </div>
     </div>
   </div>
@@ -183,31 +237,124 @@
     <a href="home.html" class="menu-btn">メインメニュー</a>
   </div>
 
+  <div id="kifuDetailsModal" class="overlay" style="display: none; z-index: 1000;">
+      <div class="modal-box" style="max-width: 400px; height: 70vh; display: flex; flex-direction: column;">
+          <h3 id="modalTitle" style="color: #8b4513; margin-top: 0; font-size: 1.1rem;">対局詳細</h3>
+          <div id="modalKifuText" style="flex-grow: 1; overflow-y: auto; background: #fff; border: 1px solid #ccc; padding: 10px; text-align: left; font-family: monospace; font-size: 0.85rem; white-space: pre-wrap; margin-bottom: 15px;"></div>
+          <button onclick="closeKifuModal()" style="background: #666; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-weight: bold;">閉じる</button>
+      </div>
+  </div>
+
   <script>
-    // 注意：実際のデータ読み込み処理は script/auth.js の 
-    // auth.onAuthStateChanged -> loadUserStats() で実行されます。
-    // このページでは、未ログイン時のリダイレクトなどの補助処理のみ記述します。
+    let currentMode = 'all';
+    let allKifuData = [];
+    const definedModes = ['online', 'online_p', 'offline', 'yaneuraou'];
+
+    // モード切り替え関数
+    function switchMode(mode) {
+        currentMode = mode;
+        
+        // タブのactive状態を更新
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => {
+            if (tab.getAttribute('data-mode') === mode) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+        
+        renderKifu();
+    }
+
+    // 描画処理
+    function renderKifu() {
+    const listContainer = document.getElementById("fullKifuList");
     
+    // データのフィルタリング
+    const filtered = allKifuData.filter(item => {
+        if (currentMode === 'all') {
+            return true; // 「すべて」タブの場合は、全データを通す
+        }
+        return item.mode === currentMode;
+    });
+
+    // --- 以下、描画処理と統計更新（既存のままでOK） ---
+    listContainer.innerHTML = "";
+    let wins = 0;
+    let loses = 0;
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `<div style="text-align:center; padding:20px; color:#888;">記録がありません</div>`;
+    } else {
+            filtered.forEach(data => {
+                const isWin = (data.result === "WIN" || data.result === "○");
+                if (isWin) wins++; else loses++;
+
+                const div = document.createElement("div");
+                div.className = "kifu-item";
+                
+                // クリック時に詳細表示（showKifuDetailsはauth.js等にある想定）
+                div.onclick = () => {
+                    // auth.js の showKifuDetails(kifuArray, opponent) を呼び出す
+                    if (typeof showKifuDetails === 'function') {
+                        // 引数の形式を auth.js に合わせる
+                        showKifuDetails(data.kifuData || [], data.opponent || "CPU");
+                    } else {
+                        document.getElementById("modalKifuText").innerText = 
+                            Array.isArray(data.kifuData) ? data.kifuData.join("\n") : "棋譜データがありません";
+                        document.getElementById("kifuDetailsModal").style.display = "flex";
+                    }
+                };
+                
+                // 日付のパース
+                let dateStr = "不明な日付";
+                if (data.date) {
+                    const d = data.date.seconds ? new Date(data.date.seconds * 1000) : new Date(data.date);
+                    if (!isNaN(d)) dateStr = d.toLocaleDateString();
+                }
+
+                div.innerHTML = `
+                    <div class="kifu-info">
+                        <div class="kifu-date">${dateStr}</div>
+                        <div class="kifu-opponent">VS ${data.opponent || "対局者"}</div>
+                        <div style="font-size:0.7rem;">${data.moves || 0} 手</div>
+                    </div>
+                    <div class="${isWin ? 'result-win' : 'result-lose'}">
+                        ${isWin ? '勝ち' : '負け'}
+                    </div>
+                `;
+                listContainer.appendChild(div);
+            });
+        }
+
+        // 統計の更新
+        document.getElementById("displayWin").innerText = wins;
+        document.getElementById("displayLose").innerText = loses;
+        const total = wins + loses;
+        const rate = total > 0 ? Math.round((wins / total) * 100) : 0;
+        document.getElementById("displayRate").innerText = rate;
+    }
+
+    // モーダルを閉じる
+    function closeKifuModal() {
+        document.getElementById("kifuDetailsModal").style.display = "none";
+    }
+
+    // auth.jsからのデータ受け取り口
+    window.updateKifuDisplay = function(data) {
+        allKifuData = data || [];
+        renderKifu();
+    };
+
     window.onload = function() {
-        // 万が一、一定時間経ってもデータが読み込まれない場合（未ログインなど）の処理
         setTimeout(() => {
             const list = document.getElementById("fullKifuList");
             if (list.innerText.includes("読み込み中")) {
-                list.innerHTML = '<div style="text-align:center; padding:20px;">ログインすると対局履歴が表示されます</div>';
+                list.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">ログインすると対局履歴が表示されます</div>';
             }
         }, 5000);
     };
   </script>
-
-<div id="kifuDetailsModal" class="overlay" style="display: none; z-index: 1000;">
-    <div class="modal-box" style="max-width: 400px; height: 70vh; display: flex; flex-direction: column;">
-        <h3 id="modalTitle" style="color: #8b4513; margin-top: 0;">対局詳細</h3>
-        <div id="modalKifuText" style="flex-grow: 1; overflow-y: auto; background: #fff; border: 1px solid #ccc; padding: 10px; text-align: left; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; margin-bottom: 15px;">
-            </div>
-        <button onclick="closeKifuModal()" style="background: #666; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer;">閉じる</button>
-    </div>
-</div>
-
-
 </body>
 </html>
