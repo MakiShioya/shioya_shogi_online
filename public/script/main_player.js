@@ -620,12 +620,14 @@ function executeMove(sel, x, y, doPromote) {
     gameOver = true;
     winner = null;
     statusDiv.textContent = "500手に達したため、引き分けです。";
+    saveGameResult(null); // 追加
     render();
     return;
   }
   if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner); // 追加
     render();
     return;
   }
@@ -667,6 +669,7 @@ function executeResign() {
     gameOver = true;
     stopTimer();
     winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner); // 追加
     
     // 描画更新（これでrender()が呼ばれ、勝利演出やホームボタンが出る）
     render();
@@ -743,4 +746,32 @@ function copyKifuText() {
             alert("棋譜をコピーしました！");
         });
     }
+}
+
+function saveGameResult(res) {
+    const user = auth.currentUser;
+    if (!user) return; 
+
+    const opponentDisplayName = window.opponentName || "対人対局"; 
+    
+    // ログインユーザーを「先手」とみなし、先手が勝てばWIN、負ければLOSE
+    let resultStatus = "DRAW";
+    if (res === "black") resultStatus = "WIN";
+    else if (res === "white") resultStatus = "LOSE";
+
+    const gameRecord = {
+        date: new Date(), 
+        opponent: opponentDisplayName,
+        moves: moveCount,
+        result: resultStatus,
+        kifuData: kifu 
+    };
+
+    db.collection("users").doc(user.uid).update({
+        win: firebase.firestore.FieldValue.increment(resultStatus === "WIN" ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(resultStatus === "LOSE" ? 1 : 0),
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).then(() => {
+        console.log("対人戦の記録を保存しました");
+    });
 }
