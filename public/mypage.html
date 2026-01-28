@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>しおや将棋 - 棋譜</title>
   <link rel="icon" href="script/image/komiya_icon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
   
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -295,17 +297,21 @@
                 div.className = "kifu-item";
                 
                 // クリック時に詳細表示（showKifuDetailsはauth.js等にある想定）
-                div.onclick = () => {
-                    // auth.js の showKifuDetails(kifuArray, opponent) を呼び出す
-                    if (typeof showKifuDetails === 'function') {
-                        // 引数の形式を auth.js に合わせる
-                        showKifuDetails(data.kifuData || [], data.opponent || "CPU");
-                    } else {
-                        document.getElementById("modalKifuText").innerText = 
-                            Array.isArray(data.kifuData) ? data.kifuData.join("\n") : "棋譜データがありません";
-                        document.getElementById("kifuDetailsModal").style.display = "flex";
-                    }
-                };
+                // --- 修正後の div.onclick 部分 ---
+div.onclick = () => {
+    if (data.kifuData && data.kifuData.length > 0) {
+        // 棋譜配列を改行区切りのテキストに変換
+        const kifuText = Array.isArray(data.kifuData) ? data.kifuData.join("\n") : data.kifuData;
+        
+        // ブラウザの一時保存（sessionStorage）に格納
+        sessionStorage.setItem("replayKifu", kifuText);
+        
+        // リプレイページへ移動
+        window.location.href = "replay.html";
+    } else {
+        alert("この対局の棋譜データは見つかりませんでした。");
+    }
+};
                 
                 // 日付のパース
                 let dateStr = "不明な日付";
