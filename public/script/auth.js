@@ -60,65 +60,17 @@ function loadUserStats(userId) {
         const lose = data.lose || 0;
         const history = data.history || [];
 
-        // --- 1. ホーム画面用(statsModal)の更新 ---
+        // --- 1. 【維持】ホーム画面用(statsModal)の数値更新 ---
         if (document.getElementById("statsWin")) document.getElementById("statsWin").textContent = win;
         if (document.getElementById("statsLose")) document.getElementById("statsLose").textContent = lose;
 
-        // --- 2. 棋譜ページ(mypage.html)専用の更新 ---
-        const winDisplay = document.getElementById("displayWin");
-        if (winDisplay) {
-            winDisplay.textContent = win;
-            document.getElementById("displayLose").textContent = lose;
-            const total = win + lose;
-            const rate = total > 0 ? Math.round((win / total) * 100) : 0;
-            document.getElementById("displayRate").textContent = rate;
-
-            const kifuContainer = document.getElementById("fullKifuList");
-            kifuContainer.innerHTML = ""; 
-
-            if (history.length === 0) {
-                kifuContainer.innerHTML = '<div style="text-align:center; padding:20px;">まだ対局データがありません</div>';
-            } else {
-                [...history].reverse().forEach((h, index) => {
-                    const item = document.createElement("div");
-                    item.className = "kifu-item";
-
-                    let dateStr = "不明な日付";
-                    if (h.date && h.date.toDate) {
-                        const d = h.date.toDate();
-                        dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
-                    }
-
-                    const resultClass = (h.result === "WIN") ? "result-win" : "result-lose";
-                    const resultText = (h.result === "WIN") ? "勝ち" : "負け";
-
-                    // ★棋譜データがあるかチェックしてボタンを生成
-                    const hasKifu = h.kifuData && h.kifuData.length > 0;
-                    
-                    item.innerHTML = `
-                        <div class="kifu-info">
-                            <div class="kifu-date">${dateStr}</div>
-                            <div class="kifu-opponent">相手：${h.opponent || "CPU"}</div>
-                            <div style="color: #666;">${h.moves || "?"}手で${resultText}</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div class="${resultClass}">${resultText}</div>
-                            ${hasKifu ? `<button class="view-kifu-btn" data-index="${index}" style="margin-top:5px; padding:3px 8px; font-size:0.75rem; cursor:pointer; background:#8b4513; color:white; border:none; border-radius:3px;">棋譜を見る</button>` : ''}
-                        </div>
-                    `;
-
-                    // ボタンにクリックイベントを設定
-                    if (hasKifu) {
-                        const btn = item.querySelector(".view-kifu-btn");
-                        btn.onclick = () => showKifuDetails(h.kifuData, h.opponent);
-                    }
-
-                    kifuContainer.appendChild(item);
-                });
-            }
+        // --- 2. 【変更】マイページ(mypage.html) へのデータ受け渡し ---
+        // ここで直接HTMLを作らず、mypage.html側の「仕分け人(updateKifuDisplay)」にデータを渡します。
+        if (typeof window.updateKifuDisplay === "function") {
+            window.updateKifuDisplay(history);
         }
 
-        // --- 3. ホーム画面の簡易リスト更新 ---
+        // --- 3. 【維持】ホーム画面の簡易リスト更新 ---
         const historyList = document.getElementById("statsHistory");
         if (historyList) {
             historyList.innerHTML = "";
@@ -133,6 +85,21 @@ function loadUserStats(userId) {
             });
         }
     });
+}
+
+// --- 4. 【維持】棋譜詳細をモーダルで表示する機能 ---
+// これはmypage.htmlからも呼び出すので、消さずに残します。
+function showKifuDetails(kifuArray, opponent) {
+    const modal = document.getElementById("kifuDetailsModal");
+    const textDiv = document.getElementById("modalKifuText");
+    const title = document.getElementById("modalTitle");
+
+    if (!modal || !textDiv) return;
+    if (title) title.textContent = "対局記録 vs " + (opponent || "CPU");
+    
+    // 配列なら改行で結合、文字列ならそのまま表示
+    textDiv.textContent = Array.isArray(kifuArray) ? kifuArray.join("\n") : kifuArray;
+    modal.style.display = "flex";
 }
 
 // ★追加：棋譜詳細をモーダルで表示する
