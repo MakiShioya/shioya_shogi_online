@@ -364,16 +364,13 @@
     function goToCharacterSelect(mode) { window.location.href = "character.html?mode=" + mode; }
 
     function startGame(difficulty) {
-      let target = "";
-      if (difficulty === 'saijaku') target = "cpu_tawamure.html";
-      else if (difficulty === 'easy') target = "cpu_oasobi.html";
-      else if (difficulty === 'normal') target = "cpu_tashinami.html";
-      else if (difficulty === 'hard1') target = "cpu_komiya.html";
-      else if (difficulty === 'hard2') target = "cpu_shioya.html";
-      else if (difficulty === 'ex_hard1') target = "ex_cpu_komiya.html";
-      else if (difficulty === 'ex_hard2') target = "ex_cpu_shioya.html";
-      else if (difficulty === 'ex_hard3') target = "cpu_yaneuraou.html";
-      if(target) window.location.href = target;
+      // ★修正：やねうら王（ex_hard3）だけは特別扱いして、それ以外は game_cpu.html へ統合
+      if (difficulty === 'ex_hard3') {
+          window.location.href = "cpu_yaneuraou.html";
+      } else {
+          // 他のすべてのCPUは、共通ファイルへパラメータ付きで飛ばす
+          window.location.href = "game_cpu.html?opponent=" + difficulty;
+      }
     }
 
 // ★キャラクターの喋り機能（エラー修正版）
