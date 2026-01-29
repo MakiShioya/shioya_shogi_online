@@ -85,6 +85,7 @@ socket.on('role assigned', (role) => {
     } else {
         document.body.classList.remove("view-white");
     }
+    updateHandLayout(myRole);
     render();
 });
 
@@ -219,38 +220,64 @@ function syncGlobalSkillState() {
 }
 
 function updateSkillButton() {
-  const skillBtn = document.getElementById("skillBtn");
-  if (!skillBtn) return;
-  
-  if (currentSkill) {
-    skillBtn.style.display = "inline-block";
-    skillBtn.textContent = currentSkill.name;
+    const skillBtn = document.getElementById("skillBtn");
+    if (!skillBtn) return;
 
-    if (currentSkill.buttonStyle) {
-      Object.assign(skillBtn.style, currentSkill.buttonStyle);
+    // 1. 「現在のターン」ではなく「自分の役割(myRole)」に基づいて表示するスキルを決める
+    let mySkill = null;
+    let myUseCount = 0;
+
+    if (myRole === "black") {
+        mySkill = p1Skill;
+        myUseCount = p1SkillCount;
+    } else if (myRole === "white") {
+        mySkill = p2Skill;
+        myUseCount = p2SkillCount;
     } else {
-      skillBtn.style.backgroundColor = "#ff4500";
-      skillBtn.style.color = "white";
-      skillBtn.style.border = "none";
-    }
-
-    // 自分の番じゃないときは押せない
-    if (myRole && turn !== myRole) {
-        skillBtn.disabled = true;
-        skillBtn.style.opacity = 0.5;
+        // 観戦者などの場合はボタンを表示しない
+        skillBtn.style.display = "none";
         return;
     }
 
-    skillBtn.disabled = window.skillUsed; 
-    skillBtn.style.opacity = window.skillUsed ? 0.5 : 1.0;
-    
-    if (window.skillUsed) {
-        skillBtn.style.backgroundColor = "#ccc";
-        skillBtn.style.border = "1px solid #999";
+    // 2. 自分のスキルが存在する場合のみボタンを表示・更新
+    if (mySkill) {
+        skillBtn.style.display = "inline-block";
+        skillBtn.textContent = mySkill.name; // 常に自分の技名を表示
+
+        // デザインの適用
+        if (mySkill.buttonStyle) {
+            Object.assign(skillBtn.style, mySkill.buttonStyle);
+        } else {
+            skillBtn.style.backgroundColor = "#ff4500";
+            skillBtn.style.color = "white";
+            skillBtn.style.border = "none";
+        }
+
+        // 3. 使用回数上限のチェック（自分の使用回数を見る）
+        const max = mySkill.maxUses || 1;
+        const isUsedUp = (myUseCount >= max);
+
+        // 4. ボタンの有効/無効の切り替え
+        // 「自分の番ではない」 または 「回数を使い切っている」 場合は押せないようにする
+        if (turn !== myRole || isUsedUp) {
+            skillBtn.disabled = true;
+            skillBtn.style.opacity = 0.5;
+
+            // 使い切った場合の色変更（オプション）
+            if (isUsedUp) {
+                skillBtn.style.backgroundColor = "#ccc";
+                skillBtn.style.border = "1px solid #999";
+            }
+        } else {
+            // 自分の番で、かつ使える状態
+            skillBtn.disabled = false;
+            skillBtn.style.opacity = 1.0;
+        }
+
+    } else {
+        // スキルがないキャラの場合
+        skillBtn.style.display = "none";
     }
-  } else {
-    skillBtn.style.display = "none";
-  }
 }
 
 function toggleSkillMode() {
@@ -945,4 +972,41 @@ function saveGameResult(resultStatus) {
     }).catch((error) => {
         console.error("オンライン対戦の保存失敗:", error);
     });
+}
+
+// ★★★ 追加：DOM操作で駒台の左右を入れ替える関数 ★★★
+function updateHandLayout(role) {
+    // HTML内の左右のコンテナを取得
+    const leftSide = document.querySelector(".side.left");
+    const rightSide = document.querySelector(".side.right");
+    
+    // 駒台の要素を取得
+    const blackBox = document.getElementById("blackHandBox");
+    const whiteBox = document.getElementById("whiteHandBox");
+
+    // 要素が見つからなければ何もしない（エラー回避）
+    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
+
+    if (role === "white") {
+        // 【自分が後手の場合】
+        // 通常は「左に後手台、右に先手台」だが、
+        // 自分が下側に来るので「自分の台（後手）を右、相手の台（先手）を左」にしたい。
+
+        // 1. 黒い箱（相手）を左サイドへ移動（prependで先頭＝上側に追加）
+        leftSide.prepend(blackBox);
+
+        // 2. 白い箱（自分）を右サイドへ移動（appendChildで末尾＝下側に追加）
+        // ※右サイドには投了ボタンが上にあるため、その下に追加される
+        rightSide.appendChild(whiteBox);
+
+    } else {
+        // 【自分が先手 または 観戦者の場合（デフォルト）】
+        // 通常通りの配置に戻す
+
+        // 1. 白い箱（相手）を左サイドへ（先頭）
+        leftSide.prepend(whiteBox);
+
+        // 2. 黒い箱（自分）を右サイドへ（末尾）
+        rightSide.appendChild(blackBox);
+    }
 }
