@@ -255,8 +255,9 @@
       <h3 style="color:#d35400; margin-top:0;">🔔 最新情報</h3>
       <div style="text-align: left; margin: 20px 0; line-height: 1.6; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 5px;">
         ・オンライン対戦 実装！<br>
+        ・棋譜解析機能 実装！<br>
         ・最強CPU「試験実装」追加<br>
-        ・戦績保存機能に対応
+        ・戦績保存機能に対応！
       </div>
       <button onclick="closeModal('newsModal')" style="background: #ccc; border: none; color: black; padding: 10px 20px; border-radius: 5px; cursor: pointer;">閉じる</button>
     </div>
@@ -560,10 +561,11 @@ let bubbleTimer = null;
   <div class="modal-box" style="max-width: 350px;">
     <h3 style="color: #8b4513;">モードについて</h3>
     <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
-      <p><strong>・れんしゅう</strong><br>初心者向けのCPUと対戦ができます。</p>
-      <p><strong>・ひとりで</strong><br>中級者～上級者向けのCPUと対戦ができます。</p>
-      <p><strong>・ふたりで</strong><br>この端末のみを使用し、オフラインでプレイヤー同士の対戦ができます。</p>
-      <p><strong>・オンライン対戦</strong><br>遠くにいる人とオンライン対戦ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+
+      <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対戦ができます。この端末のみを使用して、プレイヤー同士でも対戦ができます。</p>
+      <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対戦ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+      <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
+      <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
     </div>
     <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
   </div>
@@ -626,4 +628,3 @@ let bubbleTimer = null;
 
 </body>
 </html>
-
