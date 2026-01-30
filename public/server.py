@@ -1,32 +1,60 @@
-import http.server
-import socketserver
-import mimetypes
 import os
+import mimetypes
+from flask import Flask, send_from_directory, request
+from flask_socketio import SocketIO, emit
 
-PORT = 8000
-
-# ★ここが重要！.wasmを「プログラム」として認識させる
-mimetypes.init()
+# ★WASMを正しく認識させる設定
 mimetypes.add_type('application/wasm', '.wasm')
 mimetypes.add_type('application/javascript', '.js')
 
-class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        # Wasmを動かすための「セキュリティ許可証」
-        self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
-        self.send_header("Cross-Origin-Opener-Policy", "same-origin")
-        super().end_headers()
+# サーバーの初期設定
+app = Flask(__name__, static_folder='.') # 現在のフォルダを配信元にする
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-    # 拡張子ごとの正しい名札付けを徹底させる
-    def guess_type(self, path):
-        base, ext = os.path.splitext(path)
-        if ext in mimetypes.types_map:
-            return mimetypes.types_map[ext]
-        return super().guess_type(path)
+# ★現在の接続人数
+online_user_count = 0
 
-print(f"Starting server at http://localhost:{PORT}")
-print("Press Ctrl+C to stop")
+# --- ここからページ配信の設定 ---
 
-socketserver.TCPServer.allow_reuse_address = True
-with socketserver.TCPServer(("", PORT), MyHTTPRequestHandler) as httpd:
-    httpd.serve_forever()
+# 1. どのURLに来ても、静的ファイルがあればそれを返す
+@app.route('/', defaults={'path': 'index.html'})
+@app.route('/<path:path>')
+def serve(path):
+    # ファイルが存在すれば返す、なければindex.htmlを返す（SPA対応）
+    if path != "" and os.path.exists(app.static_folder + '/' + path):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
+
+# 2. ★超重要：WASMを動かすためのセキュリティ許可証を全員に渡す
+@app.after_request
+def add_header(response):
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    return response
+
+# --- ここからSocket通信（人数カウント）の設定 ---
+
+@socketio.on('connect')
+def on_connect():
+    global online_user_count
+    online_user_count += 1
+    print(f"誰かが接続しました。現在: {online_user_count}人")
+    # 全員に人数を送信
+    emit('update_user_count', {'count': online_user_count}, broadcast=True)
+
+@socketio.on('disconnect')
+def on_disconnect():
+    global online_user_count
+    if online_user_count > 0:
+        online_user_count -= 1
+    print(f"誰かが切断しました。現在: {online_user_count}人")
+    # 全員に人数を送信
+    emit('update_user_count', {'count': online_user_count}, broadcast=True)
+
+# サーバー起動
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8000))
+    # Flask-SocketIOを使って起動
+    socketio.run(app, host='0.0.0.0', port=port)
