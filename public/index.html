@@ -12,6 +12,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -91,6 +93,21 @@
 
   <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
+  <div id="online-counter" style="
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    border: 1px solid #FFB347;
+    z-index: 10;
+">
+    ● 接続中: <span id="user-count-num">--</span> 人
+</div>
   <div class="title-logo">しおや将棋</div>
 
   <div class="tap-start" onclick="goToHome()">TAP TO START</div>
@@ -130,7 +147,22 @@
     function goToHome() {
       window.location.href = "home.html";
     }
+    // index.htmlの最後のscriptタグ内
 
+function goToHome() {
+    window.location.href = "home.html";
+}
+
+// ★追加：Socket接続と人数更新処理
+// サーバーのURL（RenderのURL）を指定してください。
+// ローカルでテストしているなら http://localhost:8000 など
+// 本番環境なら https://あなたのアプリ名.onrender.com
+const socket = io("https://shioyashogi-online.onrender.com"); 
+
+socket.on('update_user_count', function(data) {
+    const el = document.getElementById('user-count-num');
+    if (el) el.innerText = data.count;
+});
     // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
     // これにより script/auth.js の「賢い方」の関数が使われます。
   </script>
