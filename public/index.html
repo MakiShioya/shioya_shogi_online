@@ -157,7 +157,7 @@ function goToHome() {
 // サーバーのURL（RenderのURL）を指定してください。
 // ローカルでテストしているなら http://localhost:8000 など
 // 本番環境なら https://あなたのアプリ名.onrender.com
-const socket = io("https://shioyashogi-online.onrender.com"); 
+const socket = io(); 
 
 socket.on('update_user_count', function(data) {
     const el = document.getElementById('user-count-num');
