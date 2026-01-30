@@ -1,23 +1,15 @@
-// script/main.js (CPU vs Player)
+// script/main.js (Refactored & Fixed)
+// CPU対戦固有のロジックのみを記述
 
-// DOM要素の参照
-const board = document.getElementById("board");
-const blackHandDiv = document.getElementById("blackHand");
-const whiteHandDiv = document.getElementById("whiteHand");
-const statusDiv = document.getElementById("status");
-const checkStatusDiv = document.getElementById("checkStatus");
+// ★修正：game_core.js ですでに宣言されている変数（boardなど）の定義を削除しました。
+// ここには main.js だけで使う resignBtn だけを残します。
 const resignBtn = document.getElementById("resignBtn");
 
-// ★★★ 手番消費なし必殺技の棋譜を一時保存する変数 ★★★
+// グローバル変数
 let lastSkillKifu = "";
-// ★★★ 成り・不成の保留用変数 ★★★
 let pendingMove = null;
-
-let hasShownEndEffect = false; // 演出が実行されたかどうかのフラグ
-
-// ★追加：必殺技を使用したかどうかのフラグ（衝突防止のためwindowプロパティにする）
+let hasShownEndEffect = false;
 window.skillUsed = false;
-// ★追加：このターン、駒取りを禁止するかどうかのフラグ
 window.isCaptureRestricted = false;
 
 // 初期化処理
@@ -28,35 +20,38 @@ window.addEventListener("load", () => {
 
   applyPlayerImage();
 
-  if (resignBtn) {
-    resignBtn.addEventListener("click", resignGame);
-  }
+  if (resignBtn) resignBtn.addEventListener("click", resignGame);
 
+  // CPU戦用のスキル初期化（自分のキャラのみ）
   const charId = sessionStorage.getItem('char_black') || 'default';
-  
-  if (charId === 'default' && typeof CharItsumono !== 'undefined') {
-    currentSkill = CharItsumono.skill;
-  } else if (charId === 'char_a' && typeof CharNekketsu !== 'undefined') {
-    currentSkill = CharNekketsu.skill;
-  } else if (charId === 'char_b' && typeof CharReisei !== 'undefined') {
-    currentSkill = CharReisei.skill;
-  } else {
-    currentSkill = null;
-  }
+  if (charId === 'default' && typeof CharItsumono !== 'undefined') currentSkill = CharItsumono.skill;
+  else if (charId === 'char_a' && typeof CharNekketsu !== 'undefined') currentSkill = CharNekketsu.skill;
+  else if (charId === 'char_b' && typeof CharReisei !== 'undefined') currentSkill = CharReisei.skill;
+  else currentSkill = null;
 
   updateSkillButton();
-
   playBGM();
   startTimer();
   
+  // game_core.js の render を呼び出す
   render();
-  if (typeof showKifu === "function") {
-    showKifu();
-  }
+  
+  if (typeof showKifu === "function") showKifu();
 
   const key = getPositionKey();
   positionHistory[key] = 1;
 });
+
+// ★★★ GameCore へのフック ★★★
+// プレイヤーが駒を動かし終わった後に、自動で呼ばれます
+window.onTurnComplete = function() {
+    // CPUの思考開始
+    if (!isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
+        setTimeout(() => cpuMove(), 1000);
+    }
+};
+
+// --- 以下、CPU戦固有の入力処理などは残す ---
 
 function playBGM() {
   if (!bgm) return;
@@ -90,7 +85,7 @@ function applyPlayerImage() {
 
 function undoMove() {
   if (typeof isThinking !== 'undefined' && isThinking) return;
-  if (isSkillTargeting) {
+  if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
     isSkillTargeting = false;
     legalMoves = [];
     render();
@@ -103,9 +98,7 @@ function undoMove() {
 
   restoreState(prev);
 
-  // Undoしたら制限もリセット
   window.isCaptureRestricted = false;
-
   gameOver = false;
   winner = null;
   statusDiv.textContent = "";
@@ -116,189 +109,27 @@ function undoMove() {
   startTimer();
 }
 
-let timerInterval = null;
-let currentSeconds = 0;
-
-function startTimer() {
-  stopTimer();
-  currentSeconds = 0;
-  updateTimerDisplay();
-
-  timerInterval = setInterval(() => {
-    currentSeconds++;
-    updateTimerDisplay();
-  }, 1000);
-}
-
-function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-}
-
-function updateTimerDisplay() {
-  const timerBox = document.getElementById("timerBox");
-  if (timerBox) {
-    timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
-  }
-}
-
-function render() {
-  if (gameOver) {
-    // 1. メッセージ表示
-    if (winner === "black") {
-        statusDiv.textContent = "先手（あなた）の勝ちです！";
-    } else if (winner === "white") {
-        statusDiv.textContent = "後手（CPU）の勝ちです！"; // 投了時もここを通る
-    } else {
-        statusDiv.textContent = "引き分けです。";
-    }
-    checkStatusDiv.textContent = "";
-
-    // 2. 演出（1回のみ）
-    if (!hasShownEndEffect) {
-        if (winner === "black") {
-            playSkillEffect("shori.PNG", "shori.mp3", null);
-        } else if (winner === "white") {
-            // 負け演出（もし画像があれば shori.PNG の代わりに指定してください）
-            playSkillEffect("haiboku.PNG", "haiboku.mp3", null);
-        }
-        hasShownEndEffect = true; 
-    }
-
-    // 3. ホームに戻るボタン（負けても必ず出す）
-    if (!document.getElementById("resetBtn")) {
-        const btn = document.createElement("button");
-        btn.id = "resetBtn";
-        btn.textContent = "ホームに戻る"; 
-        btn.style.cssText = `
-            padding: 10px 20px;
-            margin-top: 15px;
-            font-size: 16px;
-            background-color: #d32f2f;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            display: inline-block;
-        `;
-        btn.onclick = () => { window.location.href = "home.html"; };
-        
-        statusDiv.appendChild(document.createElement("br"));
-        statusDiv.appendChild(btn);
-    }
-
-  } else {
-    // --- 進行中の表示（ここはそのまま） ---
-    if (!isSkillTargeting) {
-      let msg = "手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
-      if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
-      msg += (isKingInCheck(turn) ? "　王手！" : "");
-      statusDiv.textContent = msg;
-    }
-    checkStatusDiv.textContent = "";
-  }
-
-  board.innerHTML = "";
-  for (let y = 0; y < 9; y++) {
-    const tr = document.createElement("tr");
-    for (let x = 0; x < 9; x++) {
-      const td = document.createElement("td");
-      const piece = boardState[y][x];
-      if (piece) {
-        const isWhite = piece === piece.toLowerCase();
-        const key = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
-        td.textContent = pieceName[key];
-        if (isWhite) td.style.transform = "rotate(180deg)";
-
-        if (pieceStyles[y][x] === "green") {
-          td.style.color = "#32CD32";
-          td.style.fontWeight = "bold";
-          td.style.textShadow = "1px 1px 0px #000";
-        } else if (pieceStyles[y][x] === "blue") {
-          td.style.color = "#1E90FF";
-          td.style.fontWeight = "bold";
-          td.style.textShadow = "1px 1px 0px #000";
-        }
-
-        if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) {
-          td.classList.add("moved");
-        }
-      }
-      if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
-      if (legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
-      
-      td.onclick = () => onCellClick(x, y);
-      tr.appendChild(td);
-    }
-    board.appendChild(tr);
-  }
-  renderHands();
-
-  const blackBox = document.getElementById("blackHandBox");
-  const whiteBox = document.getElementById("whiteHandBox");
-
-  if (blackBox) blackBox.classList.remove("active");
-  if (whiteBox) whiteBox.classList.remove("active");
-
-  if (!gameOver) {
-    if (turn === "black" && blackBox) blackBox.classList.add("active");
-    else if (turn === "white" && whiteBox) whiteBox.classList.add("active");
-  }
-  
-  updateSkillButton();
-}
-
-function renderHands() {
-  const order = ["P", "L", "N", "S", "G", "B", "R"];
-  hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
-  blackHandDiv.innerHTML = "";
-  whiteHandDiv.innerHTML = "";
-
-  hands.black.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "black" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("black", i);
-    blackHandDiv.appendChild(span);
-  });
-
-  hands.white.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "white" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("white", i);
-    whiteHandDiv.appendChild(span);
-  });
-}
-
+// クリック時の処理
+// ※盤面クリック時の挙動はモードごとに微妙に違う（CPU手番判定など）ため、
+//   game_coreには移さず、ここでフックして共通処理を呼ぶ形にします。
 function onCellClick(x, y) {
   if (gameOver) return;
 
-  if (isSkillTargeting) {
+  // スキルターゲット選択モード
+  if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
-      
       const result = currentSkill.execute(x, y);
-
       if (result === null) {
           legalMoves = currentSkill.getValidTargets();
           render();
           statusDiv.textContent = "移動させる場所を選んでください";
           return; 
       }
-
       history.push(deepCopyState());
-
       const boardTable = document.getElementById("board");
       if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
       const endsTurn = (currentSkill.endsTurn !== false);
-
-      // 必殺技成功時はフラグを立てる
       window.skillUsed = true; 
       skillUseCount++;
 
@@ -306,7 +137,6 @@ function onCellClick(x, y) {
           const kifuStr = result; 
           kifu.push(""); 
           kifu[kifu.length - 1] = kifuStr;
-          
           moveCount++;
           turn = (turn === "black" ? "white" : "black");
       } else {
@@ -330,6 +160,7 @@ function onCellClick(x, y) {
       render();
       if (typeof showKifu === "function") showKifu();
 
+      // CPU思考呼び出し
       if (endsTurn && !isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
         setTimeout(() => cpuMove(), 1000);
       }
@@ -337,8 +168,10 @@ function onCellClick(x, y) {
     return;
   }
 
+  // CPUの手番なら無視
   if (cpuEnabled && turn === cpuSide) return;
 
+  // 通常の駒選択
   if (!selected) {
     const piece = boardState[y][x];
     if (!piece) return;
@@ -347,9 +180,7 @@ function onCellClick(x, y) {
     selected = { x, y, fromHand: false };
     legalMoves = getLegalMoves(x, y);
     
-    // ★★★ ここで「駒取り禁止」を適用 ★★★
     if (window.isCaptureRestricted) {
-        // 移動先（m.x, m.y）に駒がある手（＝相手の駒を取る手）を除外する
         legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
     }
 
@@ -357,14 +188,15 @@ function onCellClick(x, y) {
     return;
   }
 
+  // 移動実行
   const sel = selected;
   if (legalMoves.some(m => m.x === x && m.y === y)) {
     movePieceWithSelected(sel, x, y);
+  } else {
+    selected = null;
+    legalMoves = [];
+    render();
   }
-
-  selected = null;
-  legalMoves = [];
-  render();
 }
 
 function selectFromHand(player, index) {
@@ -375,10 +207,9 @@ function selectFromHand(player, index) {
   render();
 }
 
-// 駒を動かす（チェックとポップアップのみ）
 function movePieceWithSelected(sel, x, y) {
   if (sel.fromHand) {
-    executeMove(sel, x, y, false);
+    executeMove(sel, x, y, false); // game_core.js の関数を呼び出す
     return;
   }
 
@@ -389,11 +220,10 @@ function movePieceWithSelected(sel, x, y) {
   const base = piece.replace("+","").toUpperCase();
 
   if (!isPromoted && canPromote(base) && 
-     (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
+      (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
     
-    // CPUはポップアップなし
     if (cpuEnabled && turn === cpuSide) {
-      executeMove(sel, x, y, true); // CPUは常に成る
+      executeMove(sel, x, y, true);
     } else {
       const mustPromote =
         (base === "P" || base === "L") && (y === (player === "black" ? 0 : 8)) ||
@@ -417,158 +247,21 @@ function movePieceWithSelected(sel, x, y) {
   }
 }
 
-// 実際の移動処理
-function executeMove(sel, x, y, doPromote) {
-  history.push(deepCopyState());
-
-  const pieceBefore = sel.fromHand
-    ? hands[sel.player][sel.index]
-    : boardState[sel.y][sel.x];
-  const boardBefore = boardState.map(r => r.slice());
-  const moveNumber = kifu.length + 1; 
-
-  if (moveSound) {
-    moveSound.currentTime = 0;
-    moveSound.volume = 0.3;
-    moveSound.play().catch(() => {});
-  }
-
-  if (sel.fromHand) {
-    const piece = hands[sel.player][sel.index];
-    boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
-    hands[sel.player].splice(sel.index, 1);
-    pieceStyles[y][x] = null;
-  } else {
-    let piece = boardState[sel.y][sel.x];
-    const target = boardState[y][x];
-    if (target) hands[turn].push(target.replace("+","").toUpperCase());
-
-    const isWhite = piece === piece.toLowerCase();
-    const player = isWhite ? "white" : "black";
-    const base = piece.replace("+","").toUpperCase();
-
-    if (doPromote) {
-      piece = promote(piece.toUpperCase());
-      if (player === "white") piece = piece.toLowerCase();
-      sel.promoted = true;
-      if (promoteSound) {
-        promoteSound.currentTime = 0;
-        promoteSound.volume = 0.8;
-        promoteSound.play().catch(() => {});
-      }
-      const boardTable = document.getElementById("board");
-      if (boardTable) {
-        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
-        void boardTable.offsetWidth;
-        if (base === "R") {
-            boardTable.classList.add("flash-green");
-            setTimeout(() => boardTable.classList.remove("flash-green"), 2000);
-        } else if (base === "B") {
-            boardTable.classList.add("flash-orange");
-            setTimeout(() => boardTable.classList.remove("flash-orange"), 2000);
-        }
-      }
-    } else {
-      if (!piece.includes("+") && canPromote(base) && 
-         (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
-         sel.unpromoted = true;
-      }
-    }
-    boardState[sel.y][sel.x] = "";
-    boardState[y][x] = piece;
-    pieceStyles[y][x] = pieceStyles[sel.y][sel.x];
-    pieceStyles[sel.y][sel.x] = null;
-  }
-
-  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
-  const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
-
-  kifu.push(""); 
-  if (lastSkillKifu !== "") {
-      kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
-      lastSkillKifu = ""; 
-  } else {
-      kifu[kifu.length - 1] = currentMoveStr;
-  }
-
-  lastMoveTo = { x, y };
-
-  if (!isSimulating && turn !== cpuSide) {
-    lastPlayerMove = {
-      piece: pieceBefore.replace("+","").toUpperCase(),
-      toX: x, toY: y
-    };
-  }
-
-  turn = turn === "black" ? "white" : "black";
-
-  // ★★★ 手番交代のタイミングで、攻撃禁止フラグを解除 ★★★
-  window.isCaptureRestricted = false;
-
-  if (typeof showKifu === "function") showKifu();
-
-  // 画面更新
-  render();
-
-  if (!gameOver) startTimer();
-  else stopTimer();
-
-  moveCount++;
-
-  // CPU思考開始
-  if (!isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
-    setTimeout(() => cpuMove(), 1000);
-  }
-
-  // 終了判定
-  if (moveCount >= 500) {
-    gameOver = true;
-    winner = null;
-    statusDiv.textContent = "500手に達したため、引き分けです。";
-    saveGameResult(null); // 引き分け保存
-    if (typeof showKifu === "function") showKifu();
-    render(); return;
-  }
-  if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
-    gameOver = true;
-    winner = turn === "black" ? "white" : "black";
-    saveGameResult(winner); // 勝者を渡して保存
-    if (typeof showKifu === "function") showKifu();
-    render(); return;
-  }
-  const key = getPositionKey();
-  positionHistory[key] = (positionHistory[key] || 0) + 1;
-  recordRepetition();
-  if (positionHistory[key] >= 4) {
-    gameOver = true;
-    statusDiv.textContent = "千日手です。引き分け。";
-    if (typeof showKifu === "function") showKifu();
-    render();
-  }
-}
-
-// 投了ボタンが押された時（モーダルを開く）
+// 投了・スキルUI系
 function resignGame() {
     if (gameOver) return;
     const modal = document.getElementById("resignModal");
-    if (modal) {
-        modal.style.display = "flex";
-    } else {
-        if (confirm("投了しますか？")) executeResign();
-    }
+    if (modal) modal.style.display = "flex";
+    else if (confirm("投了しますか？")) executeResign();
 }
 
-// 投了を実行する
 function executeResign() {
     closeResignModal();
     gameOver = true;
     stopTimer();
-    winner = "white"; // CPUの勝ちにする
-    
-    // Firebaseに保存（負けとして記録）
+    winner = "white"; 
     if (typeof saveGameResult === "function") saveGameResult(winner);
-    
-    render(); // 演出とボタンを表示
+    render();
 }
 
 function closeResignModal() {
@@ -592,37 +285,22 @@ function toggleSkillMode() {
   if (modal) modal.style.display = "flex";
 }
 
-// ★★★ 2. ポップアップで「発動」を選んだとき（修正版） ★★★
 function confirmSkillActivate() {
-  // ポップアップを閉じる
   closeSkillModal();
-  
-  // スキル状態をリセット（念のため）
   if (currentSkill.reset) currentSkill.reset();
   selected = null;
   
-  // ★重要：モードに入る前に、ターゲットを取得してみる
   const targets = currentSkill.getValidTargets();
-
-  // ★安全装置：もし候補が1つもなければ、アラートを出して強制キャンセル！
-  // これにより、何も選べずにゲームが進行不能になるのを防ぎます
   if (!targets || targets.length === 0) {
-      alert("この必殺技で動かせる有効な場所がありません。\n（王手放置になる、または動かせる駒がないなど）");
-      
-      // 必殺技モードに入らずに終了
+      alert("この必殺技で動かせる有効な場所がありません。");
       isSkillTargeting = false;
       return; 
   }
 
-  // 候補がある場合のみ、モード移行して続行
   isSkillTargeting = true;
-  legalMoves = targets; // 取得済みのターゲットをセット
-
-  // 盤面をライトグリーンにする
+  legalMoves = targets;
   const boardTable = document.getElementById("board");
-  if (boardTable) {
-      boardTable.classList.add("skill-targeting-mode");
-  }
+  if (boardTable) boardTable.classList.add("skill-targeting-mode");
   
   render();
   statusDiv.textContent = `必殺技【${currentSkill.name}】：発動するマスを選んでください`;
@@ -657,55 +335,19 @@ function updateSkillButton() {
   }
 }
 
-function playSkillEffect(imageName, soundName, flashColor) {
-  const img = document.getElementById("skillCutIn");
-  if (img && imageName) {
-    img.src = "script/image/" + imageName;
-    img.classList.remove("cut-in-active");
-    void img.offsetWidth; 
-    img.classList.add("cut-in-active");
-  }
-  if (soundName) {
-    if (Array.isArray(soundName)) {
-      soundName.forEach(name => {
-        const a = new Audio("script/audio/" + name);
-        a.volume = 1.0;
-        a.play().catch(e => console.log("再生エラー: " + name));
-      });
-    } else {
-      const audio = document.getElementById("skillSound");
-      if (audio) {
-        audio.src = "script/audio/" + soundName;
-        audio.volume = 1.0;
-        audio.play().catch(e => console.log("再生エラー: " + soundName));
-      }
-    }
-  }
-  const boardTable = document.getElementById("board");
-  if (boardTable && flashColor) {
-    boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
-    void boardTable.offsetWidth; 
-    if (flashColor) boardTable.classList.add("flash-" + flashColor);
-  }
-}
-
-// ポップアップのボタンから呼ばれる関数
 function resolvePromotion(doPromote) {
   const modal = document.getElementById("promoteModal");
   if (modal) modal.style.display = "none";
-
   if (pendingMove) {
     executeMove(pendingMove.sel, pendingMove.x, pendingMove.y, doPromote);
     pendingMove = null;
   }
 }
 
-// ★★★ 棋譜エリアの表示/非表示を切り替える ★★★
 function toggleKifu() {
     const area = document.getElementById("kifuArea");
     if (area.style.display === "none") {
         area.style.display = "block";
-        // 表示した瞬間に一番下（最新の手）までスクロール
         const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
         if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
     } else {
@@ -713,7 +355,6 @@ function toggleKifu() {
     }
 }
 
-// ★★★ 棋譜テキストをコピーする（div対応版） ★★★
 function copyKifuText() {
     const kifuDiv = document.getElementById("kifu");
     if (kifuDiv) {
@@ -723,26 +364,19 @@ function copyKifuText() {
     }
 }
 
-// script/main.js の一番下にある関数をこのように修正
 function saveGameResult(res) {
     const user = auth.currentUser;
     if (!user) return; 
-
-
-    // これにより、既存の cpu_tawamure.html は書き換え不要になります
     const opponentDisplayName = window.opponentName || "CPU対局"; 
-    
     const isWin = (res === "black"); 
-    
     const gameRecord = {
         date: new Date(), 
-        opponent: opponentDisplayName, // 変数名に合わせる
+        opponent: opponentDisplayName,
         moves: moveCount,
         result: isWin ? "WIN" : "LOSE",
-        mode: "offline", // ★ここを追加
+        mode: "offline",
         kifuData: kifu 
     };
-
     db.collection("users").doc(user.uid).update({
         win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
         lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
