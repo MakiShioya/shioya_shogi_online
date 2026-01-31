@@ -12,8 +12,8 @@ const PassionateSupport = {
     backgroundColor: "#FF4500", 
     color: "#FFFFFF",
     border: "2px solid #8B0000",
-    width: "200px",
-    height: "100px",
+    width: "160px",
+    height: "80px",
     fontSize: "20px",
     fontWeight: "bold"
   },
