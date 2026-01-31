@@ -762,15 +762,53 @@ function resolvePromotion(doPromote) {
   }
 }
 
+// --- 棋譜表示の制御（ポップアップ化） ---
 function toggleKifu() {
-  const area = document.getElementById("kifuArea");
-  if (area.style.display === "none") {
-      area.style.display = "block";
-      const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
-      if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
-  } else {
-      area.style.display = "none";
-  }
+    const area = document.getElementById("kifuArea");
+    if (area.style.display === "none") {
+        area.style.display = "flex"; // 中央揃え
+        const scrollBox = document.getElementById("kifu");
+        if (scrollBox) {
+            setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 50);
+        }
+    } else {
+        area.style.display = "none";
+    }
+}
+
+// --- 音量設定の制御 ---
+function toggleVolume() {
+    const modal = document.getElementById("volumeModal");
+    if (modal) modal.style.display = "flex";
+}
+
+function updateVolume() {
+    const bgm = document.getElementById("bgm");
+    const range = document.getElementById("bgmRange");
+    if (bgm && range) {
+        bgm.volume = range.value;
+        bgm.muted = false;
+    }
+}
+
+function closeVolumeModal() {
+    document.getElementById("volumeModal").style.display = "none";
+}
+
+// --- ルール確認の制御 ---
+function showRules() {
+    const modal = document.getElementById("rulesModal");
+    if (modal) modal.style.display = "flex";
+}
+
+function closeRulesModal() {
+    document.getElementById("rulesModal").style.display = "none";
+}
+
+// --- メニュー開閉（既に存在する場合は上書き） ---
+function toggleMenu() {
+    const panel = document.getElementById('menuPanel');
+    if (panel) panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
 }
 
 function copyKifuText() {
