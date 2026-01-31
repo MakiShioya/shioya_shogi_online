@@ -12,8 +12,8 @@ const BluePrint = {
     backgroundColor: "#0000CD", // ミディアムブルー
     color: "#FFFFFF",
     border: "2px solid #191970", // ミッドナイトブルー
-    width: "200px",
-    height: "100px",
+    width: "160px",
+    height: "80px",
     fontSize: "20px",
     fontWeight: "bold"
   },
