@@ -23,6 +23,7 @@ let recommendedMove = null;
 
 // --- 好手（Discovery）検知用変数 ---
 let discoveryFlags = [];    // 各手番が「好手」かどうかのフラグ
+let matchFlags = [];        // ★追加：各手番が「AI一致」かどうかのフラグ
 let lastBestMoveAt1s = null; // 1秒時点での候補手
 let searchStartTime = 0;    // 解析開始時刻
 
@@ -111,6 +112,10 @@ function handleEngineMessage(msg) {
             if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
                 discoveryFlags[analyzingStep + 1] = true; 
             }
+            // 2. 一致判定（青点）：単純にAIの最善手と一致したか（★追加部分）
+            if (usiMove === kifuMoveUsi) {
+                matchFlags[analyzingStep + 1] = true;
+            }
 
             if (isWaitingRecommendation) {
                 isWaitingRecommendation = false;
@@ -194,6 +199,7 @@ function loadKifu() {
     replayStates = [];
     evalHistory = [0]; 
     discoveryFlags = [false]; 
+    matchFlags = [false];
     replayStates.push(JSON.parse(JSON.stringify({ boardState, hands, turn: "black", lastMove: { from: null, to: null }, skillImage: null })));
 
     const lines = text.split(/\n/).filter(l => l.includes("手目："));
@@ -204,6 +210,7 @@ function loadKifu() {
             replayStates.push(nextState);
             evalHistory.push(undefined); 
             discoveryFlags.push(false);
+            matchFlags.push(false);
             lastTo = nextState.lastMove.to;
         });
         currentStep = 0;
@@ -457,12 +464,24 @@ function initChart() {
             backgroundColor: 'rgba(255, 69, 0, 0.1)', 
             fill: true, 
             tension: 0.3,
-            // ★好手の点だけを星型にする設定
-            pointStyle: (ctx) => (discoveryFlags[ctx.dataIndex] ? 'star' : 'circle'),
-            pointRadius: (ctx) => (discoveryFlags[ctx.dataIndex] ? 10 : 2),
-            pointBackgroundColor: (ctx) => (discoveryFlags[ctx.dataIndex] ? '#ffd700' : '#ff4500'),
-            pointBorderColor: (ctx) => (discoveryFlags[ctx.dataIndex] ? '#b8860b' : '#ff4500'),
-            pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] ? 2 : 1)
+            // 1. 点の形（好手なら星、それ以外は丸）
+            pointStyle: (ctx) => discoveryFlags[ctx.dataIndex] ? 'star' : 'circle',
+
+            // 2. 点の大きさ（好手=10、一致=5、通常=2）
+            pointRadius: (ctx) => discoveryFlags[ctx.dataIndex] ? 10 : (matchFlags[ctx.dataIndex] ? 3 : 2),
+
+            // 3. 点の色（好手=金、一致=青、通常=赤）
+            pointBackgroundColor: (ctx) => {
+                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; // 金色
+                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     // 青色
+                return '#ff4500';                                    // 赤色
+            },
+
+    // 4. 点の枠線色（好手=濃い金、一致=濃い青、通常=赤）
+    pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
+
+    // 5. 枠線の太さ（好手と一致は強調する）
+    pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
         }] },
         options: {
             responsive: true, maintainAspectRatio: false,
