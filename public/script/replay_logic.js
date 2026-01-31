@@ -293,28 +293,89 @@ function applyState(state) {
     }
 }
 
+// --- 修正版 render 関数 ---
 function render() {
     const bt = document.getElementById("board");
     if (!bt) return;
     bt.innerHTML = "";
+
     for (let y = 0; y < 9; y++) {
         const tr = document.createElement("tr");
         for (let x = 0; x < 9; x++) {
             const td = document.createElement("td");
-            const p = boardState[y][x];
-            if (p) {
-                const isW = p === p.toLowerCase();
-                const k = p.startsWith("+") ? "+" + p.replace("+","").toUpperCase() : p.toUpperCase();
-                td.textContent = (typeof pieceName !== 'undefined') ? pieceName[k] : k;
-                if (isW) td.style.transform = "rotate(180deg)";
-            }
+            const p = boardState[y][x]; // 実際の駒
+            
+            // おすすめの一手がある場合、その情報を優先して表示するか判定
+            let displayPiece = p;
+            let isRecommendation = false;
+
             if (recommendedMove && recommendedMove.x === x && recommendedMove.y === y) {
-                td.textContent = recommendedMove.name;
-                td.classList.add("recommended-cell");
-                if (window.turn === "white") td.style.transform = "rotate(180deg)";
+                // おすすめの手の場所に「おすすめの駒名」を表示する（元のロジックを踏襲）
+                // ただし、ここは文字だけなので、表示用に擬似的なキーを作成
+                // （※ここは簡易的な対応です。本来はrecommendedMove.nameからキーを逆算するのが理想ですが、
+                //   とりあえず表示用テキストとして扱います）
+                isRecommendation = true;
             }
-            if (lastMoveInfo.from && lastMoveInfo.from.x === x && lastMoveInfo.from.y === y) td.classList.add("move-from");
-            if (lastMoveInfo.to && lastMoveInfo.to.x === x && lastMoveInfo.to.y === y) td.classList.add("move-to");
+
+            // --- 駒の描画処理 ---
+            if (displayPiece || isRecommendation) {
+                const isW = displayPiece === displayPiece.toLowerCase() && displayPiece !== "";
+                const key = displayPiece.startsWith("+") ? "+" + displayPiece.replace("+","").toUpperCase() : displayPiece.toUpperCase();
+                
+                // おすすめ表示の場合はその文字、そうでなければ pieceName から取得
+                let charText = (typeof pieceName !== 'undefined' && pieceName[key]) ? pieceName[key] : key;
+                if (isRecommendation) charText = recommendedMove.name;
+
+                // ★ハイブリッド方式：コンテナ作成
+                const container = document.createElement("div");
+                container.className = "piece-container";
+
+                // ★サイズ補正クラス (例: size-P)
+                if (!isRecommendation && displayPiece !== "") {
+                    const baseType = displayPiece.replace("+", "").toUpperCase();
+                    container.classList.add("size-" + baseType);
+                }
+
+                // ★後手番の影反転
+                if (isW) {
+                    container.classList.add("gote");
+                }
+
+                // 文字表示
+                const textSpan = document.createElement("span");
+                textSpan.className = "piece-text";
+                if (key.startsWith("+")) textSpan.classList.add("promoted");
+                
+                textSpan.textContent = charText;
+
+                // おすすめの場所の特別スタイル
+                if (isRecommendation) {
+                    td.classList.add("recommended-cell");
+　                  textSpan.style.color = "#007bff";       // 青色
+                    textSpan.style.fontWeight = "bold";     // 太字
+                    textSpan.style.textShadow = "1px 1px 0px #fff"; // 視認性向上のための白フチ
+                    // おすすめの手番が後手なら回転
+                    if (window.turn === "white") {
+                        container.classList.add("gote");
+                        td.style.transform = "rotate(180deg)";
+                    }
+                } else if (isW) {
+                    td.style.transform = "rotate(180deg)";
+                }
+
+                container.appendChild(textSpan);
+                td.appendChild(container);
+            }
+
+            // 移動元のハイライト
+            if (lastMoveInfo.from && lastMoveInfo.from.x === x && lastMoveInfo.from.y === y) {
+                td.classList.add("move-from");
+            }
+            // 移動先のハイライト
+            if (lastMoveInfo.to && lastMoveInfo.to.x === x && lastMoveInfo.to.y === y) {
+                td.classList.add("move-to");
+            }
+
             tr.appendChild(td);
         }
         bt.appendChild(tr);
@@ -323,12 +384,54 @@ function render() {
     setTimeout(drawRecommendationArrow, 10);
 }
 
+// --- 修正版 renderHands 関数 ---
 function renderHands() {
     const bh = document.getElementById("blackHand"), wh = document.getElementById("whiteHand");
     if (!bh || !wh) return;
-    const gc = (p) => (typeof pieceName !== 'undefined') ? pieceName[p] : p;
-    bh.innerHTML = hands.black.map(p => `<span>${gc(p)}</span>`).join("");
-    wh.innerHTML = hands.white.map(p => `<span>${gc(p)}</span>`).join("");
+
+    // 持ち駒の並び順定義
+    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; // K(玉)も念のため追加
+    
+    // ソート実行
+    hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+    // HTMLのリセット
+    bh.innerHTML = "";
+    wh.innerHTML = "";
+
+    // 持ち駒生成ヘルパー関数
+    const createHandPiece = (player, p) => {
+        // ★コンテナ作成
+        const container = document.createElement("div");
+        container.className = "hand-piece-container";
+
+        // ★後手の影反転
+        if (player === "white") {
+            container.classList.add("gote");
+            // コンテナ自体を回転（CSSで対応済みなら不要ですが、念のため）
+            container.style.transform = "rotate(180deg)";
+        }
+
+        // 文字作成
+        const textSpan = document.createElement("span");
+        textSpan.className = "piece-text";
+        // pieceNameが定義されていれば変換、なければそのまま
+        textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
+
+        container.appendChild(textSpan);
+        return container;
+    };
+
+    // 先手の持ち駒生成
+    hands.black.forEach(p => {
+        bh.appendChild(createHandPiece("black", p));
+    });
+
+    // 後手の持ち駒生成
+    hands.white.forEach(p => {
+        wh.appendChild(createHandPiece("white", p));
+    });
 }
 
 function playReplayCutIn(imageName) {
