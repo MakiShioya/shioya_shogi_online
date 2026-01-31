@@ -24,15 +24,33 @@ body {
 #center { text-align: center; }
 #status { font-weight: bold; margin-bottom: 5px; }
 #checkStatus { color: red; font-weight: bold; margin-bottom: 10px; }
-table {
-  border-collapse: collapse;
-  /* 画像を指定 */
-  background-image: url('image/shogiban.png');
-  background-size: 100% 100%; /* 盤に合わせて引き伸ばす */
-  background-repeat: no-repeat;
-  /* 画像がない時の予備色 */
-  background-color: #deb887;
+.shogiban-outer {
+    padding: 15px; /* ここが「枠」の太さになります */
+    background-color: #e3c18d; /* 枠の色（木材の色） */
+    background-image: url('image/shogiban.png'); /* 枠部分にも木目をつける */
+    background-size: cover;
+    
+    /* 立体感を出すための境界線と影 */
+
+    box-shadow: 
+        offset 5px 5px 15px rgba(0,0,0,0.4), /* 全体の影 */
+        inner 0 0 10px rgba(0,0,0,0.2);     /* 枠の内側の影 */
+    
+    display: inline-block;
+    line-height: 0; /* 余計な隙間を消す */
 }
+
+/* 盤面（テーブル）のスタイル調整 */
+table {
+    border-collapse: collapse;
+    /* 盤面部分は少し明るく、または別の木目画像にするとリアルです */
+
+    background-size: 100% 100%;
+    
+    /* 盤面の周りを細い黒線で囲む */
+    outline: 2px solid #000;
+}
+
 
 /* マスのサイズ設定 */
 td { 
@@ -383,4 +401,3 @@ body.view-white .hand-piece-container.gote.selected {
   border-radius: 3px;
   cursor: pointer;
 }
-
