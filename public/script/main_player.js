@@ -1,8 +1,370 @@
 // script/main_player.js (Refactored for PvP)
-// 対人戦（オフライン）固有のロジックのみを記述
 
-// ★修正：game_core.js で宣言済みの board などの変数は削除
-// ここには main_player.js で使うボタンのみ残す
+
+// ★変数を window オブジェクトに登録（これでどこからでも見えるようになります）
+window.board = document.getElementById("board");
+window.statusDiv = document.getElementById("status");
+window.checkStatusDiv = document.getElementById("checkStatus");
+window.blackHandDiv = document.getElementById("blackHand");
+window.whiteHandDiv = document.getElementById("whiteHand");
+
+// ★コールバック用変数
+window.onTurnComplete = null;
+
+// --- 描画関連 (render) ---
+window.render = function() {
+
+  if (!window.board) return;
+
+  if (gameOver) {
+    if (winner === "black") window.statusDiv.textContent = "先手の勝ちです！";
+    else if (winner === "white") window.statusDiv.textContent = "後手の勝ちです！";
+    else window.statusDiv.textContent = "引き分けです。";
+    if(window.checkStatusDiv) window.checkStatusDiv.textContent = "";
+
+    if (typeof hasShownEndEffect !== 'undefined' && !hasShownEndEffect && winner) {
+        window.playSkillEffect("shori.PNG", "shori.mp3", null);
+        hasShownEndEffect = true; 
+    }
+
+    if (!document.getElementById("resetBtn")) {
+       const btn = document.createElement("button");
+       btn.id = "resetBtn";
+       btn.textContent = "ホームに戻る"; 
+       Object.assign(btn.style, {
+           padding: "10px 20px", marginTop: "10px", fontSize: "16px",
+           backgroundColor: "#d32f2f", color: "white", border: "none",
+           borderRadius: "5px", cursor: "pointer"
+       });
+       btn.onclick = () => { window.location.href = "home.html"; };
+       window.statusDiv.appendChild(document.createElement("br"));
+       window.statusDiv.appendChild(btn);
+    }
+  } else {
+    if (typeof isSkillTargeting !== 'undefined' && !isSkillTargeting) {
+      let msg = "手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
+      if (window.isCaptureRestricted) msg += " 【攻撃禁止】";
+      
+      if (window.statusDiv && !window.statusDiv.textContent.includes("あなた")) {
+          msg += (isKingInCheck(turn) ? "　王手！" : "");
+          window.statusDiv.textContent = msg;
+      }
+    }
+    if(window.checkStatusDiv) window.checkStatusDiv.textContent = "";
+  }
+
+  // 盤面描画
+  window.board.innerHTML = "";
+  if (!boardState || boardState.length === 0) return;
+
+  for (let y = 0; y < 9; y++) {
+    const tr = document.createElement("tr");
+    for (let x = 0; x < 9; x++) {
+      const td = document.createElement("td");
+      const piece = boardState[y][x];
+      
+      if (piece) {
+        const isWhite = piece === piece.toLowerCase();
+        const type = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
+        const baseType = piece.replace("+", "").toUpperCase();
+        const name = (typeof pieceName !== 'undefined') ? pieceName[type] : type;
+        const isPromoted = piece.startsWith("+");
+
+        // ★修正：駒を画像コンテナとして作成
+        const container = document.createElement("div");
+        container.className = "piece-container";
+        if (isWhite) {
+            container.classList.add("gote");
+        }
+        container.classList.add("size-" + baseType);
+        // 文字部分
+        const textSpan = document.createElement("span");
+        textSpan.className = "piece-text";
+        if (isPromoted) textSpan.classList.add("promoted");
+        
+        // 1文字だけ表示（例：「成香」→「香」）
+        textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
+
+        // スキル演出（グリーン）
+        if (pieceStyles[y][x] === "green") {
+          textSpan.style.color = "#32CD32";
+          textSpan.style.textShadow = "1px 1px 2px #000";
+        }
+
+        container.appendChild(textSpan);
+        td.appendChild(container);
+
+        // 後手は180度回転
+        if (isWhite) td.style.transform = "rotate(180deg)";
+        else td.style.transform = "none";
+        
+        if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) td.classList.add("moved");
+      }
+      if (lastMoveFrom && lastMoveFrom.x === x && lastMoveFrom.y === y) {
+          td.classList.add("move-from");
+      }
+      if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
+      if (typeof legalMoves !== 'undefined' && legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
+      
+      td.onclick = () => {
+          if(typeof onCellClick === "function") onCellClick(x, y);
+      };
+      tr.appendChild(td);
+    }
+    window.board.appendChild(tr);
+  }
+  window.renderHands();
+
+  if (window.blackHandDiv) window.blackHandDiv.classList.remove("active");
+  if (window.whiteHandDiv) window.whiteHandDiv.classList.remove("active");
+
+  if (!gameOver) {
+    if (turn === "black" && window.blackHandDiv) window.blackHandDiv.classList.add("active");
+    else if (turn === "white" && window.whiteHandDiv) window.whiteHandDiv.classList.add("active");
+  }
+  
+  if(typeof updateSkillButton === "function") updateSkillButton();
+};
+
+// 持ち駒描画
+window.renderHands = function() {
+  if (!window.blackHandDiv || !window.whiteHandDiv) return;
+  const order = ["P", "L", "N", "S", "G", "B", "R"];
+  if (typeof hands === 'undefined') return;
+
+  hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  window.blackHandDiv.innerHTML = "";
+  window.whiteHandDiv.innerHTML = "";
+
+  const createHandPiece = (player, p, i) => {
+      // ★修正：持ち駒も画像コンテナ化
+      const container = document.createElement("div");
+      container.className = "hand-piece-container";
+      if (player === "white") {
+          container.classList.add("gote");
+      }
+      const textSpan = document.createElement("span");
+      textSpan.className = "piece-text";
+      textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
+
+      container.appendChild(textSpan);
+
+      if (selected && selected.fromHand && selected.player === player && selected.index === i) container.classList.add("selected");
+      
+      container.onclick = () => {
+          if(typeof selectFromHand === "function") selectFromHand(player, i);
+      };
+
+      // 後手は反転
+      if (player === "white") container.style.transform = "rotate(180deg)";
+
+      return container;
+  };
+
+  hands.black.forEach((p, i) => window.blackHandDiv.appendChild(createHandPiece("black", p, i)));
+  hands.white.forEach((p, i) => window.whiteHandDiv.appendChild(createHandPiece("white", p, i)));
+};
+
+// --- 移動実行 (executeMove) ---
+window.executeMove = function(sel, x, y, doPromote) {
+  history.push(deepCopyState());
+
+  // ★★★ ここを追加（移動元を記録） ★★★
+  if (sel.fromHand) {
+      lastMoveFrom = null; // 持ち駒から打った場合はなし
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
+
+  const pieceBefore = sel.fromHand
+    ? hands[sel.player][sel.index]
+    : boardState[sel.y][sel.x];
+  const boardBefore = boardState.map(r => r.slice());
+  const moveNumber = kifu.length + 1; 
+
+  if (moveSound) {
+    moveSound.currentTime = 0;
+    moveSound.volume = 0.3;
+    moveSound.play().catch(() => {});
+  }
+
+  // 盤面更新
+  if (sel.fromHand) {
+    const piece = hands[sel.player][sel.index];
+    boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
+    hands[sel.player].splice(sel.index, 1);
+    pieceStyles[y][x] = null;
+  } else {
+    let piece = boardState[sel.y][sel.x];
+    const target = boardState[y][x];
+    if (target) hands[turn].push(target.replace("+","").toUpperCase());
+
+    const isWhite = piece === piece.toLowerCase();
+    const player = isWhite ? "white" : "black";
+    const base = piece.replace("+","").toUpperCase();
+
+    if (doPromote) {
+      piece = promote(piece.toUpperCase());
+      if (player === "white") piece = piece.toLowerCase();
+      sel.promoted = true;
+
+      if (promoteSound) {
+        promoteSound.currentTime = 0;
+        promoteSound.play().catch(() => {});
+      }
+      
+      if (window.board) {
+        window.board.classList.remove("flash-green", "flash-orange");
+        void window.board.offsetWidth;
+        if (base === "R") {
+            window.board.classList.add("flash-green");
+            setTimeout(() => window.board.classList.remove("flash-green"), 2000);
+        } else if (base === "B") {
+            window.board.classList.add("flash-orange");
+            setTimeout(() => window.board.classList.remove("flash-orange"), 2000);
+        }
+      }
+    } else {
+      if (!piece.includes("+") && canPromote(base) && 
+         (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
+         sel.unpromoted = true;
+      }
+    }
+
+    boardState[sel.y][sel.x] = "";
+    boardState[y][x] = piece;
+    pieceStyles[y][x] = pieceStyles[sel.y][sel.x];
+    pieceStyles[sel.y][sel.x] = null;
+  }
+
+  // 棋譜記録
+  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
+  const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
+  kifu.push(""); 
+  
+  if (typeof lastSkillKifu !== 'undefined' && lastSkillKifu !== "") {
+      kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
+      lastSkillKifu = ""; 
+  } else {
+      kifu[kifu.length - 1] = currentMoveStr;
+  }
+
+  lastMoveTo = { x, y };
+
+  if (turn !== "") { 
+    lastPlayerMove = {
+      piece: pieceBefore.replace("+","").toUpperCase(),
+      toX: x, toY: y
+    };
+  }
+
+  turn = turn === "black" ? "white" : "black";
+  window.isCaptureRestricted = false;
+  
+  // リセット
+  selected = null;
+  legalMoves = [];
+
+  window.render(); 
+  if (typeof showKifu === "function") showKifu();
+
+  if (!gameOver) window.startTimer();
+  else window.stopTimer();
+  moveCount++;
+
+  window.checkGameOver();
+
+  if (typeof window.onTurnComplete === "function") {
+      window.onTurnComplete();
+  }
+};
+
+// 終了判定
+window.checkGameOver = function() {
+  if (moveCount >= 500) {
+    gameOver = true;
+    winner = null;
+    saveGameResult(null);
+    window.render();
+    return;
+  }
+  if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
+    gameOver = true;
+    winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner);
+    window.render();
+    return;
+  }
+  const key = getPositionKey();
+  positionHistory[key] = (positionHistory[key] || 0) + 1;
+  recordRepetition();
+  if (positionHistory[key] >= 4) {
+    gameOver = true;
+    winner = null;
+    if(window.statusDiv) window.statusDiv.textContent = "千日手です。引き分け。";
+    window.render();
+  }
+};
+
+// --- 演出関連 ---
+window.playSkillEffect = function(imageName, soundName, flashColor) {
+  const img = document.getElementById("skillCutIn");
+  if (img && imageName) {
+    img.src = "script/image/" + imageName;
+    img.classList.remove("cut-in-active");
+    void img.offsetWidth;
+    img.classList.add("cut-in-active");
+  }
+
+  if (soundName) {
+    if (Array.isArray(soundName)) {
+      soundName.forEach(name => {
+        const a = new Audio("script/audio/" + name);
+        a.play().catch(e => {});
+      });
+    } else {
+      const audio = document.getElementById("skillSound") || new Audio("script/audio/" + soundName);
+      audio.src = "script/audio/" + soundName;
+      audio.play().catch(e => {});
+    }
+  }
+
+  if (window.board && flashColor) {
+    window.board.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
+    void window.board.offsetWidth; 
+    window.board.classList.add("flash-" + flashColor);
+  }
+};
+
+// --- タイマー関連 ---
+let timerInterval = null;
+let currentSeconds = 0;
+
+window.startTimer = function() {
+  window.stopTimer();
+  currentSeconds = 0;
+  window.updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    currentSeconds++;
+    window.updateTimerDisplay();
+  }, 1000);
+};
+
+window.stopTimer = function() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+};
+
+window.updateTimerDisplay = function() {
+  const timerBox = document.getElementById("timerBox");
+  if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
+};
+
 const resignBtn = document.getElementById("resignBtn");
 
 // ★ PvP用：個別の必殺技管理変数
@@ -51,7 +413,7 @@ window.addEventListener("load", () => {
   playBGM();
   startTimer();
   
-  // ★game_core.js の render を呼ぶ
+  // ★render を呼ぶ
   render();
   
   if (typeof showKifu === "function") showKifu();
@@ -150,7 +512,7 @@ function undoMove() {
   
   const prev = history[history.length - 2];
   history.length -= 2; 
-
+  lastMoveFrom = null;
   restoreState(prev);
 
   window.isCaptureRestricted = false;
@@ -262,7 +624,7 @@ function selectFromHand(player, index) {
 
 function movePieceWithSelected(sel, x, y) {
   if (sel.fromHand) {
-    executeMove(sel, x, y, false); // game_core.js の機能を使用
+    executeMove(sel, x, y, false);
     return;
   }
 
@@ -278,7 +640,7 @@ function movePieceWithSelected(sel, x, y) {
     const mustPromote =
       (base === "P" || base === "L") && (y === (player === "black" ? 0 : 8)) ||
       (base === "N") && (y === (player === "black" ? 0 : 8) || y === (player === "black" ? 1 : 7));
-
+    
     if (mustPromote) {
       executeMove(sel, x, y, true);
     } else {
@@ -393,7 +755,7 @@ function closeSkillModal() {
 
 function resolvePromotion(doPromote) {
   const modal = document.getElementById("promoteModal");
-  if (modal) modal.style.display = "none"; 
+  if (modal) modal.style.display = "none";
   if (pendingMove) {
     executeMove(pendingMove.sel, pendingMove.x, pendingMove.y, doPromote);
     pendingMove = null;
@@ -401,23 +763,23 @@ function resolvePromotion(doPromote) {
 }
 
 function toggleKifu() {
-    const area = document.getElementById("kifuArea");
-    if (area.style.display === "none") {
-        area.style.display = "block";
-        const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
-        if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
-    } else {
-        area.style.display = "none";
-    }
+  const area = document.getElementById("kifuArea");
+  if (area.style.display === "none") {
+      area.style.display = "block";
+      const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
+      if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+  } else {
+      area.style.display = "none";
+  }
 }
 
 function copyKifuText() {
-    const kifuDiv = document.getElementById("kifu");
-    if (kifuDiv) {
-        navigator.clipboard.writeText(kifuDiv.innerText).then(() => {
-            alert("棋譜をコピーしました！");
-        });
-    }
+  const kifuDiv = document.getElementById("kifu");
+  if (kifuDiv) {
+      navigator.clipboard.writeText(kifuDiv.innerText).then(() => {
+          alert("棋譜をコピーしました！");
+      });
+  }
 }
 
 function saveGameResult(res) {
@@ -435,7 +797,7 @@ function saveGameResult(res) {
         opponent: opponentDisplayName,
         moves: moveCount,
         result: resultStatus,
-        mode: "offline_pvp", // ★修正: オフラインPvPとして区別
+        mode: "offline_pvp", 
         kifuData: kifu 
     };
 
