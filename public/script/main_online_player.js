@@ -18,6 +18,11 @@ const myCharId = sessionStorage.getItem('my_character') || 'default';
 socket.on('connect', () => {
     console.log("サーバーに接続しました。キャラ情報を送信します:", myCharId);
     socket.emit('declare character', myCharId);
+    const name = localStorage.getItem('shogi_username') || "ゲスト";
+    socket.emit('chat message', {
+        text: `${name}さんが入室しました`,
+        isSystem: true
+    });
 });
 
 // 変数定義
@@ -1059,3 +1064,86 @@ function updateHandLayout(role) {
         rightSide.appendChild(blackBox);
     }
 }
+
+// ===============================================
+// ★★★ 以下、チャット機能用に追加するコード ★★★
+// ===============================================
+
+// プレイヤー名の取得（localStorageに保存されている名前を使う）
+const myPlayerName = localStorage.getItem('shogi_username') || "ゲスト";
+
+// 1. チャット受信のリスナー設定
+socket.on('chat message', (data) => {
+    addMessageToChatHistory(data);
+});
+
+// 2. チャット画面の開閉切り替え
+function toggleChat() {
+    const body = document.getElementById("chatBody");
+    if (body.style.display === "none") {
+        body.style.display = "flex";
+    } else {
+        body.style.display = "none";
+    }
+}
+
+// 3. メッセージ送信処理
+function sendChatMessage() {
+    const input = document.getElementById("chatInput");
+    const text = input.value.trim();
+    if (!text) return;
+
+    // サーバーへ送信
+    socket.emit('chat message', {
+        name: myPlayerName,
+        text: text,
+        role: myRole // black, white, spectator
+    });
+
+    input.value = ""; // 入力欄クリア
+}
+
+// 4. チャット履歴への追加表示
+function addMessageToChatHistory(data) {
+    const historyDiv = document.getElementById("chatHistory");
+    if (!historyDiv) return;
+
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "chat-msg";
+
+    if (data.isSystem) {
+        // システムメッセージ
+        msgDiv.className += " chat-system";
+        msgDiv.textContent = data.text;
+    } else {
+        // 通常メッセージ
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "chat-name";
+        nameSpan.textContent = data.name + ":";
+        
+        // 名前色分け（先手=黒、後手=グレー、観戦者=緑）
+        if (data.role === "black") nameSpan.style.color = "#000000"; 
+        else if (data.role === "white") nameSpan.style.color = "#666666";
+        else nameSpan.style.color = "#28a745";
+
+        const textSpan = document.createElement("span");
+        textSpan.className = "chat-text";
+        textSpan.textContent = " " + data.text; 
+
+        msgDiv.appendChild(nameSpan);
+        msgDiv.appendChild(textSpan);
+    }
+
+    historyDiv.appendChild(msgDiv);
+    historyDiv.scrollTop = historyDiv.scrollHeight; // 自動スクロール
+}
+
+// 5. Enterキーで送信できるようにする（初期化後に動作）
+document.addEventListener("DOMContentLoaded", () => {
+    const chatInput = document.getElementById("chatInput");
+    if (chatInput) {
+        chatInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendChatMessage();
+        });
+    }
+});
