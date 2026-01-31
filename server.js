@@ -1,7 +1,8 @@
-// server.js (キャラクター同期 + チャット機能対応版)
+// server.js (キャラクター同期 + チャット履歴ファイル保存対応版)
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
+const fs = require('fs'); // ★追加1：ファイルを読み書きする機能「fs」を読み込む
 
 const app = express();
 const server = http.createServer(app);
@@ -9,6 +10,7 @@ const io = new Server(server);
 
 // クラウド環境のポート対応
 const PORT = process.env.PORT || 3000;
+const DATA_FILE = './chat_history.json'; // ★追加2：保存するファイルの名前
 
 app.use(express.static('public'));
 
@@ -21,8 +23,23 @@ let connectedPlayers = {
 // 各プレイヤーが選んだキャラクターIDを保存する辞書
 let playerCharIds = {}; 
 
+// ★追加3：サーバー起動時に、保存ファイルがあれば読み込んで復元する
+let chatHistory = [];
+if (fs.existsSync(DATA_FILE)) {
+    try {
+        const data = fs.readFileSync(DATA_FILE, 'utf8');
+        chatHistory = JSON.parse(data);
+        console.log(`★過去のチャット履歴を ${chatHistory.length} 件読み込みました。`);
+    } catch (e) {
+        console.log("履歴ファイルの読み込みに失敗しました（初回はファイルがないため無視してOK）");
+    }
+}
+
 io.on('connection', (socket) => {
     console.log('誰かが接続しました: ' + socket.id);
+
+    // ★追加4：接続してきた人に、これまでの履歴を渡す
+    socket.emit('chat history', chatHistory);
 
     // クライアントから「私はこのキャラです」と連絡が来たら保存する
     socket.on('declare character', (charId) => {
@@ -50,7 +67,6 @@ io.on('connection', (socket) => {
     if (connectedPlayers.black && connectedPlayers.white) {
         console.log("二人揃いました。対局を開始します！");
         
-        // 少し待ってから（キャラ情報の到着を待つため）開始合図を送る
         setTimeout(() => {
             io.emit('game start', {
                 blackCharId: playerCharIds[connectedPlayers.black] || 'default',
@@ -83,9 +99,20 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('game resign', data);
     });
 
-    // ★★★ 追加：チャットの中継 ★★★
+    // ★★★ 変更：チャットの中継と「ファイル保存」 ★★★
     socket.on('chat message', (data) => {
-        // 全員（送信者含む）にメッセージを送る
+        // 1. 履歴配列に追加
+        chatHistory.push(data);
+        
+        // 2. 100件を超えたら古いのを消す（容量パンク防止）
+        if (chatHistory.length > 100) {
+            chatHistory.shift();
+        }
+
+        // 3. ファイルに書き込んで保存！
+        fs.writeFileSync(DATA_FILE, JSON.stringify(chatHistory, null, 2));
+
+        // 4. 全員に送信
         io.emit('chat message', data);
     });
 
