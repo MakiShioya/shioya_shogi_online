@@ -1,18 +1,21 @@
-// script/main.js (Refactored & Fixed)
-// CPU対戦固有のロジックのみを記述
+// script/main.js (Standalone CPU Battle Version)
 
-// ★修正：game_core.js ですでに宣言されている変数（boardなど）の定義を削除しました。
-// ここには main.js だけで使う resignBtn だけを残します。
+// --- DOM要素の取得 ---
+const board = document.getElementById("board");
+const statusDiv = document.getElementById("status");
+const checkStatusDiv = document.getElementById("checkStatus");
+const blackHandDiv = document.getElementById("blackHand");
+const whiteHandDiv = document.getElementById("whiteHand");
 const resignBtn = document.getElementById("resignBtn");
 
-// グローバル変数
+// --- グローバル変数 ---
 let lastSkillKifu = "";
 let pendingMove = null;
 let hasShownEndEffect = false;
 window.skillUsed = false;
 window.isCaptureRestricted = false;
 
-// 初期化処理
+// --- 初期化処理 ---
 window.addEventListener("load", () => {
   bgm = document.getElementById("bgm");
   moveSound = document.getElementById("moveSound");
@@ -22,7 +25,7 @@ window.addEventListener("load", () => {
 
   if (resignBtn) resignBtn.addEventListener("click", resignGame);
 
-  // CPU戦用のスキル初期化（自分のキャラのみ）
+  // キャラのスキル設定
   const charId = sessionStorage.getItem('char_black') || 'default';
   if (charId === 'default' && typeof CharItsumono !== 'undefined') currentSkill = CharItsumono.skill;
   else if (charId === 'char_a' && typeof CharNekketsu !== 'undefined') currentSkill = CharNekketsu.skill;
@@ -33,89 +36,309 @@ window.addEventListener("load", () => {
   playBGM();
   startTimer();
   
-  // game_core.js の render を呼び出す
+  // 初回描画
   render();
   
   if (typeof showKifu === "function") showKifu();
 
-  const key = getPositionKey();
-  positionHistory[key] = 1;
+  // 千日手判定用の履歴初期化
+  if (typeof getPositionKey === "function") {
+      const key = getPositionKey();
+      positionHistory[key] = 1;
+  }
 });
 
-// ★★★ GameCore へのフック ★★★
-// プレイヤーが駒を動かし終わった後に、自動で呼ばれます
-window.onTurnComplete = function() {
-    // CPUの思考開始
-    if (!isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
-        setTimeout(() => cpuMove(), 1000);
+// --- ★描画関数 (Hybrid: 画像+文字) ---
+function render() {
+  if (!board) return;
+
+  // 勝敗・ステータス表示
+  if (gameOver) {
+    if (winner === "black") statusDiv.textContent = "先手の勝ちです！";
+    else if (winner === "white") statusDiv.textContent = "後手の勝ちです！";
+    else statusDiv.textContent = "引き分けです。";
+    checkStatusDiv.textContent = "";
+
+    if (typeof hasShownEndEffect !== 'undefined' && !hasShownEndEffect && winner) {
+        window.playSkillEffect("shori.PNG", "shori.mp3", null);
+        hasShownEndEffect = true; 
     }
-};
 
-// --- 以下、CPU戦固有の入力処理などは残す ---
-
-function playBGM() {
-  if (!bgm) return;
-  bgm.volume = 0.3;
-  bgm.play().catch(() => {
-    document.addEventListener("click", () => {
-      bgm.play().catch(e => console.log(e));
-    }, { once: true });
-  });
-}
-
-function stopBGM() {
-  if (!bgm) return;
-  bgm.pause();
-  bgm.currentTime = 0;
-}
-
-function applyPlayerImage() {
-  const blackHandBox = document.getElementById("blackHandBox");
-  if (!blackHandBox) return;
-
-  const charId = sessionStorage.getItem('char_black') || 'default';
-  let imageUrl = "";
-  
-  if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
-  else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
-  else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
-
-  if (imageUrl) blackHandBox.style.backgroundImage = imageUrl;
-}
-
-function undoMove() {
-  if (typeof isThinking !== 'undefined' && isThinking) return;
-  if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
-    isSkillTargeting = false;
-    legalMoves = [];
-    render();
-    return;
+    if (!document.getElementById("resetBtn")) {
+       const btn = document.createElement("button");
+       btn.id = "resetBtn";
+       btn.textContent = "ホームに戻る"; 
+       Object.assign(btn.style, {
+           padding: "10px 20px", marginTop: "10px", fontSize: "16px",
+           backgroundColor: "#d32f2f", color: "white", border: "none",
+           borderRadius: "5px", cursor: "pointer"
+       });
+       btn.onclick = () => { window.location.href = "home.html"; };
+       statusDiv.appendChild(document.createElement("br"));
+       statusDiv.appendChild(btn);
+    }
+  } else {
+    if (typeof isSkillTargeting !== 'undefined' && !isSkillTargeting) {
+      let msg = "手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
+      if (window.isCaptureRestricted) msg += " 【攻撃禁止】";
+      if (!statusDiv.textContent.includes("あなた")) {
+          msg += (isKingInCheck(turn) ? "　王手！" : "");
+          statusDiv.textContent = msg;
+      }
+    }
+    checkStatusDiv.textContent = "";
   }
-  if (history.length < 2 || gameOver) return;
+
+  // 盤面の生成
+  board.innerHTML = "";
+  for (let y = 0; y < 9; y++) {
+    const tr = document.createElement("tr");
+    for (let x = 0; x < 9; x++) {
+      const td = document.createElement("td");
+      const piece = boardState[y][x];
+
+      if (piece) {
+        const isWhite = piece === piece.toLowerCase();
+        const type = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
+        const baseType = piece.replace("+", "").toUpperCase();
+        const name = (typeof pieceName !== 'undefined') ? pieceName[type] : type;
+        const isPromoted = type.startsWith("+");
+
+        // ★駒のコンテナ作成（画像背景）
+        const container = document.createElement("div");
+        container.className = "piece-container";
+        if (isWhite) {
+            container.classList.add("gote");
+        }
+        container.classList.add("size-" + baseType);
+        // 文字部分
+        const textSpan = document.createElement("span");
+        textSpan.className = "piece-text";
+        if (isPromoted) textSpan.classList.add("promoted");
+        
+        // 1文字だけ表示（例：「成香」→「香」）
+        textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
+
+        // スキル演出（緑色）
+        if (pieceStyles[y][x] === "green") {
+          textSpan.style.color = "#32CD32";
+          textSpan.style.textShadow = "1px 1px 2px #000";
+        }
+
+        container.appendChild(textSpan);
+        td.appendChild(container);
+
+        // 後手は180度回転
+        if (isWhite) td.style.transform = "rotate(180deg)";
+        
+        // 直前の指し手ハイライト
+        if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) td.classList.add("moved");
+      }
+      // ★★★ ここを追加（移動元を赤くする） ★★★
+      // 駒があるかどうかに関わらず、マス自体に色をつけるため if(piece){...} の外でもOKですが、
+      // ここではわかりやすくループの最後の方に追加します
+      if (lastMoveFrom && lastMoveFrom.x === x && lastMoveFrom.y === y) {
+          td.classList.add("move-from");
+      }
+      // ★★★★★★★★★★★★★★★★★★★★★
+
+      // 選択状態・移動可能範囲の表示
+      if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
+      if (typeof legalMoves !== 'undefined' && legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
+      
+      td.onclick = () => onCellClick(x, y);
+      tr.appendChild(td);
+    }
+    board.appendChild(tr);
+  }
   
-  const prev = history[history.length - 2];
-  history.length -= 2; 
+  // 持ち駒の描画
+  renderHands();
 
-  restoreState(prev);
+  // 持ち駒エリアの枠強調
+  const blackBox = document.getElementById("blackHandBox");
+  const whiteBox = document.getElementById("whiteHandBox");
+  if (blackBox) blackBox.classList.remove("active");
+  if (whiteBox) whiteBox.classList.remove("active");
 
-  window.isCaptureRestricted = false;
-  gameOver = false;
-  winner = null;
-  statusDiv.textContent = "";
-  checkStatusDiv.textContent = "";
-
-  render();
-  if (typeof showKifu === "function") showKifu();
-  startTimer();
+  if (!gameOver) {
+    if (turn === "black" && blackBox) blackBox.classList.add("active");
+    else if (turn === "white" && whiteBox) whiteBox.classList.add("active");
+  }
+  
+  updateSkillButton();
 }
 
-// クリック時の処理
-// ※盤面クリック時の挙動はモードごとに微妙に違う（CPU手番判定など）ため、
-//   game_coreには移さず、ここでフックして共通処理を呼ぶ形にします。
+// --- 持ち駒描画関数 ---
+function renderHands() {
+  if (!blackHandDiv || !whiteHandDiv) return;
+  const order = ["P", "L", "N", "S", "G", "B", "R"];
+  if (typeof hands === 'undefined') return;
+
+  hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  blackHandDiv.innerHTML = "";
+  whiteHandDiv.innerHTML = "";
+
+  const createHandPiece = (player, p, i) => {
+      // ★持ち駒もコンテナ（div）で作成
+      const container = document.createElement("div");
+      container.className = "hand-piece-container";
+      if (player === "white") {
+          container.classList.add("gote");
+      }
+      const textSpan = document.createElement("span");
+      textSpan.className = "piece-text";
+      textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
+
+      container.appendChild(textSpan);
+
+      // 選択状態
+      if (selected && selected.fromHand && selected.player === player && selected.index === i) {
+          container.classList.add("selected");
+      }
+      
+      container.onclick = () => selectFromHand(player, i);
+
+      // 後手（CPU）の持ち駒は反転して表示
+      if (player === "white") container.style.transform = "rotate(180deg)";
+
+      return container;
+  };
+
+  hands.black.forEach((p, i) => blackHandDiv.appendChild(createHandPiece("black", p, i)));
+  hands.white.forEach((p, i) => whiteHandDiv.appendChild(createHandPiece("white", p, i)));
+}
+
+// --- 移動実行 (executeMove) ---
+function executeMove(sel, x, y, doPromote) {
+  history.push(deepCopyState());
+
+// ★★★ 追加：移動元の座標を記録 ★★★
+  if (sel.fromHand) {
+      lastMoveFrom = null; // 持ち駒からの場合は「移動元」なし
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
+
+  const pieceBefore = sel.fromHand
+    ? hands[sel.player][sel.index]
+    : boardState[sel.y][sel.x];
+  const boardBefore = boardState.map(r => r.slice());
+  const moveNumber = kifu.length + 1; 
+
+  if (moveSound) {
+    moveSound.currentTime = 0;
+    moveSound.volume = 0.3;
+    moveSound.play().catch(() => {});
+  }
+
+  // 盤面更新処理
+  if (sel.fromHand) {
+    // 打ち駒
+    const piece = hands[sel.player][sel.index];
+    boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
+    hands[sel.player].splice(sel.index, 1);
+    pieceStyles[y][x] = null;
+  } else {
+    // 盤上の移動
+    let piece = boardState[sel.y][sel.x];
+    const target = boardState[y][x];
+    
+    // ★相手の駒を取って持ち駒に追加
+    if (target) {
+        hands[turn].push(target.replace("+","").toUpperCase());
+    }
+
+    const isWhite = piece === piece.toLowerCase();
+    const player = isWhite ? "white" : "black";
+    const base = piece.replace("+","").toUpperCase();
+
+    if (doPromote) {
+      piece = promote(piece.toUpperCase());
+      if (player === "white") piece = piece.toLowerCase();
+      sel.promoted = true;
+
+      if (promoteSound) {
+        promoteSound.currentTime = 0;
+        promoteSound.play().catch(() => {});
+      }
+      // 派手な演出（飛車・角の成り）
+      if (board) {
+        board.classList.remove("flash-green", "flash-orange");
+        void board.offsetWidth;
+        if (base === "R") {
+            board.classList.add("flash-green");
+            setTimeout(() => board.classList.remove("flash-green"), 2000);
+        } else if (base === "B") {
+            board.classList.add("flash-orange");
+            setTimeout(() => board.classList.remove("flash-orange"), 2000);
+        }
+      }
+    } else {
+      // 不成のフラグ
+      if (!piece.includes("+") && canPromote(base) && 
+         (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
+         sel.unpromoted = true;
+      }
+    }
+
+    boardState[sel.y][sel.x] = "";
+    boardState[y][x] = piece;
+    pieceStyles[y][x] = pieceStyles[sel.y][sel.x];
+    pieceStyles[sel.y][sel.x] = null;
+  }
+
+  // 棋譜記録
+  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
+  const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
+  kifu.push(""); 
+  
+  if (typeof lastSkillKifu !== 'undefined' && lastSkillKifu !== "") {
+      kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
+      lastSkillKifu = ""; 
+  } else {
+      kifu[kifu.length - 1] = currentMoveStr;
+  }
+
+  lastMoveTo = { x, y };
+
+  if (turn !== "") { 
+    lastPlayerMove = {
+      piece: pieceBefore.replace("+","").toUpperCase(),
+      toX: x, toY: y
+    };
+  }
+
+  turn = turn === "black" ? "white" : "black";
+  window.isCaptureRestricted = false;
+  
+  // リセット
+  selected = null;
+  legalMoves = [];
+
+  render(); 
+  if (typeof showKifu === "function") showKifu();
+
+  if (!gameOver) startTimer();
+  else stopTimer();
+  moveCount++;
+
+  checkGameOver();
+
+  // CPUの思考開始トリガー
+  if (!isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
+      setTimeout(() => cpuMove(), 1000);
+  }
+}
+
+// --- クリックイベント ---
 function onCellClick(x, y) {
   if (gameOver) return;
 
-  // スキルターゲット選択モード
+  // 必殺技ターゲット選択中
   if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
       const result = currentSkill.execute(x, y);
@@ -146,10 +369,7 @@ function onCellClick(x, y) {
       }
       
       lastMoveTo = null;
-      if (moveSound) {
-        moveSound.currentTime = 0;
-        moveSound.play().catch(() => {});
-      }
+      if (moveSound) { moveSound.currentTime = 0; moveSound.play().catch(() => {}); }
 
       if (currentSkill.reset) currentSkill.reset();
       isSkillTargeting = false;
@@ -160,7 +380,6 @@ function onCellClick(x, y) {
       render();
       if (typeof showKifu === "function") showKifu();
 
-      // CPU思考呼び出し
       if (endsTurn && !isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
         setTimeout(() => cpuMove(), 1000);
       }
@@ -171,7 +390,7 @@ function onCellClick(x, y) {
   // CPUの手番なら無視
   if (cpuEnabled && turn === cpuSide) return;
 
-  // 通常の駒選択
+  // 駒選択
   if (!selected) {
     const piece = boardState[y][x];
     if (!piece) return;
@@ -188,7 +407,7 @@ function onCellClick(x, y) {
     return;
   }
 
-  // 移動実行
+  // 移動
   const sel = selected;
   if (legalMoves.some(m => m.x === x && m.y === y)) {
     movePieceWithSelected(sel, x, y);
@@ -209,7 +428,7 @@ function selectFromHand(player, index) {
 
 function movePieceWithSelected(sel, x, y) {
   if (sel.fromHand) {
-    executeMove(sel, x, y, false); // game_core.js の関数を呼び出す
+    executeMove(sel, x, y, false);
     return;
   }
 
@@ -247,26 +466,103 @@ function movePieceWithSelected(sel, x, y) {
   }
 }
 
-// 投了・スキルUI系
+// --- その他 ユーティリティ ---
+function checkGameOver() {
+  if (moveCount >= 500) {
+    gameOver = true;
+    winner = null;
+    saveGameResult(null);
+    render();
+    return;
+  }
+  if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
+    gameOver = true;
+    winner = turn === "black" ? "white" : "black";
+    saveGameResult(winner);
+    render();
+    return;
+  }
+  const key = getPositionKey();
+  positionHistory[key] = (positionHistory[key] || 0) + 1;
+  recordRepetition();
+  if (positionHistory[key] >= 4) {
+    gameOver = true;
+    winner = null;
+    statusDiv.textContent = "千日手です。引き分け。";
+    render();
+  }
+}
+
+function playBGM() {
+  if (!bgm) return;
+  bgm.volume = 0.3;
+  bgm.play().catch(() => {
+    document.addEventListener("click", () => {
+      bgm.play().catch(e => console.log(e));
+    }, { once: true });
+  });
+}
+
+function stopBGM() {
+  if (!bgm) return;
+  bgm.pause();
+  bgm.currentTime = 0;
+}
+
+function applyPlayerImage() {
+  const blackHandBox = document.getElementById("blackHandBox");
+  if (!blackHandBox) return;
+  const charId = sessionStorage.getItem('char_black') || 'default';
+  let imageUrl = "";
+  if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
+  else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
+  else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
+  if (imageUrl) blackHandBox.style.backgroundImage = imageUrl;
+}
+
+function undoMove() {
+  if (typeof isThinking !== 'undefined' && isThinking) return;
+  if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
+    isSkillTargeting = false;
+    legalMoves = [];
+    render();
+    return;
+  }
+  if (history.length < 2 || gameOver) return;
+  const prev = history[history.length - 2];
+  history.length -= 2; 
+  restoreState(prev);
+  lastMoveFrom = null;
+  window.isCaptureRestricted = false;
+  gameOver = false;
+  winner = null;
+  statusDiv.textContent = "";
+  checkStatusDiv.textContent = "";
+  render();
+  if (typeof showKifu === "function") showKifu();
+  startTimer();
+}
+
 function resignGame() {
-    if (gameOver) return;
-    const modal = document.getElementById("resignModal");
-    if (modal) modal.style.display = "flex";
-    else if (confirm("投了しますか？")) executeResign();
+  if (gameOver) return;
+  const modal = document.getElementById("resignModal");
+  if (modal) modal.style.display = "flex";
+  else if (confirm("投了しますか？")) executeResign();
 }
 
 function executeResign() {
-    closeResignModal();
-    gameOver = true;
-    stopTimer();
-    winner = "white"; 
-    if (typeof saveGameResult === "function") saveGameResult(winner);
-    render();
+  closeResignModal();
+  gameOver = true;
+  stopTimer();
+  winner = "white"; 
+  if (typeof saveGameResult === "function") saveGameResult(winner);
+  render();
+  if (typeof showKifu === "function") showKifu();
 }
 
 function closeResignModal() {
-    const modal = document.getElementById("resignModal");
-    if (modal) modal.style.display = "none";
+  const modal = document.getElementById("resignModal");
+  if (modal) modal.style.display = "none";
 }
 
 function toggleSkillMode() {
@@ -289,19 +585,16 @@ function confirmSkillActivate() {
   closeSkillModal();
   if (currentSkill.reset) currentSkill.reset();
   selected = null;
-  
   const targets = currentSkill.getValidTargets();
   if (!targets || targets.length === 0) {
       alert("この必殺技で動かせる有効な場所がありません。");
       isSkillTargeting = false;
       return; 
   }
-
   isSkillTargeting = true;
   legalMoves = targets;
   const boardTable = document.getElementById("board");
   if (boardTable) boardTable.classList.add("skill-targeting-mode");
-  
   render();
   statusDiv.textContent = `必殺技【${currentSkill.name}】：発動するマスを選んでください`;
 }
@@ -314,7 +607,6 @@ function closeSkillModal() {
 function updateSkillButton() {
   const skillBtn = document.getElementById("skillBtn");
   if (!skillBtn) return;
-  
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
     skillBtn.textContent = currentSkill.name;
@@ -345,43 +637,95 @@ function resolvePromotion(doPromote) {
 }
 
 function toggleKifu() {
-    const area = document.getElementById("kifuArea");
-    if (area.style.display === "none") {
-        area.style.display = "block";
-        const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
-        if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
-    } else {
-        area.style.display = "none";
-    }
+  const area = document.getElementById("kifuArea");
+  if (area.style.display === "none") {
+      area.style.display = "block";
+      const scrollBox = area.querySelector("div[style*='overflow-y: auto']");
+      if(scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+  } else {
+      area.style.display = "none";
+  }
 }
 
 function copyKifuText() {
-    const kifuDiv = document.getElementById("kifu");
-    if (kifuDiv) {
-        navigator.clipboard.writeText(kifuDiv.innerText).then(() => {
-            alert("棋譜をコピーしました！");
-        });
+  const kifuDiv = document.getElementById("kifu");
+  if (kifuDiv) {
+      navigator.clipboard.writeText(kifuDiv.innerText).then(() => {
+          alert("棋譜をコピーしました！");
+      });
+  }
+}
+
+function playSkillEffect(imageName, soundName, flashColor) {
+  const img = document.getElementById("skillCutIn");
+  if (img && imageName) {
+    img.src = "script/image/" + imageName;
+    img.classList.remove("cut-in-active");
+    void img.offsetWidth;
+    img.classList.add("cut-in-active");
+  }
+  if (soundName) {
+    if (Array.isArray(soundName)) {
+      soundName.forEach(name => {
+        const a = new Audio("script/audio/" + name);
+        a.play().catch(e => {});
+      });
+    } else {
+      const audio = document.getElementById("skillSound") || new Audio("script/audio/" + soundName);
+      audio.src = "script/audio/" + soundName;
+      audio.play().catch(e => {});
     }
+  }
+  if (board && flashColor) {
+    board.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
+    void board.offsetWidth; 
+    board.classList.add("flash-" + flashColor);
+  }
+}
+
+let timerInterval = null;
+let currentSeconds = 0;
+
+function startTimer() {
+  stopTimer();
+  currentSeconds = 0;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    currentSeconds++;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function updateTimerDisplay() {
+  const timerBox = document.getElementById("timerBox");
+  if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
 }
 
 function saveGameResult(res) {
-    const user = auth.currentUser;
-    if (!user) return; 
-    const opponentDisplayName = window.opponentName || "CPU対局"; 
-    const isWin = (res === "black"); 
-    const gameRecord = {
-        date: new Date(), 
-        opponent: opponentDisplayName,
-        moves: moveCount,
-        result: isWin ? "WIN" : "LOSE",
-        mode: "offline",
-        kifuData: kifu 
-    };
-    db.collection("users").doc(user.uid).update({
-        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
-        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
-        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
-    }).then(() => {
-        console.log(opponentDisplayName + " との対局を保存しました");
-    });
+  const user = auth.currentUser;
+  if (!user) return; 
+  const opponentDisplayName = window.opponentName || "CPU対局"; 
+  const isWin = (res === "black"); 
+  const gameRecord = {
+      date: new Date(), 
+      opponent: opponentDisplayName,
+      moves: moveCount,
+      result: isWin ? "WIN" : "LOSE",
+      mode: "offline",
+      kifuData: kifu 
+  };
+  db.collection("users").doc(user.uid).update({
+      win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+      lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+      history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+  }).then(() => {
+      console.log(opponentDisplayName + " との対局を保存しました");
+  });
 }
