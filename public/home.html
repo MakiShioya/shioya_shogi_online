@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>しおや将棋 - ホーム</title>
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
@@ -18,7 +18,12 @@
       margin: 0;
       padding: 0;
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-      overflow: hidden;
+      position: fixed; 
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
       background-image: url('script/image/shogi_title.PNG');
       background-color: #2c3e50;
       background-size: cover;
@@ -146,16 +151,76 @@
       z-index: 100;
       justify-content: center;
       align-items: center;
+      overscroll-behavior: none;
     }
-    .modal-box {
-      background: #fff8dc;
-      padding: 20px;
-      border-radius: 10px;
-      border: 4px solid #8b4513;
-      text-align: center;
-      width: 85%;
-      max-width: 320px;
-    }
+ 
+
+.modal-box {
+  position: relative;
+  background: #fff8dc;
+  padding: 10px; /* 余白を最小限に */
+  border-radius: 10px;
+  border: 4px solid #8b4513;
+  text-align: center;
+  width: 80%;          /* 左右いっぱいに広げる */
+  max-width: 1000px;
+  height: 90vh;        /* 高さをしっかり確保 */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* 右上の小さな「閉じる」ボタン */
+.close-small-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 10px;
+  background: #666;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 101;
+}
+
+#lobbyChatTitle {
+  color: #005bea;
+  margin: 0 0 5px 0;
+  text-align: left;
+  padding-left: 5px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* 履歴エリア：ここが一番広くなるように設定 */
+#lobbyChatHistory {
+  flex: 1;             /* 余った縦スペースをすべて使う */
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid #ccc;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;            /* 吹き出し同士の間隔 */
+}
+
+/* 入力エリアの隙間調整 */
+.chat-input-area {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+}
+  
+  /* ★追加: 画面の高さを超えないようにし、中身を縦並び(Flex)にする */
+  max-height: 90vh; 
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
     .sub-btn {
       display: block;
       width: 100%;
@@ -180,19 +245,19 @@
   background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important;
 }
 
-    /* ★★★ 修正版: ゲーム風チャットUI (画像再現) ★★★ */
-    #lobbyChatHistory {
-      height: 350px;
-      overflow-y: auto;
-      background: rgba(255, 255, 255, 0.5); /* 全体の背景を少し透過 */
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-      padding: 15px;
-      border-radius: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px; /* メッセージ間の間隔を広めに */
-    }
+/* 履歴エリアをさらに広げるための調整 */
+#lobbyChatHistory {
+  flex: 1; 
+  min-height: 100px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid #ccc;
+  padding: 8px; /* パディングを少し詰めました */
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
     /* メッセージの行全体（アイコン＋吹き出し） */
     .chat-row {
@@ -256,14 +321,14 @@
     /* --- 吹き出し --- */
     .chat-bubble {
       position: relative;
-      padding: 12px 16px;
+      padding: 10px 10px;
       border-radius: 15px;
-      font-size: 0.95rem;
+      font-size: 0.75rem;
       line-height: 1.5;
       color: #333;
       font-weight: bold;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-top: 15px; /* 名前バッジ分下げる */
+      margin-top: 5px; /* 名前バッジ分下げる */
       max-width: 100%;
       word-break: break-all;
     }
@@ -309,6 +374,18 @@
       font-size: 0.75rem;
       margin: 5px 0;
     }
+
+
+/* モバイル横向き時の微調整 */
+@media screen and (max-height: 450px) {
+  .modal-box {
+    padding: 10px; /* 余白を削る */
+  }
+  #lobbyChatHistory {
+    padding: 8px; /* 履歴の余白も削る */
+  }
+}
+
     .chat-msg { margin-bottom: 5px; font-size: 0.95rem; word-break: break-all; }
     .chat-name { font-weight: bold; margin-right: 5px; }
     .chat-system { color: #888; font-style: italic; font-size: 0.8rem; text-align: center; }
@@ -442,19 +519,20 @@
     </div>
   </div>
 
-  <div id="lobbyChatModal" class="overlay">
-    <div class="modal-box" style="width: 90%; max-width: 400px; padding: 15px;">
-      <h3 style="color: #005bea; margin-top: 0;">💬 ロビーチャット</h3>
-      <div id="lobbyChatHistory"></div>
-      
-      <div style="display: flex; gap: 5px;">
-        <input type="text" id="lobbyChatInput" placeholder="メッセージ..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
-        <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信する</button>
-      </div>
-
-      <button onclick="closeModal('lobbyChatModal')" style="margin-top: 15px; background: #666; color: white; width: 100%; border: none; padding: 10px; border-radius: 5px; font-size: 1rem;">閉じる</button>
+<div id="lobbyChatModal" class="overlay">
+  <div class="modal-box">
+    <button class="close-small-btn" onclick="closeModal('lobbyChatModal')">閉じる</button>
+    
+    <h3 id="lobbyChatTitle">ロビーチャット</h3>
+    
+    <div id="lobbyChatHistory"></div>
+    
+    <div class="chat-input-area">
+      <input type="text" id="lobbyChatInput" placeholder="ここにメッセージを入力" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px; font-size: 16px;">
+      <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信する</button>
     </div>
   </div>
+</div>
 
   <script src="script/auth.js"></script>
   <script>
