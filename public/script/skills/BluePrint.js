@@ -1,7 +1,7 @@
 // script/skills/BluePrint.js
 
 const BluePrint = {
-  name: "ブループリント",
+  name: "必殺技",
   
   // ★設定
   endsTurn: false, // 手番は終わらない（手番消費なし）
