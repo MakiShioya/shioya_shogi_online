@@ -32,13 +32,14 @@ let winner = null;
 let moveCount = 0;
 let kifu = [];
 let lastMoveTo = null;
+let lastMoveFrom = null;
 let isSimulating = false;
 let lastPlayerMove = null;
 
 // 定数
 const pieceName = {
   "P": "歩","L":"香","N":"桂","S":"銀","G":"金","B":"角","R":"飛","K":"玉",
-  "+P":"と","+L":"成香","+N":"成桂","+S":"成銀","+B":"馬","+R":"龍"
+  "+P":"と","+L":"杏","+N":"圭","+S":"全","+B":"馬","+R":"龍"
 };
 
 // --- 必殺技用グローバル変数 ---
