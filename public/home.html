@@ -19,20 +19,18 @@
       padding: 0;
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
       position: fixed; 
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       background-image: url('script/image/shogi_title.PNG');
       background-color: #2c3e50;
       background-size: cover;
       background-position: center;
-      height: 100vh;
-      width: 100vw;
     }
 
-    /* 吹き出し本体の設定 */
+    /* 吹き出しの設定 */
     .speech-bubble {
       display: none;
       position: absolute;
@@ -90,7 +88,8 @@
       position: absolute;
       top: 0;
       width: 100%;
-      padding: 10px 20px;
+      /* 上下のパディングを10pxから5pxへ変更して細くしました */
+      padding: 10px 20px; 
       background: rgba(0, 0, 0, 0.6);
       color: white;
       display: flex;
@@ -99,6 +98,7 @@
       box-sizing: border-box;
       z-index: 5;
     }
+
     .user-name { font-weight: bold; font-size: 1.1rem; }
     
     .top-btn {
@@ -114,16 +114,15 @@
     .stats-btn { background: #ff9800; }
     .news-btn { background: #28a745; }
 
-    /* 下部メニュー */
     .bottom-menu {
       position: absolute;
-      bottom: 20px;
+      bottom: 10px;
       width: 96%;
       left: 2%;
       display: flex;
       justify-content: space-around;
       align-items: flex-end;
-      gap: 5px; /* ボタン間隔を少し詰める */
+      gap: 5px;
       z-index: 10;
     }
 
@@ -135,11 +134,10 @@
       border-radius: 10px;
       color: white;
       font-weight: bold;
-      font-size: 1.1rem; /* 文字サイズ調整 */
+      font-size: 1.1rem;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-      padding: 0; /* 余白調整 */
     }
     .menu-btn:active { transform: scale(0.95); }
 
@@ -153,250 +151,120 @@
       align-items: center;
       overscroll-behavior: none;
     }
- 
 
-.modal-box {
-  position: relative;
-  background: #fff8dc;
-  padding: 10px; /* 余白を最小限に */
-  border-radius: 10px;
-  border: 4px solid #8b4513;
-  text-align: center;
-  width: 80%;          /* 左右いっぱいに広げる */
-  max-width: 1000px;
-  height: 90vh;        /* 高さをしっかり確保 */
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+    /* モーダルボックスの基本スタイル */
+    .modal-box {
+      position: relative;
+      background: #fff8dc;
+      padding: 15px;
+      border-radius: 10px;
+      border: 4px solid #8b4513;
+      text-align: center;
+      width: 80%;
+      max-width: 800px;
+      max-height: 90vh; 
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    
+    /* ★追加: ボタンを2列に並べるためのグリッド設定 */
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* 横2列 */
+      gap: 10px; /* ボタン同士の隙間 */
+      margin: 10px 0;
+    }
 
-/* 右上の小さな「閉じる」ボタン */
-.close-small-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 10px;
-  background: #666;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  cursor: pointer;
-  z-index: 101;
-}
-
-#lobbyChatTitle {
-  color: #005bea;
-  margin: 0 0 5px 0;
-  text-align: left;
-  padding-left: 5px;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
-/* 履歴エリア：ここが一番広くなるように設定 */
-#lobbyChatHistory {
-  flex: 1;             /* 余った縦スペースをすべて使う */
-  overflow-y: auto;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid #ccc;
-  padding: 8px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;            /* 吹き出し同士の間隔 */
-}
-
-/* 入力エリアの隙間調整 */
-.chat-input-area {
-  display: flex;
-  gap: 5px;
-  margin-top: 8px;
-}
-  
-  /* ★追加: 画面の高さを超えないようにし、中身を縦並び(Flex)にする */
-  max-height: 90vh; 
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
+    /* 汎用サブボタンの微調整 */
     .sub-btn {
       display: block;
       width: 100%;
-      margin: 10px 0;
-      padding: 12px;
-      font-size: 1.1rem;
+      margin: 0; /* ★ここを0にする（隙間はgrid-gapで制御するため） */
+      padding: 12px 5px;
+      font-size: 1rem;
       background: #8b4513;
       color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      font-weight: bold;
+    }
+    .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    /* ロビーチャット用のスタイル */
+    .close-small-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 10px;
+      background: #666;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 101;
     }
 
-    /* 各ボタンの色設定 */
+    #lobbyChatTitle {
+      color: #005bea;
+      margin: 0 0 5px 0;
+      text-align: left;
+      padding-left: 5px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    #lobbyChatHistory {
+      flex: 1; 
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid #ccc;
+      padding: 8px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-height: 100px;
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    /* チャット吹き出し・アイコン関連 */
+    .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
+    .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
+    .icon-container { display: flex; flex-direction: column; align-items: center; width: 60px; }
+    .chat-name-badge { background: #fff; border: 1px solid #8b4513; border-radius: 10px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; z-index: 2; margin-bottom: -10px; white-space: nowrap; }
+    .chat-icon-img { width: 50px; height: 50px; border: 3px solid #56ab2f; border-radius: 12px; background: #fff; object-fit: cover; }
+    .chat-row.mine .chat-icon-img { border: 3px solid #FFA500; }
+    .chat-bubble { position: relative; padding: 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; margin-top: 5px; word-break: break-all; }
+    .chat-row .chat-bubble { background: #fff; border: 2px solid #e0e0e0; border-top-left-radius: 0; }
+    .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; }
+
+    /* ボタンカラーバリエーション */
     .offline-color { background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%) !important; }
     .online-color { background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%) !important; }
     .mypage-color { background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%) !important; }
     .ready-color { background: linear-gradient(to bottom, #a8e063 0%, #56ab2f 100%) !important; }
-    
-    /* ★★★ 追加: チャットボタンの色（水色〜紫） ★★★ */
-    .chat-color {
-  background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important;
-}
+    .chat-color { background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important; }
 
-/* 履歴エリアをさらに広げるための調整 */
-#lobbyChatHistory {
-  flex: 1; 
-  min-height: 100px;
-  overflow-y: auto;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid #ccc;
-  padding: 8px; /* パディングを少し詰めました */
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-    /* メッセージの行全体（アイコン＋吹き出し） */
-    .chat-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      max-width: 95%;
+    /* モバイル横向き調整 */
+    @media screen and (max-height: 450px) {
+      .modal-box { padding: 10px; }
+      #lobbyChatHistory { padding: 8px; }
     }
-
-    /* 自分の発言は右揃え（逆順） */
-    .chat-row.mine {
-      align-self: flex-end;
-      flex-direction: row-reverse;
-    }
-
-    /* --- アイコンと名前のエリア --- */
-    .icon-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 60px; /* アイコンエリアの幅固定 */
-    }
-
-    /* 名前バッジ */
-    .chat-name-badge {
-      background: #fff;
-      border: 1px solid #8b4513;
-      border-radius: 10px;
-      padding: 2px 8px;
-      font-size: 0.7rem;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: -10px; /* アイコンに少し重ねる */
-      z-index: 2;
-      white-space: nowrap;
-      max-width: 80px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* アイコン画像 */
-    .chat-icon-img {
-      width: 50px;
-      height: 50px;
-      
-      /* ★変更：相手は「緑色」の枠 */
-      border: 3px solid #56ab2f; 
-      
-      border-radius: 12px;
-      background: #fff;
-      object-fit: cover;
-      z-index: 1;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-
-    /* ★追加：自分だけは「オレンジ色」の枠（メルスト風維持） */
-    .chat-row.mine .chat-icon-img {
-      border: 3px solid #FFA500;
-    }
-
-    /* --- 吹き出し --- */
-    .chat-bubble {
-      position: relative;
-      padding: 10px 10px;
-      border-radius: 15px;
-      font-size: 0.75rem;
-      line-height: 1.5;
-      color: #333;
-      font-weight: bold;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin-top: 5px; /* 名前バッジ分下げる */
-      max-width: 100%;
-      word-break: break-all;
-    }
-
-    /* 相手の吹き出し（白） */
-    .chat-row .chat-bubble {
-      background: #fff;
-      border: 2px solid #e0e0e0;
-      border-top-left-radius: 0; /* 左上を尖らせる */
-    }
-
-    /* 自分の吹き出し（クリームイエロー） */
-    .chat-row.mine .chat-bubble {
-      background: #fff8dc; /* 画像のような黄色っぽい色 */
-      border: 2px solid #f0e68c;
-      border-top-right-radius: 0; /* 右上を尖らせる */
-      border-top-left-radius: 15px;
-    }
-
-    /* 吹き出しのしっぽ（オプション装飾） */
-    .chat-row:not(.mine) .chat-bubble::before {
-      content: "";
-      position: absolute;
-      top: 0; left: -10px;
-      border-top: 10px solid #e0e0e0;
-      border-left: 10px solid transparent;
-    }
-    .chat-row.mine .chat-bubble::before {
-      content: "";
-      position: absolute;
-      top: 0; right: -10px;
-      border-top: 10px solid #f0e68c;
-      border-right: 10px solid transparent;
-    }
-
-    /* システムメッセージ */
-    .chat-system-box {
-      align-self: center;
-      background: rgba(0,0,0,0.1);
-      padding: 4px 12px;
-      border-radius: 10px;
-      color: #555;
-      font-size: 0.75rem;
-      margin: 5px 0;
-    }
-
-
-/* モバイル横向き時の微調整 */
-@media screen and (max-height: 450px) {
-  .modal-box {
-    padding: 10px; /* 余白を削る */
-  }
-  #lobbyChatHistory {
-    padding: 8px; /* 履歴の余白も削る */
-  }
-}
-
-    .chat-msg { margin-bottom: 5px; font-size: 0.95rem; word-break: break-all; }
-    .chat-name { font-weight: bold; margin-right: 5px; }
-    .chat-system { color: #888; font-style: italic; font-size: 0.8rem; text-align: center; }
-
   </style>
 </head>
 <body>
 
   <div class="user-info-bar">
     <div>
-      <span style="font-size:0.8rem; color:#ccc;">Player Name</span><br>
       <span id="userNameDisplay" class="user-name">ゲスト</span> さん
       <button id="editNameBtn" onclick="showNameEditModal()" style="display:none; background:none; border:none; cursor:pointer; font-size:1rem;">✏️</button>
     </div>
@@ -409,6 +277,7 @@
       <button class="top-btn" style="background: #6c757d;" onclick="openModal('settingsMainMenu')">⚙️</button>
     </div>
   </div>
+
 
   <div id="characterBubble" class="speech-bubble"></div>
 
@@ -437,9 +306,11 @@
   <div id="settingsMainMenu" class="overlay">
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">設定</h3>
-      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
-      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
-      <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
+      <div class="modal-grid">
+        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
+        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
+        <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
+      </div>
       <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
     </div>
   </div>
@@ -458,9 +329,13 @@
   <div id="languageMenu" class="overlay">
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
-      <button class="sub-btn">日本語</button>
-      <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
+      
+      <div class="modal-grid">
+        <button class="sub-btn">日本語</button>
+        <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
+      </div>
+      
+      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
     </div>
   </div>
 
@@ -857,10 +732,12 @@
   <div id="helpMainMenu" class="overlay">
     <div class="modal-box">
       <h3 style="color: #17a2b8; margin-top: 0;">ヘルプ</h3>
-      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
-      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
-      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラクターについて</button>
-      <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・ご要望</button>
+      <div class="modal-grid">
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラについて</button>
+        <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・要望</button>
+      </div>
       <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
     </div>
   </div>
@@ -878,25 +755,26 @@
     </div>
   </div>
 
-  <div id="helpDifficulty" class="overlay">
+<div id="helpDifficulty" class="overlay">
     <div class="modal-box">
-      <h3 style="color: #8b4513;">難易度について</h3>
-      <div style="text-align: left; font-size: 0.85rem; line-height: 1.5;">
-        <p>CPUの難易度は、下に行くほど強いです。</p>
-        <ul style="padding-left: 20px;">
+      <h3 style="color: #8b4513; margin: 0 0 10px 0;">難易度について</h3>
+      
+      <div style="text-align: left; font-size: 0.85rem; line-height: 1.4;">
+        <p style="margin: 0 0 5px 0;">CPUの難易度は、下に行くほど強いです。</p>
+        <ul style="padding-left: 20px; margin: 0 0 10px 0;">
           <li>たわむれ</li>
           <li>おあそび</li>
           <li>たしなみ</li>
           <li>しおや / こみや</li>
           <li>しおやEX / こみやEX</li>
-          <li>試験実装（最強）</li>
+          <li style="font-weight: bold; color: #d35400;">試験実装（最強）</li>
         </ul>
-        <p>※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
+        <p style="margin: 0; font-size: 0.75rem;">※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
       </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
+      
+      <button class="sub-btn" style="background:#666; margin: 15px 0 0 0;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
     </div>
   </div>
-
   <div id="helpChar" class="overlay">
     <div class="modal-box">
       <h3 style="color: #8b4513;">キャラクターについて</h3>
