@@ -9,19 +9,22 @@
 <div id="game">
 
   <div class="side left">
-    <div class="hand white-hand" id="whiteHandBox">
-      <h3>後手の持ち駒</h3>
-      <div id="whiteHand"></div>
-    </div>
-    <button id="undoBtn" class="square-btn" onclick="undoMove()">待った</button>
+  <div class="hand white-hand" id="whiteHandBox">
+    <h3>後手の持ち駒</h3>
+    
+    <div id="whiteHand"></div>
   </div>
+  
+<div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
+      考慮時間: 0秒
+    </div>
+
+</div>
 
   <div id="center">
     <div id="status"></div>
 
-    <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
-      考慮時間: 0秒
-    </div>
+    
 
     <div id="checkStatus"></div>
     
@@ -38,6 +41,7 @@
 
   <div class="side right">
     <button id="resignBtn" class="square-btn">投了</button>
+    <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
     <div class="hand black-hand" id="blackHandBox">
       <h3>先手の持ち駒</h3>
       <div id="blackHand"></div>
@@ -46,7 +50,7 @@
 
 </div>
 
-<button id="skillBtn" class="square-btn" style="display: none; margin-top: 15px;" onclick="toggleSkillMode()">必殺技</button>
+
 <div style="text-align: center; margin: 15px 0 10px 0;">
 
 </div>
@@ -125,12 +129,17 @@
     </button>
     
     <div id="menuPanel" style="display: none; position: absolute; top: 50px; right: 0; width: 180px; background: #fff8dc; border: 3px solid #8b4513; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); padding: 10px;">
-        <button class="menu-item" onclick="toggleKifu(); toggleMenu();">📝 棋譜を表示</button>
-        <button class="menu-item" onclick="toggleVolume();">🔊 音量設定</button>
-        <button class="menu-item" onclick="showRules();">📖 ルール確認</button>
-        <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
-        <button class="menu-item" style="color: #d32f2f;" onclick="location.href='home.html'">🏠 ホームに戻る</button>
-    </div>
+    
+    <button id="undoBtn" class="menu-item" style="color: #0C2CB9; font-weight: bold;" onclick="undoMove(); toggleMenu();">待った</button>
+    
+    <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
+    
+    <button class="menu-item" onclick="toggleKifu(); toggleMenu();">📝 棋譜を表示</button>
+    <button class="menu-item" onclick="toggleVolume();">🔊 音量設定</button>
+    <button class="menu-item" onclick="showRules();">📖 ルール確認</button>
+    <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
+    <button class="menu-item" style="color: #d32f2f;" onclick="location.href='home.html'">🏠 ホームに戻る</button>
+</div>
 </div>
 
 
