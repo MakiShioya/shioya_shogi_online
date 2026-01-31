@@ -17,12 +17,79 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center; 
-  padding: 20px;
+
 }
 
 #game { display: flex; gap: 20px; }
 #center { text-align: center; }
-#status { font-weight: bold; margin-bottom: 5px; }
+
+
+/* --- メッセージ表示欄（白い吹き出し） --- */
+
+#timerBox{
+
+  width: 160px;
+  min-height: 3em;
+  margin: 15px 0; /* 上下の余白 */
+  padding: 10px;
+  background: #ffffff; /* 白い背景 */
+  border: 2px solid #333; /* 枠線 */
+  border-radius: 10px; /* 角丸 */
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  box-sizing: border-box; /* パディングを含めて160pxにする */
+  filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.2)); /* 軽い影 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#status {
+  position: relative; /* ツノの配置基準 */
+  width: 160px;
+  height: 80px;
+  margin: 5px 0; /* 上下の余白 */
+  padding: 10px;
+  background: #ffffff; /* 白い背景 */
+  border: 2px solid #333; /* 枠線 */
+  border-radius: 10px; /* 角丸 */
+  font-weight: bold;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  box-sizing: border-box; /* パディングを含めて160pxにする */
+  filter: drop-shadow(2px 2px 5px rgba(0,0,0,0.2)); /* 軽い影 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 吹き出しのツノ（上向きの三角形） */
+#status::before {
+  content: "";
+  position: absolute;
+  top: -12px; /* 枠線の太さ分調整 */
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-bottom: 12px solid #333; /* 枠線の色と同じにする */
+}
+
+#status::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 11px solid #ffffff; /* 中身の白と同じにする */
+}
+
+
 #checkStatus { color: red; font-weight: bold; margin-bottom: 10px; }
 .shogiban-outer {
     padding: 15px; /* ここが「枠」の太さになります */
@@ -204,7 +271,7 @@ button { padding: 6px 12px; font-size: 14px; cursor: pointer; }
 .side.right { align-items: flex-start; }
 
 #undoBtn {
-  width: 160px; height: 160px; font-size: 36px; font-weight: bold; border-radius: 10px; cursor: pointer;
+  width: 120px; height: 50px; font-size: 20px; font-weight: bold; border-radius: 10px; cursor: pointer;
   background-image: url('image/hyoshiki_red.PNG'); background-size: cover; background-position: center;
   color: #0C2CB9; text-shadow: -1px -1px 0 white, 1px -1px 0 white, -1px 1px 0 white, 1px 1px 0 white;
   transition: all 0.3s;
@@ -373,6 +440,7 @@ body.view-white .hand-piece-container.gote.selected {
   padding: 10px;
   border-bottom: 1px solid #ccc;
   font-size: 14px;
+
 }
 
 /* メッセージのスタイル */
@@ -401,3 +469,8 @@ body.view-white .hand-piece-container.gote.selected {
   border-radius: 3px;
   cursor: pointer;
 }
+
+
+
+
+
