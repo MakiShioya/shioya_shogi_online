@@ -1,7 +1,7 @@
 // script/skills/PassionateSupport.js
 
 const PassionateSupport = {
-  name: "熱烈な応援",
+  name: "必殺技",
   
   // ★設定
   endsTurn: false, // 技を使っても手番が終わらない
