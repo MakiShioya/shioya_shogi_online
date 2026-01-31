@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>しおや将棋 ホーム</title>
+  <title>しおや将棋 - ホーム</title>
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
   <style>
     body {
@@ -28,57 +29,36 @@
 
     /* 吹き出し本体の設定 */
     .speech-bubble {
-      display: none;             /* 最初は隠しておく（JSで表示させる） */
-      position: absolute;        /* 画面全体に対して自由な位置に配置する設定 */
-      
-      /* --- 位置調整のメイン --- */
-      bottom: 50vh;              /* 下から数えて「画面の高さの58%」の位置に配置（小さくすると下へ） */
-      left: 50%;                 /* 左から数えて「画面の幅の45%」の位置に配置（キャラの左右位置に合わせる） */
-      transform: translateX(-50%); /* 自分の幅の半分だけ左にずらして、leftの位置に「中心」を合わせる */
-      
-      /* --- 見た目の装飾 --- */
-      background: #fff8dc;       /* 吹き出しの中の色（和紙っぽいベージュ） */
-      border: 3px solid #8b4513; /* 3pxの太さの「実線」で「茶色」の枠線 */
-      border-radius: 20px;       /* 角の丸み（大きくするともっと丸くなる） */
-      padding: 12px 20px;        /* 文字と枠線の間の余白（上下12px、左右20px） */
-      
-      /* --- サイズの制限 --- */
-      min-width: 160px;          /* 横幅がこれより小さくならないようにする */
-      max-width: 220px;          /* 横幅がこれより大きくならないようにする（自動で改行される） */
-      
-      /* --- 文字のデザイン --- */
-      color: #333;               /* 文字の色（濃いグレー） */
-      font-weight: bold;         /* 文字を太字にする */
-      font-size: 0.95rem;        /* 文字の大きさ */
-      
-      /* --- その他 --- */
-      z-index: 100;              /* 重なり順。キャラ(z-index:1)より大きい数字にして手前に出す */
-      box-shadow: 0 4px 10px rgba(0,0,0,0.3); /* 下方向に4px、ぼかし10pxの影をつける */
-      pointer-events: none;      /* 吹き出しをクリックしても「下のキャラ」にクリックが届くようにする */
-      
-      /* アニメーション：pop-inという名前の動きを0.3秒かけて行う */
+      display: none;
+      position: absolute;
+      bottom: 50vh;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff8dc;
+      border: 3px solid #8b4513;
+      border-radius: 20px;
+      padding: 12px 20px;
+      min-width: 160px;
+      max-width: 220px;
+      color: #333;
+      font-weight: bold;
+      font-size: 0.95rem;
+      z-index: 100;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      pointer-events: none;
       animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
-      white-space: pre-wrap;    /* ★これを入れると \n が改行として反映されます */
-      line-height: 1.4;         /* 改行した時の行間を少し広げると読みやすいです */
+      white-space: pre-wrap;
+      line-height: 1.4;
     }
 
-    /* 吹き出しの「しっぽ（三角）」を上側に変更 */
     .speech-bubble::after {
       content: '';
       position: absolute;
-      
-      /* --- 三角を出す位置（上側に変更） --- */
-      top: auto;                 /* 下側の指定を解除するために一応設定 */
-      bottom: 100%;              /* 本体の真上（外側）に配置 */
-      left: auto;                /* 左側の指定を解除 */
-      right: 20%;                /* 右端から20%の位置（向きに合わせて調整） */
-      
-      /* --- 三角形を「上向き」にする設定 --- */
-      border-left: 10px solid transparent;  /* 左側を透明に */
-      border-right: 10px solid transparent; /* 右側を透明に */
-      border-top: none;                     /* 下向き用の設定を削除 */
-      border-bottom: 15px solid #8b4513;    /* 下側の枠線に色をつけると「上向き」になります */
+      bottom: 100%;
+      right: 20%;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 15px solid #8b4513;
     }
 
     @keyframes pop-in {
@@ -86,7 +66,6 @@
       100% { transform: translateX(-50%) scale(1); opacity: 1; }
     }
 
-    /* キャラクタースタンド */
     .character-stand {
       position: absolute;
       bottom: 0;
@@ -98,11 +77,10 @@
       z-index: 1;
       content: url('script/image/komiya_touka.png'); 
       filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
-      cursor: pointer; /* クリック可能であることを示す */
-      pointer-events: auto; /* クリックを有効化 */
+      cursor: pointer;
+      pointer-events: auto;
     }
 
-    /* 上部：ユーザー情報バー */
     .user-info-bar {
       position: absolute;
       top: 0;
@@ -140,7 +118,7 @@
       display: flex;
       justify-content: space-around;
       align-items: flex-end;
-      gap: 8px;
+      gap: 5px; /* ボタン間隔を少し詰める */
       z-index: 10;
     }
 
@@ -152,20 +130,13 @@
       border-radius: 10px;
       color: white;
       font-weight: bold;
-      font-size: 1.3rem;
+      font-size: 1.1rem; /* 文字サイズ調整 */
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      padding: 0; /* 余白調整 */
     }
     .menu-btn:active { transform: scale(0.95); }
-
-    .menu-btn.main-action {
-      background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%);
-      height: 75px; 
-      flex: 1.3;
-      font-size: 1.2rem;
-      margin-bottom: 5px;
-    }
 
     .overlay {
       display: none;
@@ -198,25 +169,31 @@
       cursor: pointer;
     }
 
-/* 青色（オフライン用） */
-.offline-color {
-  background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%) !important;
+    /* 各ボタンの色設定 */
+    .offline-color { background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%) !important; }
+    .online-color { background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%) !important; }
+    .mypage-color { background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%) !important; }
+    .ready-color { background: linear-gradient(to bottom, #a8e063 0%, #56ab2f 100%) !important; }
+    
+    /* ★★★ 追加: チャットボタンの色（水色〜紫） ★★★ */
+    .chat-color {
+  background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important;
 }
 
-/* ピンク色（オンライン用） */
-.online-color {
-  background: linear-gradient(to bottom, #ff758c 0%, #ff7eb3 100%) !important;
-}
-
-/* 黄色〜オレンジ系（マイページ用） */
-.mypage-color {
-  background: linear-gradient(to bottom, #f6d365 0%, #fda085 100%) !important;
-}
-
-/* 緑色（解析用） */
-.ready-color {
-  background: linear-gradient(to bottom, #a8e063 0%, #56ab2f 100%) !important;
-}
+    /* ★★★ 追加: チャットモーダル内のスタイル ★★★ */
+    #lobbyChatHistory {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: rgba(255, 255, 255, 0.9);
+      margin-bottom: 10px;
+      padding: 10px;
+      text-align: left;
+      border-radius: 5px;
+    }
+    .chat-msg { margin-bottom: 5px; font-size: 0.95rem; word-break: break-all; }
+    .chat-name { font-weight: bold; margin-right: 5px; }
+    .chat-system { color: #888; font-style: italic; font-size: 0.8rem; text-align: center; }
 
   </style>
 </head>
@@ -242,22 +219,21 @@
 
   <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
 
-<div class="bottom-menu">
-  <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
-  <button class="menu-btn online-color" onclick="goToCharacterSelect('online')">オンライン</button>
-  <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
-  <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
-
-</div>
+  <div class="bottom-menu">
+    <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
+    <button class="menu-btn online-color" onclick="goToCharacterSelect('online')">オンライン</button>
+    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button> <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
+    <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
+  </div>
 
   <div id="newsModal" class="overlay">
     <div class="modal-box">
       <h3 style="color:#d35400; margin-top:0;">🔔 最新情報</h3>
       <div style="text-align: left; margin: 20px 0; line-height: 1.6; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 5px;">
         ・オンライン対戦 実装！<br>
+        ・ロビーチャット機能 追加！<br>
         ・棋譜解析機能 実装！<br>
-        ・最強CPU「試験実装」追加<br>
-        ・戦績保存機能に対応！
+        ・最強CPU「試験実装」追加
       </div>
       <button onclick="closeModal('newsModal')" style="background: #ccc; border: none; color: black; padding: 10px 20px; border-radius: 5px; cursor: pointer;">閉じる</button>
     </div>
@@ -348,8 +324,31 @@
     </div>
   </div>
 
+  <div id="lobbyChatModal" class="overlay">
+    <div class="modal-box" style="width: 90%; max-width: 400px; padding: 15px;">
+      <h3 style="color: #005bea; margin-top: 0;">💬 ロビーチャット</h3>
+      <div id="lobbyChatHistory"></div>
+      
+      <div style="display: flex; gap: 5px;">
+        <input type="text" id="lobbyChatInput" placeholder="メッセージ..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
+        <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信</button>
+      </div>
+
+      <button onclick="closeModal('lobbyChatModal')" style="margin-top: 15px; background: #666; color: white; width: 100%; border: none; padding: 10px; border-radius: 5px; font-size: 1rem;">閉じる</button>
+    </div>
+  </div>
+
   <script src="script/auth.js"></script>
   <script>
+    // --- Socket.io 初期化 (チャット用) ---
+    // ※サーバーが立っていないとエラーになる場合がありますが、通常動作には影響しません
+    let socket = null;
+    try {
+        socket = io();
+    } catch(e) {
+        console.log("チャットサーバーに接続できませんでした");
+    }
+
     // --- モーダル操作 ---
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
@@ -364,25 +363,21 @@
     function goToCharacterSelect(mode) { window.location.href = "character.html?mode=" + mode; }
 
     function startGame(difficulty) {
-      // ★修正：やねうら王（ex_hard3）だけは特別扱いして、それ以外は game_cpu.html へ統合
       if (difficulty === 'ex_hard3') {
           window.location.href = "cpu_yaneuraou.html";
       } else {
-          // 他のすべてのCPUは、共通ファイルへパラメータ付きで飛ばす
           window.location.href = "game_cpu.html?opponent=" + difficulty;
       }
     }
 
-// ★キャラクターの喋り機能（エラー修正版）
-let bubbleTimer = null;
-
+    // --- キャラクターの喋り機能 ---
+    let bubbleTimer = null;
     function talkCharacter() {
         const bubble = document.getElementById("characterBubble");
         const userName = document.getElementById("userNameDisplay").textContent || "ゲスト";
         const now = new Date();
         const hour = now.getHours();
 
-        // --- 基本セリフ ---
         const baseMessages = [
             `お手合わせ、\nよろしくお願いします！\n${userName}さん！`,
             `${userName}さん、こんにちは！\n今日も将棋ですか？`,
@@ -423,9 +418,6 @@ let bubbleTimer = null;
             `実は私、\n扇子を広げるのが\nちょっと苦手なんです…。`,
             `たまには空でも眺めて、\n頭を空っぽにするのも\n大切ですよ。`,
             `将棋を好きになってくれて、\n本当にありがとうございます。`,
-
-
-
             `苦しい時こそ、相手の視点になって盤面を眺めてみましょう。`,
             `将棋もカレーも、一晩寝かせると深みが出るんですよ。`,
             `無理して強くなろうとしなくても、楽しく指すのが一番の近道ですよ。`,
@@ -440,7 +432,6 @@ let bubbleTimer = null;
             `将棋の夢ってレアじゃないですか？`,
             `読み込みが遅い時は、私が裏で駒を並べている最中かもしれません。`,
             `充電、大丈夫ですか？熱くなったら少し休憩ですよ。`,
-            `将棋の夢ってレアじゃないですか？`,
             `このゲーム、${userName}さんの使いやすいように進化していきたいです。`,
             `スマホの電池、大丈夫ですか？熱くなったら少し休憩ですよ。`,
             `長考した末に、結局直感で指しちゃうことありますよね。`,
@@ -448,17 +439,13 @@ let bubbleTimer = null;
             `桂馬をはねるときが一番気持ちいいといっても過言じゃないです。`,
             `対局が終わっても、もう少しだけこうしてお話ししててもいいですか？`,
             `首が凝っていませんか？ぐるっと回してストレッチしましょう。`,
-            `新国立競技場の近くに、将棋盤みたいな建物ありますよね、なんの建物でしょう。`,
             `目が疲れたら、遠くの緑を見るといいらしいですよ。…あ、わたしの服緑色ですね、遠くにいきます！`,
             `「王の早逃げ八手の得」って言いますし、嫌な予感がしたらすぐ休憩ですよ！`,
             `「遠見の角に好手あり」…少し離れた視点から自分を見つめるのも大切です。`,
             `テストプレイに付き合ってくれてありがとうございます。助かります！`,
-
-
             `昨日、詰将棋の夢を\n見ちゃいました。`
         ];
 
-        // --- 時間帯別のセリフ ---
         let timeMessages = [];
         if (hour >= 5 && hour < 11) {
             timeMessages = [
@@ -499,129 +486,210 @@ let bubbleTimer = null;
         clearTimeout(bubbleTimer);
         bubbleTimer = setTimeout(() => {
             bubble.style.display = "none";
-        }, 3000);
+        }, 2000);
     }
 
+    // --- ★★★ 追加: ロビーチャット機能 ★★★ ---
+    function openLobbyChat() {
+        openModal('lobbyChatModal');
+        // チャットを開いたら入室メッセージを送る（任意）
+        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        // socket.emit('chat message', { name: "システム", text: `${myName}さんがロビーに来ました`, isSystem: true });
+    }
+
+    function sendLobbyMessage() {
+        if (!socket) return alert("チャットサーバーに接続されていません");
+        const input = document.getElementById("lobbyChatInput");
+        const text = input.value.trim();
+        if (!text) return;
+
+        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        socket.emit('chat message', {
+            name: myName,
+            text: text,
+            role: 'lobby' // ロビー用として区別（色分けなどに利用可能）
+        });
+        input.value = "";
+    }
+
+    // チャット受信処理
+    if (socket) {
+        // ★★★ 追加：サーバー接続時に過去ログを受け取る ★★★
+        socket.on('chat history', (history) => {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            if (!historyDiv) return;
+            
+            // 一度空にしてから、履歴を全部追加
+            historyDiv.innerHTML = "";
+            history.forEach(data => {
+                addMessageToLobbyChat(data); // 下で作る関数を呼び出す
+            });
+        });
+
+        // 通常のチャット受信
+        socket.on('chat message', (data) => {
+            addMessageToLobbyChat(data);
+        });
+    }
+
+    // ★★★ 追加：メッセージ表示用の共通関数 ★★★
+    function addMessageToLobbyChat(data) {
+        const historyDiv = document.getElementById("lobbyChatHistory");
+        if (!historyDiv) return;
+
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "chat-msg";
+
+        if (data.isSystem) {
+            msgDiv.className += " chat-system";
+            msgDiv.textContent = data.text;
+        } else {
+            const nameSpan = document.createElement("span");
+            nameSpan.className = "chat-name";
+            nameSpan.textContent = data.name + ":";
+            
+            // 色分け
+            if (data.role === 'lobby') nameSpan.style.color = "#005bea";
+            else if (data.role === 'black') nameSpan.style.color = "#000";
+            else if (data.role === 'white') nameSpan.style.color = "#666";
+            else nameSpan.style.color = "#28a745";
+
+            const textSpan = document.createElement("span");
+            textSpan.textContent = " " + data.text;
+
+            msgDiv.appendChild(nameSpan);
+            msgDiv.appendChild(textSpan);
+        }
+
+        historyDiv.appendChild(msgDiv);
+        historyDiv.scrollTop = historyDiv.scrollHeight;
+    }
+
+    // Enterキー送信対応
+    document.addEventListener("DOMContentLoaded", () => {
+        const lobbyInput = document.getElementById("lobbyChatInput");
+        if (lobbyInput) {
+            lobbyInput.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") sendLobbyMessage();
+            });
+        }
+    });
 
     window.onload = function() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const openMenuId = urlParams.get('open');
-  
-  if (openMenuId) {
-    const menuEl = document.getElementById(openMenuId);
-    if (menuEl) {
-      menuEl.style.display = 'flex'; // 指定されたメニューを表示
-      // URLからパラメータを消してスッキリさせる（ブラウザの「戻る」対策）
-      if (window.history.replaceState) {
-        window.history.replaceState(null, null, window.location.pathname);
+      const urlParams = new URLSearchParams(window.location.search);
+      const openMenuId = urlParams.get('open');
+      
+      if (openMenuId) {
+        const menuEl = document.getElementById(openMenuId);
+        if (menuEl) {
+          menuEl.style.display = 'flex';
+          if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.pathname);
+          }
+        }
       }
-    }
-  }
-};
+    };
   </script>
 
-
-<div id="practiceMenu" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
-    <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
-    <button class="sub-btn" onclick="startGame('easy')">おあそび (入門)</button>
-    <button class="sub-btn" onclick="startGame('normal')">たしなみ (普通)</button>
-    <button class="sub-btn" style="background:#666;" onclick="closeModal('practiceMenu')">閉じる</button>
-  </div>
-</div>
-
-<div id="onePlayerModeSelect" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">対戦相手を選んでください</h3>
-    <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
-    <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
-    <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
-    <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
-    <button class="sub-btn" style="background:#d35400;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
-    <button class="sub-btn" style="background:#666;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
-  </div>
-</div>
-
-<div id="helpMainMenu" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #17a2b8; margin-top: 0;">ヘルプ</h3>
-    <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
-    <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
-    <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラクターについて</button>
-    <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・ご要望</button>
-    <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
-  </div>
-</div>
-
-<div id="helpMode" class="overlay">
-  <div class="modal-box" style="max-width: 350px;">
-    <h3 style="color: #8b4513;">モードについて</h3>
-    <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
-
-      <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対戦ができます。この端末のみを使用して、プレイヤー同士でも対戦ができます。</p>
-      <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対戦ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
-      <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
-      <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
+  <div id="practiceMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
+      <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
+      <button class="sub-btn" onclick="startGame('easy')">おあそび (入門)</button>
+      <button class="sub-btn" onclick="startGame('normal')">たしなみ (普通)</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('practiceMenu')">閉じる</button>
     </div>
-    <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
   </div>
-</div>
 
-<div id="helpDifficulty" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513;">難易度について</h3>
-    <div style="text-align: left; font-size: 0.85rem; line-height: 1.5;">
-      <p>CPUの難易度は、下に行くほど強いです。</p>
-      <ul style="padding-left: 20px;">
-        <li>たわむれ</li>
-        <li>おあそび</li>
-        <li>たしなみ</li>
-        <li>しおや / こみや</li>
-        <li>しおやEX / こみやEX</li>
-        <li>試験実装（最強）</li>
-      </ul>
-      <p>※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
+  <div id="onePlayerModeSelect" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">対戦相手を選んでください</h3>
+      <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
+      <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
+      <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
+      <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
+      <button class="sub-btn" style="background:#d35400;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
     </div>
-    <button class="sub-btn" style="background:#666;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
   </div>
-</div>
 
-<div id="helpChar" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513;">キャラクターについて</h3>
-    <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
-      <p>このゲームでは、対局前に自身のキャラクターを選択します。</p>
-      <p>キャラクターはそれぞれ独自の<strong>「必殺技」</strong>を持っており、対局を有利に進めることができます。</p>
+  <div id="helpMainMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #17a2b8; margin-top: 0;">ヘルプ</h3>
+      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
+      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
+      <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラクターについて</button>
+      <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・ご要望</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
     </div>
-    <button class="sub-btn" style="background:#666;" onclick="switchModal('helpChar', 'helpMainMenu')">もどる</button>
   </div>
-</div>
 
-<div id="helpContact" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513;">不具合・ご要望</h3>
-    <div style="margin: 20px 0; line-height: 1.6;">
-      <p>こちらからいつでも受け付けております。</p>
-      
-      <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
-        onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
-        回答フォームを開く ↗
-      </button>
+  <div id="helpMode" class="overlay">
+    <div class="modal-box" style="max-width: 350px;">
+      <h3 style="color: #8b4513;">モードについて</h3>
+      <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
+        <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対戦ができます。この端末のみを使用して、プレイヤー同士でも対戦ができます。</p>
+        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対戦ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+        <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
+        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
     </div>
-    <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
   </div>
-</div>
 
-<div id="offlineMenu" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">オフライン対戦</h3>
-    <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
-    <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
-    <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
-    <button class="sub-btn" style="background:#666;" onclick="closeModal('offlineMenu')">戻る</button>
+  <div id="helpDifficulty" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513;">難易度について</h3>
+      <div style="text-align: left; font-size: 0.85rem; line-height: 1.5;">
+        <p>CPUの難易度は、下に行くほど強いです。</p>
+        <ul style="padding-left: 20px;">
+          <li>たわむれ</li>
+          <li>おあそび</li>
+          <li>たしなみ</li>
+          <li>しおや / こみや</li>
+          <li>しおやEX / こみやEX</li>
+          <li>試験実装（最強）</li>
+        </ul>
+        <p>※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
+    </div>
   </div>
-</div>
+
+  <div id="helpChar" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513;">キャラクターについて</h3>
+      <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+        <p>このゲームでは、対局前に自身のキャラクターを選択します。</p>
+        <p>キャラクターはそれぞれ独自の<strong>「必殺技」</strong>を持っており、対局を有利に進めることができます。</p>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpChar', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="helpContact" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513;">不具合・ご要望</h3>
+      <div style="margin: 20px 0; line-height: 1.6;">
+        <p>こちらからいつでも受け付けております。</p>
+        <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
+          onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
+          回答フォームを開く ↗
+        </button>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="offlineMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">オフライン対戦</h3>
+      <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+      <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
+      <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('offlineMenu')">戻る</button>
+    </div>
+  </div>
 
 </body>
 </html>
