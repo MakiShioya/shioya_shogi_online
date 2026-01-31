@@ -2,205 +2,230 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>キャラクター選択 - しおや将棋</title>
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
   <style>
-    /* 全体のデザイン */
     body {
-      background-image: url('script/image/haikei.PNG'); /* ホームと同じ背景に統一 */
+      background-image: url('script/image/haikei.PNG');
       background-color: #2c3e50;
       background-size: cover;
       background-position: center;
-      background-attachment: fixed; /* スクロールしても背景固定 */
+      background-attachment: fixed;
       font-family: Arial, sans-serif;
       text-align: center;
       margin: 0;
-      padding-top: 50px;
+      padding: 0;
+      /* 画面に収めるための設定 */
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* スクロール禁止 */
     }
 
     h1 {
       color: #FFB347;
-      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8); /* 文字を見やすく黒縁取り */
-      font-size: 3rem;
-      margin-bottom: 20px;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8);
+      font-size: min(6vw, 2rem); /* 画面幅に合わせて伸縮 */
+      margin: 15px 0 5px;
     }
 
-    /* メッセージエリア */
     #messageArea {
-      margin-bottom: 30px;
-      font-size: 1.2rem;
-      color: white; /* 背景が暗いので白文字に */
-      text-shadow: 1px 1px 3px black;
-      min-height: 1.5em;
-    }
-
-    h2 {
+      margin-bottom: 10px;
+      font-size: min(4vw, 1rem);
       color: white;
-      font-size: 1.5rem;
-      margin-bottom: 20px;
       text-shadow: 1px 1px 3px black;
     }
 
-    /* キャラクターカードの並び */
+    /* キャラクターカードのコンテナ */
     .char-container {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap; 
-      gap: 30px;
-      max-width: 1000px;
+      align-items: center; /* カード同士を上下中央に */
+      gap: 10px;
+      width: 98%;
+      max-width: 1200px;
       margin: 0 auto;
+      flex: 1; 
+      padding: 10px 0;
+      box-sizing: border-box;
+      min-height: 0; 
     }
 
-    /* キャラクターカード単体のデザイン */
+    /* カード単体 */
     .char-card {
-      background: white;
-      border: 5px solid #ccc;
-      border-radius: 15px;
-      padding: 15px;
-      cursor: pointer;
-      width: 220px;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  background: white;
+  border: 3px solid #ccc;
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  flex: 1;
+  max-width: 180px;
+  aspect-ratio: 3 / 5; /* ← 縦長カードにする決定打 */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  box-sizing: border-box;
+}
+
+
+    /* 画像を表示するエリア */
+    .img-wrapper {
+      flex: 1; /* 名前以外のスペースをすべて使う */
+      display: flex;
+      align-items: center; /* 画像を上下中央に */
+      justify-content: center; /* 画像を左右中央に */
+      min-height: 0; /* はみ出し防止 */
+      margin-bottom: 8px;
     }
 
-    /* ホバー時のエフェクト */
-    .char-card:hover {
-      border-color: #45a049; /* 選択カラー（緑） */
-      transform: translateY(-5px) scale(1.05);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-    }
-
+    /* 画像：比率を維持しつつ、枠をはみ出さない */
     .char-card img {
-      width: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
       height: auto;
+      object-fit: contain; /* 比率維持の絶対条件 */
       border-radius: 5px;
-      margin-bottom: 15px;
-      object-fit: contain; 
     }
 
+    /* 名前：常にカードの最下部に配置 */
     .char-name {
-      font-size: 1.4rem;
+      font-size: min(3vw, 1rem);
       font-weight: bold;
       color: #333;
+      white-space: nowrap; /* 改行させない */
+      padding: 5px 0;
+      flex-shrink: 0; /* 名前エリアが潰れないようにする */
+      border-top: 1px solid #eee; /* 境界線を入れるとより綺麗です */
     }
     
-    /* もどるボタン */
     .back-btn-container {
-      margin-top: 50px;
-      margin-bottom: 30px;
+      padding: 15px 0;
     }
+
     button.back-btn {
-      width: 150px;
-      height: 50px;
-      font-size: 18px;
+      width: 120px;
+      height: 40px;
+      font-size: 16px;
       color: white;
       background-color: rgba(255, 165, 0, 0.8);
       border: none;
       border-radius: 5px;
       cursor: pointer;
-      transition: background-color 0.3s;
     }
-    button.back-btn:hover {
-      background-color: #e69500;
-    }
+
+/* 準備中のカード用のスタイル */
+.disabled-card {
+  filter: grayscale(100%); /* 白黒にする */
+  opacity: 0.7;             /* 少し透けさせる */
+  cursor: not-allowed;      /* カーソルを禁止マークに */
+  pointer-events: none;     /* クリックイベントを無効化 */
+  border-color: #888 !important; /* 枠線をグレーに */
+}
+
+.disabled-card .char-name {
+  color: #888;              /* 文字色もグレーに */
+}
+
+
+
+
   </style>
 </head>
 <body>
 
   <h1 id="pageTitle">プレイヤーを選択</h1>
-  
   <div id="messageArea">お好みのキャラクターを選んでください</div>
 
   <div class="char-container">
-    
     <div class="char-card" onclick="onCharSelected('default')">
-      <img src="script/image/karui_1p.PNG" alt="通常">
+      <div class="img-wrapper">
+        <img src="script/image/karui_1p.PNG" alt="通常">
+      </div>
       <div class="char-name">キャラA</div>
     </div>
 
     <div class="char-card" onclick="onCharSelected('char_a')">
-      <img src="script/image/char_a.png" alt="キャラA画像">
+      <div class="img-wrapper">
+        <img src="script/image/char_a.png" alt="キャラA画像">
+      </div>
       <div class="char-name">キャラB</div>
     </div>
 
     <div class="char-card" onclick="onCharSelected('char_b')">
-      <img src="script/image/char_b.png" alt="キャラB画像">
+      <div class="img-wrapper">
+        <img src="script/image/char_b.png" alt="キャラB画像">
+      </div>
       <div class="char-name">キャラC</div>
     </div>
 
+  <div class="char-card disabled-card" onclick="onCharSelected('char_d')">
+  <div class="img-wrapper">
+    <img src="script/image/char_b.png" alt="キャラD画像">
   </div>
+  <div class="char-name">準備中</div>
+</div>
+
+<div class="char-card disabled-card" onclick="onCharSelected('char_e')">
+  <div class="img-wrapper">
+    <img src="script/image/char_b.png" alt="キャラE画像">
+  </div>
+  <div class="char-name">準備中</div>
+</div>
+
+
+  </div>
+
+
 
   <div class="back-btn-container">
     <button class="back-btn" onclick="goBack()">キャンセル</button>
   </div>
 
 <script>
-  // --- 初期化処理 ---
-  
-  // URLパラメータを取得
+  // 機能は一切変更していません
   const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get('mode');   // 'online', 'cpu', 'practice', 'pvp'
-  const phase = urlParams.get('phase'); // PvP用の段階 ('1' or '2')
-
-  // PvPの2人目（後手）選択中かどうか
+  const mode = urlParams.get('mode');   
+  const phase = urlParams.get('phase'); 
   const isPvpSecondPick = (mode === 'pvp' && phase === '2');
 
-  // 画面読み込み時に表示を調整
   window.onload = function() {
     const title = document.getElementById('pageTitle');
     const msg = document.getElementById('messageArea');
-
     if (mode === 'pvp') {
       if (!isPvpSecondPick) {
-        // ▼ PvP 1人目（先手）選択時
-        title.textContent = "1Pキャラクター選択";
-        msg.textContent = "先手（1P）のキャラクターを選んでください";
-        title.style.color = "#FFB347"; // オレンジ
-        
-        // 最初の選択なので、ゴミデータが残らないようにクリア
+        title.textContent = "1P選択";
+        msg.textContent = "先手(1P)を選んでください";
+        title.style.color = "#FFB347";
         sessionStorage.removeItem('char_black');
         sessionStorage.removeItem('char_white');
       } else {
-        // ▼ PvP 2人目（後手）選択時（戻ってきたとき）
-        title.textContent = "2Pキャラクター選択";
-        msg.textContent = "後手（2P）のキャラクターを選んでください";
-        title.style.color = "#45a049"; // 緑（背景が暗い場合見にくいかもなので調整可）
-
-        // ページトップへスクロール
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        title.textContent = "2P選択";
+        msg.textContent = "後手(2P)を選んでください";
+        title.style.color = "#45a049";
       }
     } else {
-      // ▼ シングルプレイ（CPU / 練習 / オンライン）
-      title.textContent = "キャラクター選択";
-      msg.textContent = "あなたのキャラクターを選んでください";
-      
-      // 自分のデータだけクリア
+      title.textContent = "キャラ選択";
+      msg.textContent = "キャラを選んでください";
       sessionStorage.removeItem('char_black'); 
     }
   };
 
-  // --- キャラクターカードがクリックされたら ---
   function onCharSelected(charId) {
     let targetUrl = `character_detail.html?id=${charId}&mode=${mode}`;
-
-    // PvPの場合は「今はどっちの手番を選んでいるか」も教える
     if (mode === 'pvp') {
-      if (isPvpSecondPick) {
-        targetUrl += "&phase=2"; // 後手を選んだ
-      } else {
-        targetUrl += "&phase=1"; // 先手を選んだ
-      }
+      targetUrl += (isPvpSecondPick ? "&phase=2" : "&phase=1");
     }
-
-    // 詳細ページへ移動
     window.location.href = targetUrl;
   }
 
-  // --- キャンセル（戻る）ボタン ---
   function goBack() {
-    // ★修正：新しいホーム画面に戻るように変更
     window.location.href = "home.html";
   }
 </script>
