@@ -205,17 +205,20 @@ function stopBGM() {
 }
 
 function applyPlayerImage() {
-  const blackHandBox = document.getElementById("blackHandBox");
-  if (!blackHandBox) return;
-
+  const isWhiteMode = document.body.classList.contains("view-white");
+  // 後手モードなら whiteHandBox、そうでなければ blackHandBox が「自分の台」
+  const myBoxId = isWhiteMode ? "whiteHandBox" : "blackHandBox";
+  const myBox = document.getElementById(myBoxId);
+  
+  if (!myBox) return;
+  
   const charId = sessionStorage.getItem('char_black') || 'default';
   let imageUrl = "";
-  
   if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
   else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
   else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
-
-  if (imageUrl) blackHandBox.style.backgroundImage = imageUrl;
+  
+  if (imageUrl) myBox.style.backgroundImage = imageUrl;
 }
 
 function undoMove() {
@@ -1370,6 +1373,8 @@ function saveGameResult(res) {
 // script/yaneuraou_main.js の末尾に追加
 
 // ★★★ 駒台の左右を入れ替える関数 ★★★
+
+
 function updateHandLayout(playerRole) {
     const leftSide = document.querySelector(".side.left");
     const rightSide = document.querySelector(".side.right");
@@ -1379,13 +1384,28 @@ function updateHandLayout(playerRole) {
     if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
 
     if (playerRole === "white") {
-        // プレイヤーが後手（画面反転中）
-        // 自分の駒台(白/後手)を右下へ、相手(黒/先手)を左上へ
+        // --- プレイヤーが後手の場合 ---
+        
+        // クラスを入れ替えて背景画像を交代させる
+        blackBox.classList.remove("black-hand");
+        blackBox.classList.add("white-hand"); // CPU(先手)だけど画像は2P用にする
+
+        whiteBox.classList.remove("white-hand");
+        whiteBox.classList.add("black-hand"); // 自分(後手)だけど画像は1P用にする
+
+        // 配置の入れ替え
         leftSide.prepend(blackBox);
         rightSide.appendChild(whiteBox);
     } else {
-        // プレイヤーが先手（通常）
-        // 相手(白/後手)を左上へ、自分(黒/先手)を右下へ
+        // --- プレイヤーが先手の場合（通常） ---
+        
+        blackBox.classList.remove("white-hand");
+        blackBox.classList.add("black-hand");
+
+        whiteBox.classList.remove("black-hand");
+        whiteBox.classList.add("white-hand");
+
+        // 配置の入れ替え
         leftSide.prepend(whiteBox);
         rightSide.appendChild(blackBox);
     }
