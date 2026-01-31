@@ -294,7 +294,7 @@
     <div class="modal-box">
       <h3 style="color:#d35400; margin-top:0;">🔔 最新情報</h3>
       <div style="text-align: left; margin: 20px 0; line-height: 1.6; background: rgba(255,255,255,0.5); padding: 10px; border-radius: 5px;">
-        ・オンライン対戦 実装！<br>
+        ・オンライン対局 実装！<br>
         ・ロビーチャット機能 追加！<br>
         ・棋譜解析機能 実装！<br>
         ・最強CPU「試験実装」追加
@@ -708,26 +708,26 @@
   </script>
 
   <div id="practiceMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
-      <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
+    <div class="modal-grid"> <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
       <button class="sub-btn" onclick="startGame('easy')">おあそび (入門)</button>
       <button class="sub-btn" onclick="startGame('normal')">たしなみ (普通)</button>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('practiceMenu')">閉じる</button>
-    </div>
+    </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('practiceMenu')">閉じる</button>
   </div>
+</div>
 
   <div id="onePlayerModeSelect" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">対戦相手を選んでください</h3>
-      <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">対局相手を選んでください</h3>
+    <div class="modal-grid"> <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
       <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
       <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
       <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
-      <button class="sub-btn" style="background:#d35400;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
-    </div>
+    </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
+    <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
   </div>
+</div>
 
   <div id="helpMainMenu" class="overlay">
     <div class="modal-box">
@@ -746,8 +746,8 @@
     <div class="modal-box" style="max-width: 350px;">
       <h3 style="color: #8b4513;">モードについて</h3>
       <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
-        <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対戦ができます。この端末のみを使用して、プレイヤー同士でも対戦ができます。</p>
-        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対戦ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+        <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対局ができます。この端末のみを使用して、プレイヤー同士でも対局ができます。</p>
+        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
         <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
         <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
       </div>
@@ -801,14 +801,14 @@
   </div>
 
   <div id="offlineMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">オフライン対戦</h3>
-      <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">オフライン対局</h3>
+    <div class="modal-grid"> <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
       <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
       <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('offlineMenu')">戻る</button>
-    </div>
+    </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('offlineMenu')">戻る</button>
   </div>
+</div>
 
 </body>
 </html>
