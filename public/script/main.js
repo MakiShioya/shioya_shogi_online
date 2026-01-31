@@ -15,15 +15,38 @@ let hasShownEndEffect = false;
 window.skillUsed = false;
 window.isCaptureRestricted = false;
 
+// script/main.js
+
 // --- 初期化処理 ---
 window.addEventListener("load", () => {
   bgm = document.getElementById("bgm");
   moveSound = document.getElementById("moveSound");
   promoteSound = document.getElementById("promoteSound");
 
-  applyPlayerImage();
-
   if (resignBtn) resignBtn.addEventListener("click", resignGame);
+
+  // ★★★ 1. 先手・後手のランダム決定 ★★★
+  // Math.random() < 0.5 ならプレイヤーが先手(黒)、そうでなければ後手(白)
+  const isPlayerBlack = Math.random() < 0.5;
+
+  if (isPlayerBlack) {
+      // プレイヤーが先手
+      cpuSide = "white"; // CPUは後手
+      // 画面の向きはそのまま
+      document.body.classList.remove("view-white");
+      updateHandLayout("black"); // 駒台配置：標準
+      statusDiv.textContent = "対局開始！ あなたは【先手】です。";
+  } else {
+      // プレイヤーが後手
+      cpuSide = "black"; // CPUは先手
+      // 画面を反転させるクラスを追加
+      document.body.classList.add("view-white");
+      updateHandLayout("white"); // 駒台配置：反転（自分の台を右へ）
+      statusDiv.textContent = "対局開始！ あなたは【後手】です。";
+  }
+
+  // 画像反映（反転クラス付与後に呼ぶことで影の向きなどが正しくなります）
+  applyPlayerImage();
 
   // キャラのスキル設定
   const charId = sessionStorage.getItem('char_black') || 'default';
@@ -45,6 +68,12 @@ window.addEventListener("load", () => {
   if (typeof getPositionKey === "function") {
       const key = getPositionKey();
       positionHistory[key] = 1;
+  }
+
+  // ★★★ 2. CPUが先手の場合、初手を指させる ★★★
+  if (cpuSide === "black") {
+      // 少し待ってから思考開始（いきなり動くとびっくりするため）
+      setTimeout(() => cpuMove(), 1000);
   }
 });
 
@@ -728,4 +757,40 @@ function saveGameResult(res) {
   }).then(() => {
       console.log(opponentDisplayName + " との対局を保存しました");
   });
+}
+
+// script/main.js の末尾に追加
+
+// ★★★ 駒台の左右を入れ替える関数 ★★★
+function updateHandLayout(playerRole) {
+    // HTML内の左右のコンテナを取得
+    const leftSide = document.querySelector(".side.left");
+    const rightSide = document.querySelector(".side.right");
+    
+    // 駒台の要素を取得
+    const blackBox = document.getElementById("blackHandBox");
+    const whiteBox = document.getElementById("whiteHandBox");
+
+    // 要素が見つからなければ何もしない
+    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
+
+    if (playerRole === "white") {
+        // 【プレイヤーが後手の場合】
+        // 画面が180度回転しているので、「自分の駒台（後手/White）」を画面右下に持ってきたい
+        
+        // 1. 黒い箱（CPU/先手）を左サイドへ（prependで上側/奥側に追加）
+        leftSide.prepend(blackBox);
+
+        // 2. 白い箱（自分/後手）を右サイドへ（appendChildで下側/手前に追加）
+        rightSide.appendChild(whiteBox);
+
+    } else {
+        // 【プレイヤーが先手の場合（通常）】
+        
+        // 1. 白い箱（CPU/後手）を左サイドへ
+        leftSide.prepend(whiteBox);
+
+        // 2. 黒い箱（自分/先手）を右サイドへ
+        rightSide.appendChild(blackBox);
+    }
 }
