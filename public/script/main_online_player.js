@@ -396,6 +396,7 @@ function updateTimerDisplay() {
   if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
 }
 
+// --- 修正版 render関数 (Online Hybrid Version) ---
 function render() {
   if (gameOver) {
     if (!hasShownEndEffect && winner) {
@@ -415,13 +416,7 @@ function render() {
        const btn = document.createElement("button");
        btn.id = "resetBtn";
        btn.textContent = "ホームに戻る"; 
-       btn.style.padding = "10px 20px";
-       btn.style.fontSize = "16px";
-       btn.style.marginTop = "10px";
-       btn.style.backgroundColor = "#d32f2f";
-       btn.style.color = "white";
-       btn.style.border = "none";
-       btn.style.cursor = "pointer";
+       btn.style.cssText = "padding:10px 20px; font-size:16px; margin-top:10px; background-color:#d32f2f; color:white; border:none; cursor:pointer;";
        btn.onclick = () => {
            if(confirm("ホーム画面に戻りますか？")) {
                window.location.href = "index.html"; 
@@ -430,8 +425,8 @@ function render() {
        statusDiv.appendChild(document.createElement("br"));
        statusDiv.appendChild(btn);
     }
-
   } else {
+    // 進行中のステータス表示
     if (!isSkillTargeting) {
       let msg = "現在の手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
       if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
@@ -447,25 +442,52 @@ function render() {
     checkStatusDiv.textContent = "";
   }
 
+  // 盤面描画
   board.innerHTML = "";
   for (let y = 0; y < 9; y++) {
     const tr = document.createElement("tr");
     for (let x = 0; x < 9; x++) {
       const td = document.createElement("td");
       const piece = boardState[y][x];
+      
       if (piece) {
         const isWhite = piece === piece.toLowerCase();
         const key = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
-        td.textContent = pieceName[key];
+
+        // ★ハイブリッド方式：駒コンテナ作成
+        const container = document.createElement("div");
+        container.className = "piece-container";
+        if (isWhite) {
+            container.classList.add("gote");
+        }
+        const baseType = piece.replace("+", "").toUpperCase();
+        container.classList.add("size-" + baseType);
+        const textSpan = document.createElement("span");
+        textSpan.className = "piece-text";
+        if (key.startsWith("+")) textSpan.classList.add("promoted");
+        
+        // 1文字表示
+        const name = pieceName[key];
+        textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
+
+        // 色演出
+        if (pieceStyles[y][x] === "green") {
+          textSpan.style.color = "#32CD32";
+          textSpan.style.fontWeight = "bold";
+          textSpan.style.textShadow = "1px 1px 0px #000";
+        }
+
+        container.appendChild(textSpan);
+        td.appendChild(container);
+
+        // 後手の駒は反転
         if (isWhite) td.style.transform = "rotate(180deg)";
         
-        if (pieceStyles[y][x] === "green") {
-          td.style.color = "#32CD32";
-          td.style.fontWeight = "bold";
-          td.style.textShadow = "1px 1px 0px #000";
-        }
-        
         if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) td.classList.add("moved");
+      }
+      // ★★★ ここを追加（移動元を赤くする） ★★★
+      if (lastMoveFrom && lastMoveFrom.x === x && lastMoveFrom.y === y) {
+          td.classList.add("move-from");
       }
       if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
       if (legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
@@ -477,6 +499,7 @@ function render() {
   }
   renderHands();
 
+  // 手番の強調表示
   const blackBox = document.getElementById("blackHandBox");
   const whiteBox = document.getElementById("whiteHandBox");
   if (blackBox) blackBox.classList.remove("active");
@@ -489,6 +512,7 @@ function render() {
   updateSkillButton();
 }
 
+// --- 修正版 renderHands関数 (Online Hybrid Version) ---
 function renderHands() {
   const order = ["P", "L", "N", "S", "G", "B", "R"];
   hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
@@ -497,20 +521,38 @@ function renderHands() {
   blackHandDiv.innerHTML = "";
   whiteHandDiv.innerHTML = "";
 
+  const createHandPiece = (player, p, i) => {
+      const container = document.createElement("div");
+      container.className = "hand-piece-container";
+      if (player === "white") {
+          container.classList.add("gote");
+      }
+      const textSpan = document.createElement("span");
+      textSpan.className = "piece-text";
+      textSpan.textContent = pieceName[p];
+      
+      container.appendChild(textSpan);
+
+      // 選択状態の強調
+      if (selected && selected.fromHand && selected.player === player && selected.index === i) {
+          container.classList.add("selected");
+      }
+      
+      // クリックイベント
+      container.onclick = () => selectFromHand(player, i);
+
+      // 後手（相手または自分）の持ち駒は反転
+      if (player === "white") container.style.transform = "rotate(180deg)";
+
+      return container;
+  };
+
   hands.black.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "black" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("black", i);
-    blackHandDiv.appendChild(span);
+      blackHandDiv.appendChild(createHandPiece("black", p, i));
   });
 
   hands.white.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "white" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("white", i);
-    whiteHandDiv.appendChild(span);
+      whiteHandDiv.appendChild(createHandPiece("white", p, i));
   });
 }
 
@@ -609,6 +651,13 @@ function movePieceWithSelected(sel, x, y) {
 
 function executeMove(sel, x, y, doPromote, fromNetwork = false) {
   history.push(deepCopyState());
+  // ★★★ ここを追加（移動元を記録） ★★★
+  if (sel.fromHand) {
+      lastMoveFrom = null; // 持ち駒から打った場合はなし
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
   const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
   const boardBefore = boardState.map(r => r.slice());
   const moveNumber = kifu.length + 1; 
@@ -807,7 +856,7 @@ function resetGame() {
   moveCount = 0;
   kifu = [];
   history = []; 
-  
+  lastMoveFrom = null;
   p1SkillCount = 0;
   p2SkillCount = 0;
   window.skillUsed = false;
