@@ -197,5 +197,16 @@
 
 <script src="script/auth.js"></script>
 
+<div id="chatContainer">
+  <div id="chatHeader" onclick="toggleChat()">💬 チャット (クリックで開閉)</div>
+  <div id="chatBody">
+    <div id="chatHistory"></div>
+    <div id="chatInputArea">
+      <input type="text" id="chatInput" placeholder="メッセージを入力..." autocomplete="off">
+      <button onclick="sendChatMessage()">送信</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
