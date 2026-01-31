@@ -1,4 +1,4 @@
-// server.js (キャラクター同期対応版)
+// server.js (キャラクター同期 + チャット機能対応版)
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -18,13 +18,13 @@ let connectedPlayers = {
     white: null  // 後手のSocket ID
 };
 
-// ★追加：各プレイヤーが選んだキャラクターIDを保存する辞書
+// 各プレイヤーが選んだキャラクターIDを保存する辞書
 let playerCharIds = {}; 
 
 io.on('connection', (socket) => {
     console.log('誰かが接続しました: ' + socket.id);
 
-    // ★追加：クライアントから「私はこのキャラです」と連絡が来たら保存する
+    // クライアントから「私はこのキャラです」と連絡が来たら保存する
     socket.on('declare character', (charId) => {
         playerCharIds[socket.id] = charId;
         console.log(`ID: ${socket.id} は ${charId} を選択しました`);
@@ -46,7 +46,7 @@ io.on('connection', (socket) => {
         console.log(`観戦者(spectator)です: ${socket.id}`);
     }
 
-    // ★★★ 変更：二人揃ったら、キャラ情報付きで対局開始合図を送る ★★★
+    // 二人揃ったら、キャラ情報付きで対局開始合図を送る
     if (connectedPlayers.black && connectedPlayers.white) {
         console.log("二人揃いました。対局を開始します！");
         
@@ -81,6 +81,12 @@ io.on('connection', (socket) => {
     // 投了の中継
     socket.on('game resign', (data) => {
         socket.broadcast.emit('game resign', data);
+    });
+
+    // ★★★ 追加：チャットの中継 ★★★
+    socket.on('chat message', (data) => {
+        // 全員（送信者含む）にメッセージを送る
+        io.emit('chat message', data);
     });
 
     // 4. 切断時の処理
