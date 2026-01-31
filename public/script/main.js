@@ -539,14 +539,20 @@ function stopBGM() {
 }
 
 function applyPlayerImage() {
-  const blackHandBox = document.getElementById("blackHandBox");
-  if (!blackHandBox) return;
+  const isWhiteMode = document.body.classList.contains("view-white");
+  // 後手モードなら whiteHandBox、そうでなければ blackHandBox が「自分の台」
+  const myBoxId = isWhiteMode ? "whiteHandBox" : "blackHandBox";
+  const myBox = document.getElementById(myBoxId);
+  
+  if (!myBox) return;
+  
   const charId = sessionStorage.getItem('char_black') || 'default';
   let imageUrl = "";
   if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
   else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
   else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
-  if (imageUrl) blackHandBox.style.backgroundImage = imageUrl;
+  
+  if (imageUrl) myBox.style.backgroundImage = imageUrl;
 }
 
 function undoMove() {
@@ -769,35 +775,39 @@ function saveGameResult(res) {
 // script/main.js の末尾に追加
 
 // ★★★ 駒台の左右を入れ替える関数 ★★★
+
 function updateHandLayout(playerRole) {
-    // HTML内の左右のコンテナを取得
     const leftSide = document.querySelector(".side.left");
     const rightSide = document.querySelector(".side.right");
-    
-    // 駒台の要素を取得
     const blackBox = document.getElementById("blackHandBox");
     const whiteBox = document.getElementById("whiteHandBox");
 
-    // 要素が見つからなければ何もしない
     if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
 
     if (playerRole === "white") {
-        // 【プレイヤーが後手の場合】
-        // 画面が180度回転しているので、「自分の駒台（後手/White）」を画面右下に持ってきたい
+        // --- プレイヤーが後手の場合 ---
         
-        // 1. 黒い箱（CPU/先手）を左サイドへ（prependで上側/奥側に追加）
+        // クラスを入れ替えて背景画像を交代させる
+        blackBox.classList.remove("black-hand");
+        blackBox.classList.add("white-hand"); // CPU(先手)だけど画像は2P用にする
+
+        whiteBox.classList.remove("white-hand");
+        whiteBox.classList.add("black-hand"); // 自分(後手)だけど画像は1P用にする
+
+        // 配置の入れ替え
         leftSide.prepend(blackBox);
-
-        // 2. 白い箱（自分/後手）を右サイドへ（appendChildで下側/手前に追加）
         rightSide.appendChild(whiteBox);
-
     } else {
-        // 【プレイヤーが先手の場合（通常）】
+        // --- プレイヤーが先手の場合（通常） ---
         
-        // 1. 白い箱（CPU/後手）を左サイドへ
-        leftSide.prepend(whiteBox);
+        blackBox.classList.remove("white-hand");
+        blackBox.classList.add("black-hand");
 
-        // 2. 黒い箱（自分/先手）を右サイドへ
+        whiteBox.classList.remove("black-hand");
+        whiteBox.classList.add("white-hand");
+
+        // 配置の入れ替え
+        leftSide.prepend(whiteBox);
         rightSide.appendChild(blackBox);
     }
 }
