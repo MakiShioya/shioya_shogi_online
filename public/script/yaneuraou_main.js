@@ -30,19 +30,37 @@ let lastSkillKifu = "";
 let pendingMove = null;
 
 // 初期化処理
+
 window.addEventListener("load", () => {
   bgm = document.getElementById("bgm");
   moveSound = document.getElementById("moveSound");
   promoteSound = document.getElementById("promoteSound");
 
-  applyPlayerImage();
-
   if (resignBtn) {
     resignBtn.addEventListener("click", resignGame);
   }
 
+  // ★★★ 1. 先手・後手のランダム決定 ★★★
+  const isPlayerBlack = Math.random() < 0.5;
+
+  if (isPlayerBlack) {
+      // プレイヤーが先手
+      cpuSide = "white"; // AIは後手
+      document.body.classList.remove("view-white");
+      updateHandLayout("black"); // 駒台配置：標準
+  } else {
+      // プレイヤーが後手
+      cpuSide = "black"; // AIは先手
+      document.body.classList.add("view-white"); // 盤面反転
+      updateHandLayout("white"); // 駒台配置：反転
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
+
+  // 画像反映（反転クラス付与後に呼ぶ）
+  applyPlayerImage();
+
   const charId = sessionStorage.getItem('char_black') || 'default';
-  
+ 
   if (charId === 'default' && typeof CharItsumono !== 'undefined') {
     currentSkill = CharItsumono.skill;
   } else if (charId === 'char_a' && typeof CharNekketsu !== 'undefined') {
@@ -125,8 +143,20 @@ function handleEngineMessage(msg) {
     }
     else if (msg === "readyok") {
         isEngineReady = true;
-        statusDiv.textContent = "対局開始！";
+        
+        // ★メッセージの出し分け
+        if (cpuSide === "white") {
+             statusDiv.textContent = "対局開始！ あなたは【先手】です。";
+        } else {
+             statusDiv.textContent = "対局開始！ あなたは【後手】です。";
+        }
+        
         console.log("Ready OK!");
+
+        // ★★★ 2. AIが先手の場合、思考開始 ★★★
+        if (turn === cpuSide) {
+             setTimeout(() => cpuMove(), 1000);
+        }
     }
     else if (typeof msg === "string" && msg.startsWith("bestmove")) {
         const parts = msg.split(" ");
@@ -1290,4 +1320,28 @@ function saveGameResult(res) {
     }).catch((error) => {
         console.error("保存失敗:", error);
     });
+}
+
+// script/yaneuraou_main.js の末尾に追加
+
+// ★★★ 駒台の左右を入れ替える関数 ★★★
+function updateHandLayout(playerRole) {
+    const leftSide = document.querySelector(".side.left");
+    const rightSide = document.querySelector(".side.right");
+    const blackBox = document.getElementById("blackHandBox");
+    const whiteBox = document.getElementById("whiteHandBox");
+
+    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
+
+    if (playerRole === "white") {
+        // プレイヤーが後手（画面反転中）
+        // 自分の駒台(白/後手)を右下へ、相手(黒/先手)を左上へ
+        leftSide.prepend(blackBox);
+        rightSide.appendChild(whiteBox);
+    } else {
+        // プレイヤーが先手（通常）
+        // 相手(白/後手)を左上へ、自分(黒/先手)を右下へ
+        leftSide.prepend(whiteBox);
+        rightSide.appendChild(blackBox);
+    }
 }
