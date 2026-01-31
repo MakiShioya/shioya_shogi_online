@@ -27,7 +27,7 @@
       transform-origin: center center;
       
       /* ▼▼▼ 修正箇所：幅を狭めてコンパクトにしました ▼▼▼ */
-      width: 820px;  /* 1000px -> 820px */
+      width: 850px;  /* 1000px -> 820px */
       height: 600px; /* 650px -> 600px */
       /* ▲▲▲ 修正ここまで ▲▲▲ */
       
@@ -82,6 +82,25 @@
       justify-content: center;
       align-items: center;
     }
+
+
+/* メニューボタンの微調整 */
+    .menu-item {
+      display: block;
+      width: 100%;
+      margin: 5px 0;
+      padding: 7px 5px;
+      font-size: 0.8rem;
+      background: #8b4513;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+
   </style>
 
 </head>
@@ -187,19 +206,14 @@
 
 
 <div id="menuContainer" style="position: fixed; top: 10px; right: 10px; z-index: 100;">
-    <button id="menuTrigger" onclick="toggleMenu()" style="padding: 10px; font-size: 20px; cursor: pointer; background: rgba(255,255,255,0.8); border: 2px solid #333; border-radius: 5px;">
-        ☰ メニュー
+    <button id="menuTrigger" onclick="toggleMenu()" style="padding: 5px; font-size: 12px; cursor: pointer; background: rgba(200,200,200,1); border: 2px solid #333; border-radius: 5px;">
+        メニュー
     </button>
-    
     <div id="menuPanel" style="display: none; position: absolute; top: 50px; right: 0; width: 180px; background: #fff8dc; border: 3px solid #8b4513; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); padding: 10px;">
-    
-    <button id="undoBtn" class="menu-item" style="color: #0C2CB9; font-weight: bold;" onclick="undoMove(); toggleMenu();">待った</button>
-    <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
-    <button class="menu-item" onclick="toggleKifu(); toggleMenu();">📝 棋譜を表示</button>
-    <button class="menu-item" onclick="toggleVolume();">🔊 音量設定</button>
-    <button class="menu-item" onclick="showRules();">📖 ルール確認</button>
-    <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
-    <button class="menu-item" style="color: #d32f2f;" onclick="location.href='home.html'">🏠 ホームに戻る</button>
+    <button class="menu-item" onclick="toggleKifu(); toggleMenu();">棋譜を表示</button>
+    <button class="menu-item" onclick="toggleVolume();">音量設定</button>
+    <button class="menu-item" onclick="showRules();">ルール確認</button>
+    <button class="menu-item" onclick="location.href='home.html'">ホームに戻る</button>
 </div>
 </div>
 
@@ -263,7 +277,7 @@
 
     // ゲーム画面の基準サイズ（コンパクト設定）
     // ※ここを変えれば全てのファイルに適用されます
-    const baseWidth = 780;
+    const baseWidth = 850;
     const baseHeight = 600;
 
     const w = window.innerWidth;
