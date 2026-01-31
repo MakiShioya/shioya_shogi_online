@@ -2,69 +2,138 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>しおや将棋</title> <link rel="stylesheet" href="script/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <title>しおや将棋</title>
+  <link rel="stylesheet" href="script/style.css">
   <link rel="icon" href="script/image/komiya_icon.png"> 
+  
+  <style>
+    /* 基本設定：スクロール禁止 */
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* 絶対にスクロールさせない */
+      background-color: #222; /* 背景色（隙間ができた時用） */
+    }
+
+    /* ゲーム画面全体を包むコンテナ */
+    #game-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-origin: center center;
+      
+      /* ▼▼▼ 修正箇所：幅を狭めてコンパクトにしました ▼▼▼ */
+      width: 820px;  /* 1000px -> 820px */
+      height: 600px; /* 650px -> 600px */
+      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      
+      transform: translate(-50%, -50%); 
+      
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ゲームの中身（既存のID） */
+    #game {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      
+      /* ▼▼▼ 修正箇所：中央寄せにして要素をくっつけました ▼▼▼ */
+      justify-content: center; /* space-between から変更 */
+      gap: 10px;               /* 要素間の隙間を少しだけ空ける */
+      align-items: center;
+      /* ▲▲▲ 修正ここまで ▲▲▲ */
+    }
+
+    /* 盤や駒台のレイアウト調整 */
+    .side {
+      width: 140px; /* 少しスリムに */
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      
+      /* ▼▼▼ 修正箇所：縦方向も中央に寄せました ▼▼▼ */
+      justify-content: center; /* space-around から変更 */
+      gap: 15px;               /* 縦の要素間の隙間 */
+      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      
+      padding: 5px;
+      box-sizing: border-box;
+    }
+
+    #center {
+      flex-grow: 1; /* 必要最小限の広さに */
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .shogiban-outer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+
 </head>
 <body>
-<div id="game">
 
-  <div class="side left">
-  <div class="hand white-hand" id="whiteHandBox">
-    <h3>後手の持ち駒</h3>
-    
-    <div id="whiteHand"></div>
-  </div>
-  
-<div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
-      考慮時間: 0秒
+<div id="game-wrapper">
+  <div id="game">
+
+    <div class="side left">
+      <div class="hand white-hand" id="whiteHandBox">
+        <h3>後手の持ち駒</h3>
+        <div id="whiteHand"></div>
+      </div>
+      
+      <div id="status"></div>
+
+      <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
+        考慮時間: 0秒
+      </div>
     </div>
 
-</div>
-
-  <div id="center">
-    <div id="status"></div>
-
-    
-
-    <div id="checkStatus"></div>
-    
-    <div style="position: relative; display: inline-block;">
-  <img id="skillCutIn" src="" alt="">
-  <div class="shogiban-outer">
-    <table id="board"></table>
-  </div>
-</div>
-    
-    <div style="position: absolute; bottom: -90px; left: 0; width: 100%; text-align: center; pointer-events: none;">
+    <div id="center">
+      <div id="checkStatus"></div>
+      
+      <div style="position: relative; display: inline-block;">
+        <img id="skillCutIn" src="" alt="">
+        <div class="shogiban-outer">
+          <table id="board"></table>
+        </div>
+      </div>
+      
+      <div style="position: absolute; bottom: 0; left: 0; width: 100%; text-align: center; pointer-events: none;"></div>
     </div>
-  </div>
 
-  <div class="side right">
-    <button id="resignBtn" class="square-btn">投了</button>
-    <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
-    <div class="hand black-hand" id="blackHandBox">
-      <h3>先手の持ち駒</h3>
-      <div id="blackHand"></div>
+    <div class="side right">
+      <button id="resignBtn" class="square-btn">投了</button>
+      <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
+      <div class="hand black-hand" id="blackHandBox">
+        <h3>先手の持ち駒</h3>
+        <div id="blackHand"></div>
+      </div>
     </div>
+
   </div>
-
 </div>
-
-
-<div style="text-align: center; margin: 15px 0 10px 0;">
-
-</div>
-
 <div id="kifuArea" class="modal-overlay" style="display: none;">
     <div class="modal-content" style="width: 90%; max-width: 500px; height: 70vh; display: flex; flex-direction: column;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #8b4513; padding-bottom: 5px;">
             <span style="font-weight: bold; color: #8b4513; font-size: 18px;">📝 棋譜記録</span>
             <button onclick="copyKifuText()" style="padding: 5px 12px; font-size: 12px; cursor: pointer; background: #fff; border: 1px solid #8b4513; border-radius: 4px;">📋 コピー</button>
         </div>
-        
-        <div id="kifu" style="flex-grow: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #fdf5e6; font-family: monospace; font-size: 14px; line-height: 1.6; color: #000; text-align: left; border-radius: 4px;">
-            </div>
-
+        <div id="kifu" style="flex-grow: 1; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #fdf5e6; font-family: monospace; font-size: 14px; line-height: 1.6; color: #000; text-align: left; border-radius: 4px;"></div>
         <button class="square-btn" style="background: #8b4513; color: white; margin-top: 15px; width: 100%;" onclick="toggleKifu()">閉じる</button>
     </div>
 </div>
@@ -127,13 +196,9 @@
     <button id="menuTrigger" onclick="toggleMenu()" style="padding: 10px; font-size: 20px; cursor: pointer; background: rgba(255,255,255,0.8); border: 2px solid #333; border-radius: 5px;">
         ☰ メニュー
     </button>
-    
     <div id="menuPanel" style="display: none; position: absolute; top: 50px; right: 0; width: 180px; background: #fff8dc; border: 3px solid #8b4513; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); padding: 10px;">
-    
     <button id="undoBtn" class="menu-item" style="color: #0C2CB9; font-weight: bold;" onclick="undoMove(); toggleMenu();">待った</button>
-    
     <hr style="border: 0; border-top: 1px solid #8b4513; margin: 8px 0;">
-    
     <button class="menu-item" onclick="toggleKifu(); toggleMenu();">📝 棋譜を表示</button>
     <button class="menu-item" onclick="toggleVolume();">🔊 音量設定</button>
     <button class="menu-item" onclick="showRules();">📖 ルール確認</button>
@@ -141,8 +206,6 @@
     <button class="menu-item" style="color: #d32f2f;" onclick="location.href='home.html'">🏠 ホームに戻る</button>
 </div>
 </div>
-
-
 
 <audio id="skillSound" src=""></audio>
 <audio id="bgm" src="script/audio/natsu2.mp3" loop></audio>
@@ -153,13 +216,11 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="script/auth.js"></script>
-
 <script src="script/globals.js"></script>
 <script src="script/rules.js"></script>
 <script src="script/kifu.js"></script>
 <script src="script/sfen_converter.js"></script>
 <script src="script/engine_bridge.js"></script>
-
 <script src="script/skills/SilverArmor.js"></script>
 <script src="script/characters/Itsumono.js"></script>
 <script src="script/skills/PassionateSupport.js"></script>
@@ -168,41 +229,61 @@
 <script src="script/characters/Reisei.js"></script>
 
 <script>
+  // 画面サイズに合わせてゲーム全体を縮小・拡大する関数
+  function autoFitGame() {
+    const wrapper = document.getElementById('game-wrapper');
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    // ゲームの設計上の基本サイズ（このサイズなら綺麗に見えるという値）
+    const baseWidth = 1000;
+    const baseHeight = 650;
+
+    // 縦と横、どちらに合わせて縮小するか計算
+    const scaleX = windowWidth / baseWidth;
+    const scaleY = windowHeight / baseHeight;
+    
+    // 小さい方の倍率に合わせて全体を縮める（はみ出さないようにする）
+    // ※ 0.95を掛けて少し余白を持たせる
+    let scale = Math.min(scaleX, scaleY) * 0.95;
+
+    // 拡大しすぎないように最大は1倍にする（PCなどはそのまま）
+    if (scale > 1) scale = 1;
+
+    // 適用（transform: scale を使うので、CSSのzoomより確実です）
+    wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+
+  // 読み込み時とリサイズ時に実行
+  window.addEventListener('load', autoFitGame);
+  window.addEventListener('resize', autoFitGame);
+  
+  // 念のため少し遅らせて実行（画像の読み込み待ち対策）
+  setTimeout(autoFitGame, 500);
+</script>
+<script>
   // 対戦相手のデータベース
   const opponents = {
-    // 練習モード
     'saijaku': { name: 'たわむれ', script: 'script/ai/ai_Lv1.js' },
     'easy':    { name: 'おあそび', script: 'script/ai/ai_Lv2.js' },
     'normal':  { name: 'たしなみ', script: 'script/ai/ai_Lv3.js' },
-    
-    // こみや・しおや系
     'hard1':   { name: 'こみや',   script: 'script/ai/ai_komiya.js' },
     'hard2':   { name: 'しおや',   script: 'script/ai/ai_shioya.js' },
-    
-    // EX系
     'ex_hard1':{ name: 'こみやEX', script: 'script/ai/ex_ai_komiya.js' },
     'ex_hard2':{ name: 'しおやEX', script: 'script/ai/ex_ai_shioya.js' }
-    
-    // ※「やねうら王(ex_hard3)」はシステムが大きく違うため、
-    // 現状通り cpu_yaneuraou.html を使います。
   };
 
-  // 1. URLパラメータ(?opponent=xxx) を取得
   const params = new URLSearchParams(window.location.search);
   const opKey = params.get('opponent');
   const data = opponents[opKey];
 
-  // 2. データが存在すればセットアップ
   if (data) {
-    // グローバル変数をセット（main.jsがこれを使います）
     window.opponentName = data.name;
     document.title = "しおや将棋 vs " + data.name;
 
-    // 3. AIスクリプトを動的に生成して追加
     const aiScript = document.createElement('script');
     aiScript.src = data.script;
     
-    // AIの読み込みが終わったら、最後に main.js を読み込む（順序保証のため）
     aiScript.onload = function() {
       const mainScript = document.createElement('script');
       mainScript.src = "script/main.js";
@@ -211,14 +292,71 @@
     
     document.body.appendChild(aiScript);
   } else {
-    // データがない場合（直接開いた時など）のエラーハンドリング
     alert("対戦相手が指定されていません。ホームに戻ります。");
     window.location.href = "home.html";
   }
-
-
-
 </script>
+
+
+<script>
+  // 以前の同名関数を上書きして動作します
+  function autoFitGame() {
+    const wrapper = document.getElementById('game-wrapper');
+    if (!wrapper) return; // エラー防止
+
+    // ゲーム画面の基準サイズ（コンパクト設定）
+    // ※ここを変えれば全てのファイルに適用されます
+    const baseWidth = 780;
+    const baseHeight = 600;
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+
+    // 縦持ち判定（高さ > 幅 なら縦持ちとみなす）
+    const isPortrait = h > w;
+
+    let scale;
+    let rotation = '';
+
+    // CSSの設定に関わらず、JS側でサイズを強制適用
+    wrapper.style.width = baseWidth + "px";
+    wrapper.style.height = baseHeight + "px";
+
+    if (isPortrait) {
+      // ■ 縦持ちの場合：90度回転させる計算
+      // 画面の「高さ(h)」を「横幅」として扱い、画面の「幅(w)」を「高さ」として扱います
+      const scaleX = h / baseWidth;
+      const scaleY = w / baseHeight;
+      
+      // 小さい方の倍率に合わせる
+      scale = Math.min(scaleX, scaleY) * 0.95; // 0.95は余白
+      rotation = 'rotate(90deg)'; // 90度回転を追加
+
+    } else {
+      // ■ 横持ち（PC含む）の場合：通常計算
+      const scaleX = w / baseWidth;
+      const scaleY = h / baseHeight;
+      
+      scale = Math.min(scaleX, scaleY) * 0.95;
+      rotation = ''; // 回転なし
+    }
+
+    // 拡大しすぎ防止（PCでボヤけないように最大1倍）
+    if (scale > 1) scale = 1;
+
+    // 変形（中央配置 + 回転 + 拡大縮小）を適用
+    wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
+  }
+
+  // 読み込み時とリサイズ時に実行
+  // ※既存のイベントリスナーがあっても、関数の中身が置き換わっているので問題ありません
+  window.addEventListener('load', autoFitGame);
+  window.addEventListener('resize', autoFitGame);
+  
+  // 画像読み込み遅延対策
+  setTimeout(autoFitGame, 500);
+</script>
+
 
 </body>
 </html>
