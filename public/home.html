@@ -180,16 +180,134 @@
   background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important;
 }
 
-    /* ★★★ 追加: チャットモーダル内のスタイル ★★★ */
+    /* ★★★ 修正版: ゲーム風チャットUI (画像再現) ★★★ */
     #lobbyChatHistory {
-      height: 300px;
+      height: 350px;
       overflow-y: auto;
+      background: rgba(255, 255, 255, 0.5); /* 全体の背景を少し透過 */
       border: 1px solid #ccc;
-      background: rgba(255, 255, 255, 0.9);
       margin-bottom: 10px;
-      padding: 10px;
-      text-align: left;
-      border-radius: 5px;
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px; /* メッセージ間の間隔を広めに */
+    }
+
+    /* メッセージの行全体（アイコン＋吹き出し） */
+    .chat-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      max-width: 95%;
+    }
+
+    /* 自分の発言は右揃え（逆順） */
+    .chat-row.mine {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    /* --- アイコンと名前のエリア --- */
+    .icon-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 60px; /* アイコンエリアの幅固定 */
+    }
+
+    /* 名前バッジ */
+    .chat-name-badge {
+      background: #fff;
+      border: 1px solid #8b4513;
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: -10px; /* アイコンに少し重ねる */
+      z-index: 2;
+      white-space: nowrap;
+      max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* アイコン画像 */
+    .chat-icon-img {
+      width: 50px;
+      height: 50px;
+      
+      /* ★変更：相手は「緑色」の枠 */
+      border: 3px solid #56ab2f; 
+      
+      border-radius: 12px;
+      background: #fff;
+      object-fit: cover;
+      z-index: 1;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* ★追加：自分だけは「オレンジ色」の枠（メルスト風維持） */
+    .chat-row.mine .chat-icon-img {
+      border: 3px solid #FFA500;
+    }
+
+    /* --- 吹き出し --- */
+    .chat-bubble {
+      position: relative;
+      padding: 12px 16px;
+      border-radius: 15px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #333;
+      font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-top: 15px; /* 名前バッジ分下げる */
+      max-width: 100%;
+      word-break: break-all;
+    }
+
+    /* 相手の吹き出し（白） */
+    .chat-row .chat-bubble {
+      background: #fff;
+      border: 2px solid #e0e0e0;
+      border-top-left-radius: 0; /* 左上を尖らせる */
+    }
+
+    /* 自分の吹き出し（クリームイエロー） */
+    .chat-row.mine .chat-bubble {
+      background: #fff8dc; /* 画像のような黄色っぽい色 */
+      border: 2px solid #f0e68c;
+      border-top-right-radius: 0; /* 右上を尖らせる */
+      border-top-left-radius: 15px;
+    }
+
+    /* 吹き出しのしっぽ（オプション装飾） */
+    .chat-row:not(.mine) .chat-bubble::before {
+      content: "";
+      position: absolute;
+      top: 0; left: -10px;
+      border-top: 10px solid #e0e0e0;
+      border-left: 10px solid transparent;
+    }
+    .chat-row.mine .chat-bubble::before {
+      content: "";
+      position: absolute;
+      top: 0; right: -10px;
+      border-top: 10px solid #f0e68c;
+      border-right: 10px solid transparent;
+    }
+
+    /* システムメッセージ */
+    .chat-system-box {
+      align-self: center;
+      background: rgba(0,0,0,0.1);
+      padding: 4px 12px;
+      border-radius: 10px;
+      color: #555;
+      font-size: 0.75rem;
+      margin: 5px 0;
     }
     .chat-msg { margin-bottom: 5px; font-size: 0.95rem; word-break: break-all; }
     .chat-name { font-weight: bold; margin-right: 5px; }
@@ -331,7 +449,7 @@
       
       <div style="display: flex; gap: 5px;">
         <input type="text" id="lobbyChatInput" placeholder="メッセージ..." style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
-        <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信</button>
+        <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信する</button>
       </div>
 
       <button onclick="closeModal('lobbyChatModal')" style="margin-top: 15px; background: #666; color: white; width: 100%; border: none; padding: 10px; border-radius: 5px; font-size: 1rem;">閉じる</button>
@@ -343,6 +461,7 @@
     // --- Socket.io 初期化 (チャット用) ---
     // ※サーバーが立っていないとエラーになる場合がありますが、通常動作には影響しません
     let socket = null;
+    let globalChatHistory = []; // ★★★ 追加：チャット履歴を記憶しておく変数 ★★★
     try {
         socket = io();
     } catch(e) {
@@ -514,54 +633,86 @@
 
     // チャット受信処理
     if (socket) {
-        // ★★★ 追加：サーバー接続時に過去ログを受け取る ★★★
+        // ★★★ 修正：履歴を受け取ったら変数に保存して描画 ★★★
         socket.on('chat history', (history) => {
-            const historyDiv = document.getElementById("lobbyChatHistory");
-            if (!historyDiv) return;
-            
-            // 一度空にしてから、履歴を全部追加
-            historyDiv.innerHTML = "";
-            history.forEach(data => {
-                addMessageToLobbyChat(data); // 下で作る関数を呼び出す
-            });
+            globalChatHistory = history; // 変数に保存
+            renderLobbyChat();           // 描画関数を呼ぶ
         });
 
         // 通常のチャット受信
         socket.on('chat message', (data) => {
+            globalChatHistory.push(data); // 新しいメッセージも保存
+            // 1件だけ追加してもいいですが、念のため再描画（またはaddMessageを使う）
+            addMessageToLobbyChat(data); 
+        });
+    }
+// ★★★ 追加：履歴全体を再描画する関数 ★★★
+    function renderLobbyChat() {
+        const historyDiv = document.getElementById("lobbyChatHistory");
+        if (!historyDiv) return;
+
+        historyDiv.innerHTML = ""; // 一度クリア
+        
+        // 保存しておいた履歴を使って全部表示しなおす
+        globalChatHistory.forEach(data => {
             addMessageToLobbyChat(data);
         });
     }
-
-    // ★★★ 追加：メッセージ表示用の共通関数 ★★★
+    // ★★★ 修正版：画像アイコン付きメッセージ表示関数 ★★★
     function addMessageToLobbyChat(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
 
-        const msgDiv = document.createElement("div");
-        msgDiv.className = "chat-msg";
+        // 自分かどうかの判定
+        const domName = document.getElementById("userNameDisplay").textContent;
+        const storageName = localStorage.getItem('shogi_username');
+        const isMe = (data.name.trim() === (domName || "").trim()) || 
+                     (data.name.trim() === (storageName || "").trim());
 
         if (data.isSystem) {
-            msgDiv.className += " chat-system";
-            msgDiv.textContent = data.text;
+            // システムメッセージ
+            const sysDiv = document.createElement("div");
+            sysDiv.className = "chat-system-box";
+            sysDiv.textContent = data.text;
+            historyDiv.appendChild(sysDiv);
         } else {
-            const nameSpan = document.createElement("span");
-            nameSpan.className = "chat-name";
-            nameSpan.textContent = data.name + ":";
-            
-            // 色分け
-            if (data.role === 'lobby') nameSpan.style.color = "#005bea";
-            else if (data.role === 'black') nameSpan.style.color = "#000";
-            else if (data.role === 'white') nameSpan.style.color = "#666";
-            else nameSpan.style.color = "#28a745";
+            // --- 行のコンテナ ---
+            const rowDiv = document.createElement("div");
+            rowDiv.className = "chat-row";
+            if (isMe) rowDiv.classList.add("mine");
 
-            const textSpan = document.createElement("span");
-            textSpan.textContent = " " + data.text;
+            // --- 1. アイコンと名前の列 ---
+            const iconCol = document.createElement("div");
+            iconCol.className = "icon-container";
 
-            msgDiv.appendChild(nameSpan);
-            msgDiv.appendChild(textSpan);
+            // 名前
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "chat-name-badge";
+            nameDiv.textContent = data.name;
+
+            // アイコン画像 (test.icon.PNG を使用)
+            const iconImg = document.createElement("img");
+            // ★画像を保存しているフォルダパスに合わせて調整してください
+            iconImg.src = "script/image/test.icon.PNG"; 
+            iconImg.className = "chat-icon-img";
+            // 画像読み込みエラー時のダミー
+            iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
+
+            iconCol.appendChild(nameDiv);
+            iconCol.appendChild(iconImg);
+
+            // --- 2. 吹き出し ---
+            const bubbleDiv = document.createElement("div");
+            bubbleDiv.className = "chat-bubble";
+            bubbleDiv.textContent = data.text;
+
+            // 組み立て
+            rowDiv.appendChild(iconCol);
+            rowDiv.appendChild(bubbleDiv);
+
+            historyDiv.appendChild(rowDiv);
         }
 
-        historyDiv.appendChild(msgDiv);
         historyDiv.scrollTop = historyDiv.scrollHeight;
     }
 
@@ -589,6 +740,18 @@
         }
       }
     };
+
+
+// ★★★ 追加：ログイン状態が確定したら、チャットの色を更新する ★★★
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+            // ログイン完了！
+            // 少し待ってから（名前の表示更新を待つため）再描画
+            setTimeout(() => {
+                renderLobbyChat();
+            }, 500); 
+        }
+    });
   </script>
 
   <div id="practiceMenu" class="overlay">
@@ -671,7 +834,7 @@
     <div class="modal-box">
       <h3 style="color: #8b4513;">不具合・ご要望</h3>
       <div style="margin: 20px 0; line-height: 1.6;">
-        <p>こちらからいつでも受け付けております。</p>
+        <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
         <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
           onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
           回答フォームを開く ↗
