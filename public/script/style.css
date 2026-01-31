@@ -24,19 +24,33 @@ body {
 #center { text-align: center; }
 #status { font-weight: bold; margin-bottom: 5px; }
 #checkStatus { color: red; font-weight: bold; margin-bottom: 10px; }
-table { border-collapse: collapse; background: #deb887; }
+table {
+  border-collapse: collapse;
+  /* 画像を指定 */
+  background-image: url('image/shogiban.png');
+  background-size: 100% 100%; /* 盤に合わせて引き伸ばす */
+  background-repeat: no-repeat;
+  /* 画像がない時の予備色 */
+  background-color: #deb887;
+}
 
 /* マスのサイズ設定 */
 td { 
   width: 55px; 
   height: 60px; 
-  border: 1px solid #333; 
+  
+  /* 罫線を真っ黒ではなく、半透明の黒にして木目に馴染ませる */
+  border: 1px solid rgba(0, 0, 0, 0.5); 
+  
   text-align: center; 
   vertical-align: middle; 
   cursor: pointer; 
   user-select: none; 
   padding: 0; 
   position: relative; 
+  
+  /* ★重要：マスの背景を透明にして、下の木の画像が見えるようにする */
+  background-color: transparent !important;
 }
 
 /* ★ハイブリッド方式：盤面の駒 */
@@ -62,8 +76,15 @@ td {
 
 .piece-text.promoted { color: #d32f2f; }
 
-td.selected { background: orange; }
-td.move { background: rgba(255, 165, 0, 0.5); }
+td.selected {
+  /* 木目が見えるように半透明のオレンジにする */
+  background-color: rgba(255, 165, 0, 0.6) !important;
+  box-shadow: inset 0 0 10px orange; /* 内側に光る演出はお好みで */
+}
+td.move {
+  /* 移動可能場所は薄い黄色 */
+  background-color: rgba(255, 255, 0, 0.4) !important;
+}
 
 /* --- 駒台の設定 --- */
 .hand {
@@ -180,7 +201,10 @@ button { padding: 6px 12px; font-size: 14px; cursor: pointer; }
 }
 #resignBtn:hover { background-image: url('image/hyoshiki_red.PNG'); box-shadow: 0 0 15px 5px blue; }
 
-.moved { background-color: #71b569; }
+.moved {
+  /* 木目が見えるように半透明の緑にする */
+  background-color: rgba(113, 181, 105, 0.5) !important;
+}
 
 @keyframes flashGreenAnim { 0% { box-shadow: 0 0 50px 20px limegreen; border: 2px solid limegreen; } 100% { box-shadow: none; border: 1px solid #333; } }
 @keyframes flashOrangeAnim { 0% { box-shadow: 0 0 50px 20px orange; border: 2px solid orange; } 100% { box-shadow: none; border: 1px solid #333; } }
