@@ -236,52 +236,6 @@
   </script>
 
 
-<script>
-  function autoRotateTitle() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
-    const isPortrait = h > w;
-
-    if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
-      document.body.style.position = "fixed";
-      document.body.style.top = "50%";
-      document.body.style.left = "50%";
-      document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
-      document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
-      document.body.style.width = h + "px";
-      document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
-      document.body.style.overflow = "hidden";
-
-    } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.transform = "";
-      document.body.style.width = "100vw";
-      document.body.style.height = "100vh";
-    }
-  }
-
-  // 読み込み時とリサイズ時に実行
-  window.addEventListener('load', autoRotateTitle);
-  window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
-  setTimeout(autoRotateTitle, 100);
-</script>
 
 
 </body>
