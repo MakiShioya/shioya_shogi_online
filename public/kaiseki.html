@@ -119,6 +119,51 @@
       color: white; display: flex; justify-content: space-between;
       align-items: center; box-sizing: border-box; z-index: 5;
     }
+
+
+/* スマホ・タブレット向けのレスポンシブ調整 */
+@media (max-width: 600px) {
+  /* 1. キャラクターを左側に寄せる */
+  .character-stand {
+    left: 25%; /* 中央(50%)から左へ移動 */
+    transform: translateX(-50%);
+    height: 70vh; /* 少し小さくしてUIの邪魔を防ぐ */
+  }
+
+  /* 2. 吹き出しの位置をキャラクターの頭上に調整 */
+  .speech-bubble {
+    left: 30%;
+    bottom: 55vh;
+    min-width: 140px;
+    font-size: 0.85rem;
+  }
+  .speech-bubble::after {
+    right: 40%; /* 尻尾の位置を調整 */
+  }
+
+  /* 3. 入力パネルを右側に寄せる */
+  .analysis-panel {
+    left: auto;
+    right: 5%; /* 右側に配置 */
+    transform: none;
+    width: 60%; /* 横幅を少し狭める */
+    padding: 15px;
+    bottom: 20px;
+  }
+
+  /* 4. 入力エリアの高さをスマホ用に最適化 */
+  #kifuInput {
+    height: 80px;
+  }
+
+  /* 5. ボタンの文字サイズを調整 */
+  .action-btn {
+    height: 45px;
+    font-size: 1rem;
+  }
+}
+
+
   </style>
 </head>
 <body>
