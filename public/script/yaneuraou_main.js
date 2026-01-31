@@ -216,7 +216,7 @@ function undoMove() {
   }
 
   restoreState(prev);
-
+  lastMoveFrom = null;
   // Undoしたら制限もリセット
   window.isCaptureRestricted = false;
 
@@ -271,7 +271,6 @@ function render() {
         if (winner === "black") {
             playSkillEffect("shori.PNG", "shori.mp3", null);
         } else if (winner === "white") {
-            // 負け演出（もし画像があれば shori.PNG の代わりに指定してください）
             playSkillEffect("haiboku.PNG", "haiboku.mp3", null);
         }
         hasShownEndEffect = true; 
@@ -288,7 +287,7 @@ function render() {
         statusDiv.appendChild(btn);
     }
   } else {
-    // 進行中の表示（既存の駒取り禁止メッセージなどはそのまま）
+    // 進行中の表示
     if (!isSkillTargeting) {
       let msg = "現在の手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
       if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
@@ -303,25 +302,50 @@ function render() {
     for (let x = 0; x < 9; x++) {
       const td = document.createElement("td");
       const piece = boardState[y][x];
+      
       if (piece) {
         const isWhite = piece === piece.toLowerCase();
         const key = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
-        td.textContent = pieceName[key];
-        if (isWhite) td.style.transform = "rotate(180deg)";
-
-        if (pieceStyles[y][x] === "green") {
-          td.style.color = "#32CD32";
-          td.style.fontWeight = "bold";
-          td.style.textShadow = "1px 1px 0px #000";
-        } else if (pieceStyles[y][x] === "blue") {
-          td.style.color = "#1E90FF";
-          td.style.fontWeight = "bold";
-          td.style.textShadow = "1px 1px 0px #000";
+        
+        // ★ハイブリッド方式：駒コンテナの作成
+        const container = document.createElement("div");
+        container.className = "piece-container";
+        if (isWhite) {
+            container.classList.add("gote");
         }
+        const baseType = piece.replace("+", "").toUpperCase();
+        container.classList.add("size-" + baseType);
+        // 文字部分
+        const textSpan = document.createElement("span");
+        textSpan.className = "piece-text";
+        if (key.startsWith("+")) textSpan.classList.add("promoted");
+        
+        // 1文字のみ表示（例：「成香」→「香」）
+        const name = pieceName[key];
+        textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
+
+        // 色付き演出の適用
+        if (pieceStyles[y][x] === "green") {
+          textSpan.style.color = "#32CD32";
+          textSpan.style.fontWeight = "bold";
+          textSpan.style.textShadow = "1px 1px 0px #000";
+        } else if (pieceStyles[y][x] === "blue") {
+          textSpan.style.color = "#1E90FF";
+          textSpan.style.fontWeight = "bold";
+          textSpan.style.textShadow = "1px 1px 0px #000";
+        }
+
+        container.appendChild(textSpan);
+        td.appendChild(container);
+
+        if (isWhite) td.style.transform = "rotate(180deg)";
 
         if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) {
           td.classList.add("moved");
         }
+      }
+      if (lastMoveFrom && lastMoveFrom.x === x && lastMoveFrom.y === y) {
+          td.classList.add("move-from");
       }
       if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
       if (legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
@@ -355,20 +379,37 @@ function renderHands() {
   blackHandDiv.innerHTML = "";
   whiteHandDiv.innerHTML = "";
 
+  // 持ち駒生成ヘルパー（内部関数）
+  const createHandPiece = (player, p, i) => {
+      const container = document.createElement("div");
+      container.className = "hand-piece-container";
+      if (player === "white") {
+          container.classList.add("gote");
+      }
+      const textSpan = document.createElement("span");
+      textSpan.className = "piece-text";
+      textSpan.textContent = pieceName[p];
+      
+      container.appendChild(textSpan);
+
+      if (selected && selected.fromHand && selected.player === player && selected.index === i) {
+          container.classList.add("selected");
+      }
+      
+      container.onclick = () => selectFromHand(player, i);
+
+      // 後手（AI）の持ち駒は反転
+      if (player === "white") container.style.transform = "rotate(180deg)";
+
+      return container;
+  };
+
   hands.black.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "black" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("black", i);
-    blackHandDiv.appendChild(span);
+      blackHandDiv.appendChild(createHandPiece("black", p, i));
   });
 
   hands.white.forEach((p, i) => {
-    const span = document.createElement("span");
-    span.textContent = pieceName[p];
-    if (selected && selected.fromHand && selected.player === "white" && selected.index === i) span.classList.add("selected");
-    span.onclick = () => selectFromHand("white", i);
-    whiteHandDiv.appendChild(span);
+      whiteHandDiv.appendChild(createHandPiece("white", p, i));
   });
 }
 
@@ -523,6 +564,14 @@ function movePieceWithSelected(sel, x, y) {
 // 実際の移動処理（USI記録・AI思考トリガー含む）
 function executeMove(sel, x, y, doPromote) {
   if (typeof stopPondering === "function") stopPondering();
+
+  // ★★★ ここを追加（移動元を記録） ★★★
+  if (sel.fromHand) {
+      lastMoveFrom = null; // 持ち駒から打った場合はなし
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
 
   const pieceBefore = sel.fromHand
     ? hands[sel.player][sel.index]
