@@ -121,48 +121,59 @@
     }
 
 
-/* スマホ・タブレット向けのレスポンシブ調整 */
-@media (max-width: 600px) {
-  /* 1. キャラクターを左側に寄せる */
+/* スマホ・タブレット・横持ち向けのレスポンシブ調整 */
+@media screen and (max-width: 900px) {
+  /* 1. キャラクターを左端へ移動 */
   .character-stand {
-    left: 25%; /* 中央(50%)から左へ移動 */
-    transform: translateX(-50%);
-    height: 70vh; /* 少し小さくしてUIの邪魔を防ぐ */
+    left: 10% !important; /* 左側に寄せる */
+    transform: none !important;
+    height: 75vh !important;
+    width: auto !important;
+    z-index: 1;
   }
 
-  /* 2. 吹き出しの位置をキャラクターの頭上に調整 */
+  /* 2. 吹き出しを左側のキャラ頭上へ */
   .speech-bubble {
-    left: 30%;
-    bottom: 55vh;
-    min-width: 140px;
-    font-size: 0.85rem;
+    left: 5% !important;
+    bottom: 20vh !important; /* パネルより高い位置に */
+    transform: none !important;
+    width: 140px !important;
+    min-width: 120px !important;
+    font-size: 0.8rem !important;
+    z-index: 101;
   }
   .speech-bubble::after {
-    right: 40%; /* 尻尾の位置を調整 */
+    left: 20px !important;
+    right: auto !important;
   }
 
-  /* 3. 入力パネルを右側に寄せる */
+  /* 3. 解析パネルを右側に固定 */
   .analysis-panel {
-    left: auto;
-    right: 5%; /* 右側に配置 */
-    transform: none;
-    width: 60%; /* 横幅を少し狭める */
-    padding: 15px;
-    bottom: 20px;
+    left: auto !important;
+    right: 5% !important; /* 右端から少し離す */
+    transform: translateY(0) !important;
+    bottom: 20px !important;
+    width: 50% !important; /* 画面の半分を使う */
+    max-width: 320px !important;
+    padding: 12px !important;
+    z-index: 100;
   }
 
-  /* 4. 入力エリアの高さをスマホ用に最適化 */
+  /* 4. 入力エリアとボタンをさらにコンパクトに */
   #kifuInput {
-    height: 80px;
+    height: 70px !important;
+    font-size: 0.8rem !important;
+    margin-bottom: 8px !important;
   }
-
-  /* 5. ボタンの文字サイズを調整 */
   .action-btn {
-    height: 45px;
-    font-size: 1rem;
+    height: 44px !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 6px !important;
+  }
+  .panel-title {
+    font-size: 0.85rem !important;
   }
 }
-
 
   </style>
 </head>
