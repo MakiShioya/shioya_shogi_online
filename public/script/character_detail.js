@@ -65,7 +65,10 @@ function decideCharacter() {
   if (mode === 'online') {
     // ■ オンライン対戦
     sessionStorage.setItem('my_character', charId);
-    window.location.href = 'player_vs_player_online.html';
+    
+    // ▼▼▼ 修正箇所：ここをロビーへの移動に変更 ▼▼▼
+    window.location.href = 'online_lobby.html';
+    // ▲▲▲ 修正ここまで ▲▲▲
   }
   else if (mode === 'practice') {
     // ■ 練習モード
