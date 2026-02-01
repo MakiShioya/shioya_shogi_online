@@ -473,9 +473,13 @@ function onCellClick(x, y) {
 
       const endsTurn = (currentSkill.endsTurn !== false);
 
-      // 必殺技成功時はフラグを立てる
+      // ★★★ 修正ポイント1：フラグを確実に立てる ★★★
       window.skillUsed = true; 
       skillUseCount++;
+
+      // ★★★ 修正ポイント2：必殺技を使ったら、手番消費の有無にかかわらず「履歴」を消す ★★★
+      // これをここ（分岐の前）で行うことで、確実にSFENモードへ移行させます。
+      usiHistory = [];
 
       if (endsTurn) {
           const kifuStr = result; 
@@ -483,10 +487,16 @@ function onCellClick(x, y) {
           kifu[kifu.length - 1] = kifuStr;
           
           moveCount++;
+          
+          // 手番交代
+          turn = (turn === "black" ? "white" : "black");
       } 
       else {
+          // 手番消費なしの場合
           const movePart = result.split("：")[1] || result;
           lastSkillKifu = movePart;
+          
+          // 手番は交代しないので turn の変更はなし
       }
       
       lastMoveTo = null;
@@ -495,12 +505,8 @@ function onCellClick(x, y) {
         moveSound.play().catch(() => {});
       }
 
-      // 必殺技後はUSI履歴をリセットしてSFEN送信
-      usiHistory = []; 
-      if (endsTurn) {
-          turn = (turn === "black" ? "white" : "black");
-      }
-
+      // ★★★ 修正ポイント3：SFEN送信処理 ★★★
+      // 履歴を消したので、必ず盤面図（SFEN）をエンジンに送って今の局面を理解させる
       const sfen = generateSfen();
       console.log("必殺技発動！SFEN送信:", sfen);
       sendToEngine("position sfen " + sfen);
@@ -512,6 +518,7 @@ function onCellClick(x, y) {
       render();
       if (typeof showKifu === "function") showKifu();
 
+      // 手番が相手（CPU）に移る技だった場合のみ思考開始
       if (endsTurn && cpuEnabled && turn === cpuSide && !gameOver) {
         setTimeout(() => cpuMove(), 1000);
       }
@@ -520,6 +527,7 @@ function onCellClick(x, y) {
   }
   // ----------------------------------------
 
+  // 以下、通常の手番処理
   if (cpuEnabled && turn === cpuSide) return;
 
   if (!selected) {
@@ -530,9 +538,8 @@ function onCellClick(x, y) {
     selected = { x, y, fromHand: false };
     legalMoves = getLegalMoves(x, y);
 
-    // ★★★ ここで「駒取り禁止」を適用 ★★★
+    // ★★★ 攻撃禁止（応援などの効果）の適用 ★★★
     if (window.isCaptureRestricted) {
-        // 移動先（m.x, m.y）に駒がある手（＝相手の駒を取る手）を除外する
         legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
     }
 
@@ -669,7 +676,12 @@ function executeMove(sel, x, y, doPromote) {
 
   // ★USI履歴への記録
   const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
-  usiHistory.push(usiMove);
+
+  // 【修正】必殺技使用済みフラグが立っている場合は、履歴に追加しない！
+  // これにより usiHistory が空のまま維持され、CPUは確実にSFEN（盤面図）を読み込むようになります。
+  if (!window.skillUsed) {
+      usiHistory.push(usiMove);
+  }
 
   const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
   const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
