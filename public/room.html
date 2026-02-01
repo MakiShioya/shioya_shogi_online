@@ -17,13 +17,14 @@
         background-color: #333;
         color: white;
         text-align: center;
+        margin: 0;
         padding: 20px;
     }
     .container {
         max-width: 700px;
         margin: 0 auto;
         background: rgba(255,255,255,0.1);
-        padding: 30px;
+        padding: 2px 20px;
         border-radius: 15px;
     }
     h1 { color: #FFB347; }
@@ -31,7 +32,7 @@
     .player-box {
         display: flex;
         justify-content: space-around;
-        margin: 40px 0;
+        margin: 20px 0;
     }
     .player-card {
         background: #444;
@@ -58,7 +59,7 @@
     .ready .status-badge { background: #00ff00; color: #000; font-weight: bold; }
 
     #readyBtn {
-        padding: 15px 50px;
+        padding: 5px 50px;
         font-size: 1.5rem;
         background: #555;
         color: #aaa;
@@ -82,15 +83,56 @@
         box-shadow: 0 5px 0 #1e7e34;
     }
 
-    .msg-area { margin-top: 20px; font-size: 1.2rem; color: #FFB347; min-height: 1.5em; }
+    .msg-area { margin-top: 3px; font-size: 1rem; color: #FFB347; min-height: 1.5em; }
+
+
+/* ボタンを横並びにするコンテナ */
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* ボタン同士の間隔 */
+    margin-top: 20px;
+}
+
+/* 共通のボタンスタイル（準備OKボタンの設定を流用） */
+#readyBtn, #backBtn {
+    padding: 9px 0; /* 高さを少し調整 */
+    width: 180px;
+    text-align: center;
+    font-size: 1.2rem;
+    border: none;
+    border-radius: 50px;
+    transition: 0.2s;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* 戻るボタン専用の色 */
+#backBtn {
+    background: #666;
+    color: white;
+    box-shadow: 0 5px 0 #444;
+}
+
+#backBtn:active {
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #444;
+}
+
+/* 準備OKボタンの初期状態（activeがつく前） */
+#readyBtn {
+    background: #555;
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+
 </style>
 </head>
 <body>
 
 <div class="container">
     <h1 id="roomTitle">待機室</h1>
-    <p>対戦相手を待っています...</p>
-
     <div class="player-box">
         <div id="cardBlack" class="player-card">
             <div class="role-label">▲ 先手</div>
@@ -105,7 +147,11 @@
         </div>
     </div>
 
+    <div class="button-group">
+
     <button id="readyBtn" onclick="toggleReady()">準備OK</button>
+ <button id="backBtn" onclick="location.href='online_room_lobby.html'">戻る</button>
+</div>
     <div class="msg-area" id="msgArea"></div>
 </div>
 
@@ -115,7 +161,7 @@
     let myRole = null;
     let roomId = new URLSearchParams(window.location.search).get('room') || 'default';
 
-    document.getElementById('roomTitle').textContent = `部屋: ${roomId}`;
+    // document.getElementById('roomTitle').textContent = `部屋: ${roomId}`;
 
     // 接続と入室
     socket.on('connect', () => {
