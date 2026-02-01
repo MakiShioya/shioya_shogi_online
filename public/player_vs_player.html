@@ -101,6 +101,49 @@
     .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
 
 
+/* ▼▼▼ ここから追加・修正 ▼▼▼ */
+
+    /* 必殺技カットイン画像の配置設定（強力版） */
+    #skillCutIn {
+      position: absolute !important; /* 強制的に絶対配置にする */
+      top: 0;
+      left: 0;
+      width: 100%;   /* 親要素（盤面）と同じ幅 */
+      height: 100%;  /* 親要素（盤面）と同じ高さ */
+      
+      object-fit: contain; /* 枠の中に画像を綺麗に収める（比率維持） */
+      margin: auto;        /* 中央寄せの補強 */
+      
+      z-index: 100;        /* 盤面や駒よりも手前に表示 */
+      pointer-events: none; /* 画像の下にある駒をクリックできるようにする */
+      
+      opacity: 0;           /* 普段は透明にして隠す */
+      transition: opacity 0.2s;
+    }
+
+    /* クラスが付いた時に表示する */
+    #skillCutIn.cut-in-active {
+      opacity: 1;
+      animation: popIn 2s forwards;
+    }
+
+    /* アニメーション設定 */
+    @keyframes popIn {
+      /* 開始：目標より少し小さいサイズから */
+      0%   { opacity: 0; transform: scale(0.6); }
+      /* 出現時のバウンド：目標(0.8)より少し大きく */
+      10%  { opacity: 1; transform: scale(0.9); }
+      /* 静止時のサイズ：ここで「0.8倍」を指定します */
+      20%  { opacity: 1; transform: scale(0.8); }
+      80%  { opacity: 1; transform: scale(0.8); }
+      /* 終了：少し大きくなって消える */
+      100% { opacity: 0; transform: scale(1.0); }
+    }
+    
+    /* ▲▲▲ ここまで ▲▲▲ */
+
+
+
   </style>
 
 </head>
