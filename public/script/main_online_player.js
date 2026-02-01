@@ -1,6 +1,20 @@
 // script/main_online_player.js (キャラクター同期 完全版)
 
-// ★★★ 1. サーバー接続 ★★★
+
+// ★★★ 1. ユーザーIDの生成・取得関数を追加 ★★★
+function getUniqueUserId() {
+    // すでに保存されていたらそれを使う
+    let id = localStorage.getItem('shogi_user_id');
+    if (!id) {
+        // なければランダムに生成して保存（簡易的なID生成）
+        id = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+        localStorage.setItem('shogi_user_id', id);
+    }
+    return id;
+}
+
+
+// ★★★  サーバー接続 ★★★
 const socket = io();
 
 // DOM要素の参照
@@ -16,8 +30,26 @@ const myCharId = sessionStorage.getItem('my_character') || 'default';
 
 // ★★★ 接続時、サーバーに「私はこのキャラです」と伝える ★★★
 socket.on('connect', () => {
-    console.log("サーバーに接続しました。キャラ情報を送信します:", myCharId);
+    console.log("サーバーに接続しました。");
+    
+    // ★ユーザーIDを取得
+    const userId = getUniqueUserId();
+    console.log("My User ID:", userId);
+
     socket.emit('declare character', myCharId);
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    let roomId = urlParams.get('room');
+    if (!roomId) {
+        roomId = "default";
+    }
+
+    console.log(`部屋 [${roomId}] に入室します (User: ${userId})`);
+    
+    // ★★★ 変更：部屋IDと一緒に、自分の「ユーザーID」も送る！ ★★★
+    socket.emit('enter game', { roomId: roomId, userId: userId });
+
+
     const name = localStorage.getItem('shogi_username') || "ゲスト";
     socket.emit('chat message', {
         text: `${name}さんが入室しました`,
@@ -107,6 +139,59 @@ socket.on('game start', (data) => {
     initGameSequence(); 
 });
 
+// main_online_player.js に追加
+
+// ★★★ 追加：サーバーから「ゲーム復元」の指示が来た時の処理 ★★★
+socket.on('restore game', (savedState) => {
+    console.log("サーバーからゲーム状態を復元します:", savedState);
+
+    // 1. 変数をサーバーのデータで上書き
+    boardState = savedState.boardState; // 盤面
+    hands = savedState.hands;           // 持ち駒
+    turn = savedState.turn;             // 手番
+    moveCount = savedState.moveCount;   // 手数
+    kifu = savedState.kifu;             // 棋譜
+    
+    // 2. 最後に動かした位置などの復元
+    lastMoveTo = savedState.lastMoveTo || null;
+    lastMoveFrom = savedState.lastMoveFrom || null;
+
+    // 3. スキル情報の復元
+    p1SkillCount = savedState.p1SkillCount || 0;
+    p2SkillCount = savedState.p2SkillCount || 0;
+
+    // 4. キャラクター情報の再設定
+    // ※保存されたIDを使ってスキルなどをセットし直す
+    if (savedState.blackCharId && savedState.whiteCharId) {
+        initSkills(savedState.blackCharId, savedState.whiteCharId);
+    }
+
+    // 5. ゲーム進行フラグを立てる
+    isGameStarted = true;
+    gameOver = false;
+    
+    // 6. 待機画面を強制的に消す
+    const overlay = document.getElementById("waitingOverlay");
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+
+    // 7. 画面の再描画とタイマー再開
+    render();
+    statusDiv.textContent = `再接続しました。現在 ${moveCount} 手目です。`;
+    startTimer();
+    
+    // 8. 自分の役割に応じて盤面の向きを調整
+    if (myRole) {
+        updateHandLayout(myRole);
+        if (myRole === "white") {
+            document.body.classList.add("view-white");
+        } else {
+            document.body.classList.remove("view-white");
+        }
+    }
+});
+
 socket.on('shogi move', (data) => {
   executeMove(data.sel, data.x, data.y, data.promote, true);
 });
@@ -132,7 +217,8 @@ socket.on('skill activate', (data) => {
 
 socket.on('game resign', (data) => {
     const winColor = (data.loser === "black") ? "white" : "black";
-    resolveResignation(winColor);
+    // 理由があればそれも渡す
+    resolveResignation(winColor, data.reason);
 });
 
 socket.on('game reset', () => {
@@ -518,6 +604,8 @@ function render() {
 }
 
 // --- 修正版 renderHands関数 (Online Hybrid Version) ---
+// script/main_online_player.js の renderHands 関数
+
 function renderHands() {
   const order = ["P", "L", "N", "S", "G", "B", "R"];
   hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
@@ -529,9 +617,12 @@ function renderHands() {
   const createHandPiece = (player, p, i) => {
       const container = document.createElement("div");
       container.className = "hand-piece-container";
+      
+      // 背景や文字色のクラス付与
       if (player === "white") {
           container.classList.add("gote");
       }
+      
       const textSpan = document.createElement("span");
       textSpan.className = "piece-text";
       textSpan.textContent = pieceName[p];
@@ -546,8 +637,28 @@ function renderHands() {
       // クリックイベント
       container.onclick = () => selectFromHand(player, i);
 
-      // 後手（相手または自分）の持ち駒は反転
-      if (player === "white") container.style.transform = "rotate(180deg)";
+      // ▼▼▼ 修正箇所：視点に合わせて回転を制御 ▼▼▼
+      
+      // 基本ルール：観戦者または先手なら「後手の駒」を回す。
+      // 　　　　　　自分が後手なら「先手の駒（＝相手）」を回す。
+      
+      let shouldRotate = false;
+
+      if (myRole === "white") {
+          // 【自分が後手の場合】
+          // 相手（先手/black）の駒を180度回転させる
+          if (player === "black") shouldRotate = true;
+      } else {
+          // 【自分が先手、または観戦者の場合】
+          // 相手（後手/white）の駒を180度回転させる
+          if (player === "white") shouldRotate = true;
+      }
+
+      if (shouldRotate) {
+          container.style.transform = "rotate(180deg)";
+      }
+      
+      // ▲▲▲ 修正ここまで ▲▲▲
 
       return container;
   };
@@ -655,27 +766,29 @@ function movePieceWithSelected(sel, x, y) {
 }
 
 function executeMove(sel, x, y, doPromote, fromNetwork = false) {
+  // 1. 履歴の保存
   history.push(deepCopyState());
-  // ★★★ ここを追加（移動元を記録） ★★★
+  
+  // 移動元を記録（ハイライト用）
   if (sel.fromHand) {
-      lastMoveFrom = null; // 持ち駒から打った場合はなし
+      lastMoveFrom = null; 
   } else {
-      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+      lastMoveFrom = { x: sel.x, y: sel.y }; 
   }
-  // ★★★★★★★★★★★★★★★★★★★★★
+
   const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
   const boardBefore = boardState.map(r => r.slice());
   const moveNumber = kifu.length + 1; 
 
+  // 2. 音の再生
   if (moveSound) {
     moveSound.currentTime = 0;
     moveSound.play().catch(() => {});
   }
 
-  if (!fromNetwork) {
-    socket.emit('shogi move', { sel, x, y, promote: doPromote });
-  }
+  // ★★★ 修正ポイント：ここで送信していた処理を削除し、一番下に移動しました ★★★
 
+  // 3. 盤面の更新処理（駒を動かす）
   if (sel.fromHand) {
     const piece = hands[sel.player][sel.index];
     boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
@@ -717,6 +830,7 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     pieceStyles[sel.y][sel.x] = null;
   }
 
+  // 4. 棋譜の更新
   const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
   const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
   kifu.push(""); 
@@ -727,6 +841,7 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
       kifu[kifu.length - 1] = currentMoveStr;
   }
 
+  // 5. 変数の更新（手番の交代など）
   lastMoveTo = { x, y };
   turn = turn === "black" ? "white" : "black";
   window.isCaptureRestricted = false;
@@ -737,33 +852,58 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
 
   if (!gameOver) startTimer();
   else stopTimer();
-  moveCount++;
+  
+  moveCount++; // 手数を増やす
 
-  // 終了判定
-  // 終了判定
+  // ★★★ 修正ポイント：移動処理が終わって「最新の状態」になってからサーバーに送る ★★★
+  if (!fromNetwork) {
+    const newState = {
+        boardState: boardState,   // ★更新後の盤面
+        hands: hands,             // ★更新後の持ち駒
+        turn: turn,               // ★交代後の手番
+        moveCount: moveCount,     // ★更新後の手数
+        kifu: kifu,               // ★更新後の棋譜
+        p1SkillCount: p1SkillCount,
+        p2SkillCount: p2SkillCount,
+        blackCharId: sessionStorage.getItem('online_black_char'),
+        whiteCharId: sessionStorage.getItem('online_white_char')
+    };
+
+    // 相手には指し手を、サーバーには最新状態(gameState)を送る
+    socket.emit('shogi move', { 
+        sel: sel, 
+        x: x, 
+        y: y, 
+        promote: doPromote,
+        gameState: newState 
+    });
+  }
+
+  // 6. 終了判定
   if (moveCount >= 500) {
     gameOver = true;
     winner = null;
     statusDiv.textContent = "500手に達したため、引き分けです。";
-    // 引き分けは保存しない、または "draw" として保存も可能（今回は何もしない）
+    
+    // ★追加：サーバーに終了を報告
+    if(socket) socket.emit('game over'); 
+
     render();
     return;
   }
 
-  // ★★★ 詰み判定（ここに保存処理を追加） ★★★
   if (isKingInCheck(turn) && !hasAnyLegalMove(turn)) {
     gameOver = true;
     winner = turn === "black" ? "white" : "black";
-
-    // 観戦者ではなく、自分が対局者（black or white）の場合のみ保存を実行
     if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
         saveGameResult(result);
     }
-
+    if(socket) socket.emit('game over');
     render();
     return;
   }
+  
   const key = getPositionKey();
   positionHistory[key] = (positionHistory[key] || 0) + 1;
   recordRepetition();
@@ -777,6 +917,7 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
       winner = null;
       statusDiv.textContent = "千日手です。引き分け。";
     }
+    if(socket) socket.emit('game over');
     render();
   }
 }
@@ -868,15 +1009,15 @@ function resetGame() {
   lastSkillKifu = "";
   
   boardState = [
-    ["L", "N", "S", "G", "K", "G", "S", "N", "L"],
-    ["", "R", "", "", "", "", "", "B", ""],
-    ["P", "P", "P", "P", "P", "P", "P", "P", "P"],
-    ["", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", ""],
+    ["l", "n", "s", "g", "k", "g", "s", "n", "l"], // 小文字（後手）を上に
+    ["", "r", "", "", "", "", "", "b", ""],
     ["p", "p", "p", "p", "p", "p", "p", "p", "p"],
-    ["", "b", "", "", "", "", "", "r", ""],
-    ["l", "n", "s", "g", "k", "g", "s", "n", "l"]
+    ["", "", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", "", ""],
+    ["P", "P", "P", "P", "P", "P", "P", "P", "P"], // 大文字（先手）を下に
+    ["", "B", "", "", "", "", "", "R", ""],
+    ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
   ];
   
   pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
@@ -898,23 +1039,36 @@ function resetGame() {
   playBGM();
 }
 
-function resolveResignation(winnerColor) {
+// resolveResignation 関数を修正
+
+function resolveResignation(winnerColor, reason) {
     gameOver = true;
     stopTimer();
     winner = winnerColor;
+    
     const winnerName = (winner === "black") ? "先手" : "後手";
-    endReason = "投了により、" + winnerName + "の勝ちです。";
+    
+    // 理由に応じてメッセージを変える
+    if (reason === "disconnect") {
+        endReason = "通信切れにより、" + winnerName + "の勝ちです。";
+    } else {
+        endReason = "投了により、" + winnerName + "の勝ちです。";
+    }
     
     if (typeof showKifu === "function") showKifu();
     
     // 自分が対局者の場合のみ保存を実行
     if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
+        
+        // ★修正：通信切れの場合は勝敗理由も保存すると良いかも（今回は既存の関数を使うためそのまま）
         saveGameResult(result);
     }
 
     render();
 }
+
+
 
 function playGameEndEffect(winnerColor) {
     const cutInImg = document.getElementById("skillCutIn");
@@ -1105,7 +1259,7 @@ function updateHandLayout(role) {
 // ===============================================
 
 // プレイヤー名の取得（localStorageに保存されている名前を使う）
-const myPlayerName = localStorage.getItem('shogi_username') || "ゲスト";
+//const myPlayerName = localStorage.getItem('shogi_username') || "ゲスト";
 
 // 1. チャット受信のリスナー設定
 socket.on('chat message', (data) => {
@@ -1128,9 +1282,12 @@ function sendChatMessage() {
     const text = input.value.trim();
     if (!text) return;
 
+    // ★★★ 修正：送信する瞬間に、最新の名前を取得する！ ★★★
+    const currentName = localStorage.getItem('shogi_username') || "ゲスト";
+
     // サーバーへ送信
     socket.emit('chat message', {
-        name: myPlayerName,
+        name: currentName, // ★ここを修正
         text: text,
         role: myRole // black, white, spectator
     });
@@ -1182,3 +1339,31 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+// ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // ログインしている場合
+            // 表示名(displayName)がなければメールアドレスの前半を使うなどの予備処理
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            
+            // LocalStorageに保存（これで次回から自動的に名前が使われる）
+            localStorage.setItem('shogi_username', displayName);
+            
+            console.log("ログイン確認: " + displayName + " として保存しました。");
+
+            // もし画面上に名前を表示する要素があれば更新する
+            // (ロビー画面など用)
+            const nameDisplay = document.getElementById('myCharName'); // ロビーのID
+            if (nameDisplay && nameDisplay.textContent === "---") {
+                 // ロビーの場合はキャラ名が表示されるので、
+                 // 必要であればここで "ようこそ 〇〇さん" のように書き換える処理を入れる
+            }
+            
+        } else {
+            // ログインしていない場合
+            console.log("未ログインです。");
+        }
+    });
+}
