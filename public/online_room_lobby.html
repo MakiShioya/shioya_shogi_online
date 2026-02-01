@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ルーム対戦ロビー</title>
+<title>ルーム対局ロビー</title>
 <link rel="icon" href="script/image/komiya_icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -26,7 +26,7 @@
         max-width: 600px;
         margin: 0 auto;
         background: rgba(255, 255, 255, 0.1);
-        padding: 20px;
+        padding: 2px 20px;
         border-radius: 10px;
     }
 
@@ -88,16 +88,51 @@
     /* ※部屋リスト用のCSSは不要になったので削除しましたが、
        念のため残しておいても害はありません */
 
-    .back-link {
-        display: block;
-        margin-top: 20px;
-        color: #aaa;
-        text-decoration: none;
+
+
+
+/* 右上ボタンのコンテナ */
+.back-button-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+/* ボタンのデザイン */
+.back-btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #555;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    border: 1px solid #777;
+    transition: background 0.3s;
+}
+
+.back-btn:hover {
+    background-color: #777;
+    color: white;
+}
+
+/* モバイル対応：画面が狭い時にタイトルと重なるのを防ぐ */
+@media (max-width: 480px) {
+    .back-button-container {
+        position: static; /* 位置固定を解除 */
+        text-align: right;
+        margin-bottom: 10px;
     }
-    .back-link:hover { color: white; }
+}
+
 </style>
 </head>
 <body>
+
+<div class="back-button-container">
+    <a href="online_lobby.html" class="back-btn">戻る</a>
+</div>
+
 
 <div class="container">
     <h1>ルーム対戦</h1>
@@ -111,13 +146,13 @@
         <button class="char-change-btn" onclick="location.href='character.html?mode=online'">変更</button>
     </div>
 
-    <div class="create-area" style="border-bottom: none;"> <p>部屋名を入力して作成・入室</p>
+
         <input type="text" id="newRoomName" placeholder="部屋名 (例: 道場1)">
         <br>
-        <button class="create-btn" onclick="createAndJoinRoom()">入室 / 作成</button>
+        <button class="create-btn" style="margin-top: 20px; margin-bottom: 37px; "onclick="createAndJoinRoom()">入室 / 作成</button>
     </div>
 
-    <a href="online_lobby.html" class="back-link">← オンラインロビーに戻る</a>
+
 </div>
 
 <script>
