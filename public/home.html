@@ -279,16 +279,27 @@
   </div>
 
 
+
+
   <div id="characterBubble" class="speech-bubble"></div>
+
+
+
 
   <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
 
   <div class="bottom-menu">
     <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
-    <button class="menu-btn online-color" onclick="goToCharacterSelect('online')">オンライン</button>
+    <button onclick="location.href='character.html?mode=online'" class="menu-btn online-color">
+    	オンライン
+</button>
     <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button> <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
+
+
   </div>
+
+
 
   <div id="newsModal" class="overlay">
     <div class="modal-box">
