@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>待機室</title>
+<link rel="icon" href="script/image/komiya_icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script src="script/auth.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        padding: 20px;
+    }
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: rgba(255,255,255,0.1);
+        padding: 30px;
+        border-radius: 15px;
+    }
+    h1 { color: #FFB347; }
+    
+    .player-box {
+        display: flex;
+        justify-content: space-around;
+        margin: 40px 0;
+    }
+    .player-card {
+        background: #444;
+        width: 40%;
+        padding: 20px;
+        border-radius: 10px;
+        border: 3px solid #666;
+        transition: all 0.3s;
+    }
+    /* 自分の枠 */
+    .player-card.is-me { border-color: #FFB347; }
+    /* 準備完了時 */
+    .player-card.ready { background: #225522; border-color: #00ff00; }
+
+    .role-label { font-size: 1.2rem; margin-bottom: 10px; font-weight: bold; }
+    .status-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        background: #888;
+        border-radius: 20px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    .ready .status-badge { background: #00ff00; color: #000; font-weight: bold; }
+
+    #readyBtn {
+        padding: 15px 50px;
+        font-size: 1.5rem;
+        background: #555;
+        color: #aaa;
+        border: none;
+        border-radius: 50px;
+        cursor: not-allowed;
+        transition: 0.2s;
+    }
+    /* 自分が席に着いたら押せる */
+    #readyBtn.active {
+        background: #ff4500;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 5px 0 #b33200;
+    }
+    #readyBtn.active:active { transform: translateY(4px); box-shadow: 0 1px 0 #b33200; }
+    
+    /* 準備完了状態のボタン */
+    #readyBtn.pushed {
+        background: #28a745;
+        box-shadow: 0 5px 0 #1e7e34;
+    }
+
+    .msg-area { margin-top: 20px; font-size: 1.2rem; color: #FFB347; min-height: 1.5em; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1 id="roomTitle">待機室</h1>
+    <p>対戦相手を待っています...</p>
+
+    <div class="player-box">
+        <div id="cardBlack" class="player-card">
+            <div class="role-label">▲ 先手</div>
+            <div id="nameBlack">空席</div>
+            <div class="status-badge" id="badgeBlack">準備中</div>
+        </div>
+
+        <div id="cardWhite" class="player-card">
+            <div class="role-label">△ 後手</div>
+            <div id="nameWhite">空席</div>
+            <div class="status-badge" id="badgeWhite">準備中</div>
+        </div>
+    </div>
+
+    <button id="readyBtn" onclick="toggleReady()">準備OK</button>
+    <div class="msg-area" id="msgArea"></div>
+</div>
+
+<script>
+    const socket = io();
+    let myUserId = localStorage.getItem('shogi_user_id');
+    let myRole = null;
+    let roomId = new URLSearchParams(window.location.search).get('room') || 'default';
+
+    document.getElementById('roomTitle').textContent = `部屋: ${roomId}`;
+
+    // 接続と入室
+    socket.on('connect', () => {
+        if(!myUserId) {
+            myUserId = 'user_' + Math.random().toString(36).substr(2,9);
+            localStorage.setItem('shogi_user_id', myUserId);
+        }
+        // キャラ情報宣言
+        const myCharId = sessionStorage.getItem('my_character') || 'default';
+        socket.emit('declare character', myCharId);
+
+        // 入室
+        socket.emit('enter game', { roomId, userId: myUserId });
+    });
+
+    // 自分の役割受信
+    socket.on('role assigned', (role) => {
+        myRole = role;
+        const btn = document.getElementById('readyBtn');
+        if (role === 'black' || role === 'white') {
+            btn.classList.add('active'); // 押せるようにする
+            btn.disabled = false;
+        } else {
+            document.getElementById('msgArea').textContent = "観戦者として参加しています";
+        }
+    });
+
+    // 部屋の最新状態を受信
+    socket.on('update room status', (info) => {
+        // もし「すでに対局中」なら、即ゲーム画面へ転送する（リロード対策）
+        if (info.status === 'playing') {
+            goToGame();
+            return;
+        }
+
+        updateCard('black', info.blackId, info.blackReady);
+        updateCard('white', info.whiteId, info.whiteReady);
+    });
+
+    function updateCard(role, userId, isReady) {
+        const card = document.getElementById(role === 'black' ? 'cardBlack' : 'cardWhite');
+        const nameDiv = document.getElementById(role === 'black' ? 'nameBlack' : 'nameWhite');
+        const badge = document.getElementById(role === 'black' ? 'badgeBlack' : 'badgeWhite');
+
+        // 名前表示（自分なら強調）
+        if (userId) {
+            nameDiv.textContent = (userId === myUserId) ? "あなた" : "対戦相手";
+            if (userId === myUserId) card.classList.add('is-me');
+        } else {
+            nameDiv.textContent = "空席";
+            card.classList.remove('is-me');
+        }
+
+        // Ready状態の表示
+        if (isReady) {
+            card.classList.add('ready');
+            badge.textContent = "準備完了！";
+            if (userId === myUserId) {
+                const btn = document.getElementById('readyBtn');
+                btn.textContent = "キャンセル";
+                btn.classList.add('pushed');
+            }
+        } else {
+            card.classList.remove('ready');
+            badge.textContent = "準備中";
+            if (userId === myUserId) {
+                const btn = document.getElementById('readyBtn');
+                btn.textContent = "準備OK";
+                btn.classList.remove('pushed');
+            }
+        }
+    }
+
+    // 準備ボタン
+    function toggleReady() {
+        if (!myRole || myRole === 'spectator') return;
+        socket.emit('toggle ready');
+    }
+
+    // 全員完了時のスタート命令
+    socket.on('all ready', () => {
+        document.getElementById('msgArea').textContent = "両者準備完了！まもなく対局を開始します...";
+        document.getElementById('readyBtn').disabled = true;
+        setTimeout(goToGame, 3000); // 3秒後に移動
+    });
+
+    function goToGame() {
+        window.location.href = `player_vs_player_online.html?room=${encodeURIComponent(roomId)}`;
+    }
+
+// ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // ログインしている場合
+            // 表示名(displayName)がなければメールアドレスの前半を使うなどの予備処理
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            
+            // LocalStorageに保存（これで次回から自動的に名前が使われる）
+            localStorage.setItem('shogi_username', displayName);
+            
+            console.log("ログイン確認: " + displayName + " として保存しました。");
+
+            // もし画面上に名前を表示する要素があれば更新する
+            // (ロビー画面など用)
+            const nameDisplay = document.getElementById('myCharName'); // ロビーのID
+            if (nameDisplay && nameDisplay.textContent === "---") {
+                 // ロビーの場合はキャラ名が表示されるので、
+                 // 必要であればここで "ようこそ 〇〇さん" のように書き換える処理を入れる
+            }
+            
+        } else {
+            // ログインしていない場合
+            console.log("未ログインです。");
+        }
+    });
+}
+
+</script>
+
+</body>
+</html>

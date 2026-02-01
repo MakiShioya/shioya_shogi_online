@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ルーム対戦ロビー</title>
+<link rel="icon" href="script/image/komiya_icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script src="script/auth.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+    h1 { margin-bottom: 20px; color: #28a745; } /* 緑色に変更 */
+    
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    /* キャラ表示（共通デザイン） */
+    .char-info-area {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 2px solid #28a745; /* 枠線を緑に */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+    .char-avatar {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+        border-radius: 5px;
+        background: #fff;
+    }
+    .char-change-btn {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        background-color: #555;
+        color: white;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    /* 部屋作成エリア */
+    .create-area {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #555;
+    }
+    input[type="text"] {
+        padding: 10px;
+        font-size: 16px;
+        width: 60%;
+        border-radius: 5px;
+        border: none;
+        margin-bottom: 10px;
+    }
+    button.create-btn {
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #ff4500;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    button.create-btn:hover { background-color: #cc3700; }
+
+    /* ※部屋リスト用のCSSは不要になったので削除しましたが、
+       念のため残しておいても害はありません */
+
+    .back-link {
+        display: block;
+        margin-top: 20px;
+        color: #aaa;
+        text-decoration: none;
+    }
+    .back-link:hover { color: white; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>ルーム対戦</h1>
+
+    <div class="char-info-area">
+        <img id="myCharImg" class="char-avatar" src="" alt="icon">
+        <div>
+            <div style="font-size: 0.9rem; color:#aaa;">使用キャラクター</div>
+            <div id="myCharName" style="font-weight: bold; font-size: 1.1rem;">---</div>
+        </div>
+        <button class="char-change-btn" onclick="location.href='character.html?mode=online'">変更</button>
+    </div>
+
+    <div class="create-area" style="border-bottom: none;"> <p>部屋名を入力して作成・入室</p>
+        <input type="text" id="newRoomName" placeholder="部屋名 (例: 道場1)">
+        <br>
+        <button class="create-btn" onclick="createAndJoinRoom()">入室 / 作成</button>
+    </div>
+
+    <a href="online_lobby.html" class="back-link">← オンラインロビーに戻る</a>
+</div>
+
+<script>
+    // キャラクター定義
+    const charMap = {
+        'default': { name: 'キャラA', img: 'script/image/karui_1p.PNG' },
+        'char_a':  { name: 'キャラB', img: 'script/image/char_a.png' },
+        'char_b':  { name: 'キャラC', img: 'script/image/char_b.png' }
+    };
+
+    window.onload = function() {
+        const charId = sessionStorage.getItem('my_character') || 'default';
+        const charInfo = charMap[charId] || charMap['default'];
+        document.getElementById('myCharName').textContent = charInfo.name;
+        document.getElementById('myCharImg').src = charInfo.img;
+    };
+
+    const socket = io();
+
+    // ★★★ 変更：部屋リストの受信処理は不要なので削除（または無効化） ★★★
+    // socket.on('room list', ...) は削除しました
+
+    // ★★★ 変更：定期更新も不要なので削除 ★★★
+    // setInterval(refreshRooms, 5000);
+
+    function createAndJoinRoom() {
+        const nameInput = document.getElementById('newRoomName');
+        const name = nameInput.value.trim();
+        if (!name) {
+            alert("部屋名を入力してください");
+            return;
+        }
+        joinRoom(name);
+    }
+
+    function joinRoom(roomId) {
+        // room.html へ移動
+        window.location.href = `room.html?room=${encodeURIComponent(roomId)}`;
+    }
+
+    // ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+        firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+                const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+                localStorage.setItem('shogi_username', displayName);
+                console.log("ログイン確認: " + displayName + " として保存しました。");
+
+                const nameDisplay = document.getElementById('myCharName');
+                if (nameDisplay && nameDisplay.textContent === "---") {
+                     // 必要ならここで処理
+                }
+            } else {
+                console.log("未ログインです。");
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

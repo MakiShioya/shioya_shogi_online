@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>オンライン対戦 - ランダムマッチ</title>
+<link rel="icon" href="script/image/komiya_icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script src="script/auth.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+    body {
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        background-color: #333;
+        color: white;
+        text-align: center;
+        margin: 0;
+        padding: 20px;
+    }
+    h1 { margin-bottom: 20px; color: #FFB347; }
+    
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    /* 使用キャラ表示エリア */
+    .char-info-area {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 2px solid #FFB347;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+    .char-avatar {
+        width: 50px;
+        height: 50px;
+        object-fit: contain;
+        border-radius: 5px;
+        background: #fff;
+    }
+    .char-change-btn {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+        background-color: #555;
+        color: white;
+        border: 1px solid #aaa;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    /* ランダムマッチエリア */
+    .random-match-area {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        border: 2px solid #4a90e2;
+    }
+    .random-match-area h2 {
+        margin: 0 0 10px 0;
+        color: #fff;
+        text-shadow: 0 0 5px #00d2ff;
+    }
+    .random-btn {
+        padding: 15px 40px;
+        font-size: 1.5rem;
+        background-color: #ffcc00;
+        color: #333;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 5px 0 #b38f00;
+        transition: transform 0.1s;
+    }
+    .random-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 1px 0 #b38f00;
+    }
+    .cancel-btn {
+        background-color: #d32f2f;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .spinner {
+        margin: 10px auto;
+        width: 30px;
+        height: 30px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top: 4px solid #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* ルームロビーへの誘導ボタン */
+    .goto-room-btn {
+        display: block;
+        width: 100%;
+        padding: 15px;
+        font-size: 1.2rem;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+    .goto-room-btn:hover { background-color: #218838; }
+
+    .back-link {
+        display: block;
+        margin-top: 20px;
+        color: #aaa;
+        text-decoration: none;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>オンライン対戦</h1>
+
+    <div class="char-info-area">
+        <img id="myCharImg" class="char-avatar" src="" alt="icon">
+        <div>
+            <div style="font-size: 0.9rem; color:#aaa;">使用キャラクター</div>
+            <div id="myCharName" style="font-weight: bold; font-size: 1.1rem;">---</div>
+        </div>
+        <button class="char-change-btn" onclick="location.href='character.html?mode=online'">変更</button>
+    </div>
+
+    <div class="random-match-area">
+        <h2>ランダム対戦</h2>
+        <p>オンラインの誰かとすぐに対戦します</p>
+        
+        <button id="randomBtn" class="random-btn" onclick="joinRandomMatch()">
+            ランダムマッチ開始！
+        </button>
+
+        <div id="waitingMsg" style="display: none;">
+            <div class="spinner"></div>
+            <p>対戦相手を探しています...</p>
+            <button class="cancel-btn" onclick="cancelRandomMatch()">キャンセル</button>
+        </div>
+    </div>
+
+    <p style="color:#aaa;">または</p>
+
+    <a href="online_room_lobby.html" class="goto-room-btn">
+        ルームを作成・探す
+    </a>
+
+    <a href="index.html" class="back-link">← ホームに戻る</a>
+</div>
+
+<script>
+    // キャラクター定義
+    const charMap = {
+        'default': { name: 'キャラA', img: 'script/image/karui_1p.PNG' },
+        'char_a':  { name: 'キャラB', img: 'script/image/char_a.png' },
+        'char_b':  { name: 'キャラC', img: 'script/image/char_b.png' }
+    };
+
+    window.onload = function() {
+        const charId = sessionStorage.getItem('my_character') || 'default';
+        const charInfo = charMap[charId] || charMap['default'];
+        document.getElementById('myCharName').textContent = charInfo.name;
+        document.getElementById('myCharImg').src = charInfo.img;
+    };
+
+    const socket = io();
+
+    function getUniqueUserId() {
+        let id = localStorage.getItem('shogi_user_id');
+        if (!id) {
+            id = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+            localStorage.setItem('shogi_user_id', id);
+        }
+        return id;
+    }
+
+    function joinRandomMatch() {
+        const userId = getUniqueUserId();
+        socket.emit('join random queue', userId);
+        document.getElementById('randomBtn').style.display = 'none';
+        document.getElementById('waitingMsg').style.display = 'block';
+    }
+
+    function cancelRandomMatch() {
+        socket.emit('leave random queue');
+        document.getElementById('randomBtn').style.display = 'inline-block';
+        document.getElementById('waitingMsg').style.display = 'none';
+    }
+
+    socket.on('match found', (roomId) => {
+        console.log("マッチングしました！: " + roomId);
+        window.location.href = `room_random.html?room=${encodeURIComponent(roomId)}`;
+    });
+
+
+// ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // ログインしている場合
+            // 表示名(displayName)がなければメールアドレスの前半を使うなどの予備処理
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            
+            // LocalStorageに保存（これで次回から自動的に名前が使われる）
+            localStorage.setItem('shogi_username', displayName);
+            
+            console.log("ログイン確認: " + displayName + " として保存しました。");
+
+            // もし画面上に名前を表示する要素があれば更新する
+            // (ロビー画面など用)
+            const nameDisplay = document.getElementById('myCharName'); // ロビーのID
+            if (nameDisplay && nameDisplay.textContent === "---") {
+                 // ロビーの場合はキャラ名が表示されるので、
+                 // 必要であればここで "ようこそ 〇〇さん" のように書き換える処理を入れる
+            }
+            
+        } else {
+            // ログインしていない場合
+            console.log("未ログインです。");
+        }
+    });
+}
+
+</script>
+
+</body>
+</html>

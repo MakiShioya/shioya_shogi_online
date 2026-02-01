@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ランダム対戦待機中</title>
+<link rel="icon" href="script/image/komiya_icon.png">
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script src="script/auth.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #1e3c72; /* ランダムマッチっぽい青背景 */
+        color: white;
+        text-align: center;
+        padding: 20px;
+    }
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background: rgba(255,255,255,0.1);
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+    h1 { color: #00d2ff; text-shadow: 0 0 5px #00d2ff; }
+    
+    .player-box {
+        display: flex;
+        justify-content: space-around;
+        margin: 40px 0;
+    }
+    .player-card {
+        background: #444;
+        width: 40%;
+        padding: 20px;
+        border-radius: 10px;
+        border: 3px solid #666;
+        transition: all 0.3s;
+    }
+    .player-card.is-me { border-color: #FFB347; }
+    
+    /* 準備完了（自動） */
+    .player-card.ready { 
+        background: #225522; 
+        border-color: #00ff00; 
+        box-shadow: 0 0 10px #00ff00;
+    }
+
+    .role-label { font-size: 1.2rem; margin-bottom: 10px; font-weight: bold; }
+    .status-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        background: #888;
+        border-radius: 20px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    .ready .status-badge { background: #00ff00; color: #000; font-weight: bold; }
+
+    /* メッセージエリアを大きく */
+    .msg-area { 
+        margin-top: 30px; 
+        font-size: 1.5rem; 
+        color: #fff; 
+        font-weight: bold;
+        min-height: 1.5em; 
+    }
+
+    /* ローディングアニメーション */
+    .spinner {
+        margin: 20px auto;
+        width: 40px;
+        height: 40px;
+        border: 5px solid rgba(255,255,255,0.3);
+        border-top: 5px solid #00d2ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>マッチング成立！</h1>
+    <p>対戦の準備をしています...</p>
+
+    <div class="player-box">
+        <div id="cardBlack" class="player-card">
+            <div class="role-label">▲ 先手</div>
+            <div id="nameBlack">読込中...</div>
+            <div class="status-badge" id="badgeBlack">待機中</div>
+        </div>
+
+        <div id="cardWhite" class="player-card">
+            <div class="role-label">△ 後手</div>
+            <div id="nameWhite">読込中...</div>
+            <div class="status-badge" id="badgeWhite">待機中</div>
+        </div>
+    </div>
+
+    <div class="spinner" id="loadingSpinner"></div>
+    <div class="msg-area" id="msgArea">対戦相手の接続を待っています...</div>
+</div>
+
+<script>
+    const socket = io();
+    let myUserId = localStorage.getItem('shogi_user_id');
+    let myRole = null;
+    let roomId = new URLSearchParams(window.location.search).get('room');
+
+    // 接続と入室
+    socket.on('connect', () => {
+        if(!myUserId) {
+            myUserId = 'user_' + Math.random().toString(36).substr(2,9);
+            localStorage.setItem('shogi_user_id', myUserId);
+        }
+        const myCharId = sessionStorage.getItem('my_character') || 'default';
+        socket.emit('declare character', myCharId);
+        
+        // 入室
+        socket.emit('enter game', { roomId, userId: myUserId });
+    });
+
+    // 役割が決定したら、即座に「準備OK」を送る（自動化）
+    socket.on('role assigned', (role) => {
+        myRole = role;
+        
+        if (role === 'black' || role === 'white') {
+            // ★重要：自動で準備完了信号を送る
+            console.log("役割決定。自動で準備完了を送信します。");
+            socket.emit('toggle ready');
+        } else {
+            document.getElementById('msgArea').textContent = "観戦モード";
+            document.getElementById('loadingSpinner').style.display = 'none';
+        }
+    });
+
+    // 部屋の状態更新
+    socket.on('update room status', (info) => {
+        if (info.status === 'playing') {
+            goToGame();
+            return;
+        }
+        updateCard('black', info.blackId, info.blackReady);
+        updateCard('white', info.whiteId, info.whiteReady);
+    });
+
+    function updateCard(role, userId, isReady) {
+        const card = document.getElementById(role === 'black' ? 'cardBlack' : 'cardWhite');
+        const nameDiv = document.getElementById(role === 'black' ? 'nameBlack' : 'nameWhite');
+        const badge = document.getElementById(role === 'black' ? 'badgeBlack' : 'badgeWhite');
+
+        if (userId) {
+            nameDiv.textContent = (userId === myUserId) ? "あなた" : "対戦相手";
+            if (userId === myUserId) card.classList.add('is-me');
+        } else {
+            nameDiv.textContent = "接続待ち...";
+            card.classList.remove('is-me');
+        }
+
+        if (isReady) {
+            card.classList.add('ready');
+            badge.textContent = "OK!";
+        } else {
+            card.classList.remove('ready');
+            badge.textContent = "準備中";
+        }
+    }
+
+    // 全員完了時のスタート命令
+    socket.on('all ready', () => {
+        document.getElementById('msgArea').textContent = "対局を開始します！";
+        setTimeout(goToGame, 5000); 
+    });
+
+    function goToGame() {
+        window.location.href = `player_vs_player_online.html?room=${encodeURIComponent(roomId)}`;
+    }
+
+// ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // ログインしている場合
+            // 表示名(displayName)がなければメールアドレスの前半を使うなどの予備処理
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            
+            // LocalStorageに保存（これで次回から自動的に名前が使われる）
+            localStorage.setItem('shogi_username', displayName);
+            
+            console.log("ログイン確認: " + displayName + " として保存しました。");
+
+            // もし画面上に名前を表示する要素があれば更新する
+            // (ロビー画面など用)
+            const nameDisplay = document.getElementById('myCharName'); // ロビーのID
+            if (nameDisplay && nameDisplay.textContent === "---") {
+                 // ロビーの場合はキャラ名が表示されるので、
+                 // 必要であればここで "ようこそ 〇〇さん" のように書き換える処理を入れる
+            }
+            
+        } else {
+            // ログインしていない場合
+            console.log("未ログインです。");
+        }
+    });
+}
+
+</script>
+
+</body>
+</html>
