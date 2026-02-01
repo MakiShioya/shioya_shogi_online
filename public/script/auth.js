@@ -11,21 +11,24 @@ const firebaseConfig = {
   measurementId: "G-K9ZLW8L09J"
 };
 
-// 初期化
+// 初期化（二重初期化防止チェック付き）
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
+// グローバル変数として使えるようにする
 const db = firebase.firestore();
 const auth = firebase.auth();
 
 // ----------------------
-// ユーザー状態監視
+// ユーザー状態監視（全ページ共通）
 // ----------------------
 auth.onAuthStateChanged(async (user) => {
+    // 画面上の要素を取得（存在しないページもあるのでチェック用）
     const nameDisplay = document.getElementById("userNameDisplay");
     const editBtn = document.getElementById("editNameBtn");
 
     if (user) {
+        // 1. 表示名の決定
         let displayName = user.displayName;
         if (!displayName) {
             try {
@@ -35,12 +38,27 @@ auth.onAuthStateChanged(async (user) => {
         }
         if (!displayName) displayName = user.email.split("@")[0];
 
+        // ★★★ 追加：ここでLocalStorageに保存！（これで全ページの名前問題が解決） ★★★
+        localStorage.setItem('shogi_username', displayName);
+        console.log("ログイン中: " + displayName);
+
+        // 2. 画面表示の更新（要素がある場合のみ）
         if (nameDisplay) nameDisplay.textContent = displayName;
         if (editBtn) editBtn.style.display = "inline-block";
 
+        // ロビー画面などで名前表示枠がある場合の対応
+        const lobbyName = document.getElementById("myCharName");
+        if (lobbyName && lobbyName.textContent === "---") {
+             // 必要ならここにロビー特有の表示更新処理を書けます
+        }
+
+        // 3. 戦績データの読み込み（関数がある場合のみ）
         if (typeof loadUserStats === "function") loadUserStats(user.uid);
 
     } else {
+        // 未ログイン時
+        localStorage.setItem('shogi_username', "ゲスト"); // ゲストに戻す
+        
         if (nameDisplay) nameDisplay.textContent = "ゲスト";
         if (editBtn) editBtn.style.display = "none";
         if (document.getElementById("statsWin")) document.getElementById("statsWin").textContent = "0";
@@ -60,17 +78,13 @@ function loadUserStats(userId) {
         const lose = data.lose || 0;
         const history = data.history || [];
 
-        // --- 1. 【維持】ホーム画面用(statsModal)の数値更新 ---
         if (document.getElementById("statsWin")) document.getElementById("statsWin").textContent = win;
         if (document.getElementById("statsLose")) document.getElementById("statsLose").textContent = lose;
 
-        // --- 2. 【変更】マイページ(mypage.html) へのデータ受け渡し ---
-        // ここで直接HTMLを作らず、mypage.html側の「仕分け人(updateKifuDisplay)」にデータを渡します。
         if (typeof window.updateKifuDisplay === "function") {
             window.updateKifuDisplay(history);
         }
 
-        // --- 3. 【維持】ホーム画面の簡易リスト更新 ---
         const historyList = document.getElementById("statsHistory");
         if (historyList) {
             historyList.innerHTML = "";
@@ -87,45 +101,28 @@ function loadUserStats(userId) {
     });
 }
 
-// --- 4. 【維持】棋譜詳細をモーダルで表示する機能 ---
-// これはmypage.htmlからも呼び出すので、消さずに残します。
+// ----------------------
+// 棋譜詳細モーダル
+// ----------------------
 function showKifuDetails(kifuArray, opponent) {
     const modal = document.getElementById("kifuDetailsModal");
     const textDiv = document.getElementById("modalKifuText");
     const title = document.getElementById("modalTitle");
 
     if (!modal || !textDiv) return;
+
     if (title) title.textContent = "対局記録 vs " + (opponent || "CPU");
-    
-    // 配列なら改行で結合、文字列ならそのまま表示
     textDiv.textContent = Array.isArray(kifuArray) ? kifuArray.join("\n") : kifuArray;
     modal.style.display = "flex";
 }
 
-// ★追加：棋譜詳細をモーダルで表示する
-function showKifuDetails(kifuArray, opponent) {
-    const modal = document.getElementById("kifuDetailsModal");
-    const textDiv = document.getElementById("modalKifuText");
-    const title = document.getElementById("modalTitle");
-
-    if (!modal || !textDiv) return;
-
-    if (title) title.textContent = "対局記録 vs " + (opponent || "CPU");
-    
-    // 配列を改行で結合して表示
-    textDiv.textContent = kifuArray.join("\n");
-    
-    modal.style.display = "flex";
-}
-
-// ★追加：詳細モーダルを閉じる
 function closeKifuModal() {
     const modal = document.getElementById("kifuDetailsModal");
     if (modal) modal.style.display = "none";
 }
 
 // ----------------------
-// モーダル・ログイン・名前変更（既存機能）
+// モーダル・ログイン・名前変更
 // ----------------------
 function showAuthModal() {
     const modal = document.getElementById("authModal");
@@ -204,6 +201,8 @@ function saveNewName() {
         return db.collection("users").doc(user.uid).set({ name: newName }, { merge: true });
     }).then(() => {
         document.getElementById("userNameDisplay").textContent = newName;
+        // LocalStorageも更新
+        localStorage.setItem('shogi_username', newName);
         closeNameEditModal();
     });
 }
