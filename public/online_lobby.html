@@ -12,6 +12,55 @@
 <script src="script/auth.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <style>
+
+
+@media screen and (max-width: 600px) and (orientation: portrait) {
+    html, body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .container {
+        /* 縦画面の幅(vw)を「回転後の高さ」に、高さ(vh)を「回転後の幅」に固定 */
+        width: 90vh; 
+        height: 90vw;
+        
+        /* 画面中央を軸に90度回転 */
+        transform: rotate(90deg);
+        transform-origin: center;
+        
+        /* はみ出し防止 */
+        max-width: none !important;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        box-sizing: border-box;
+        padding: 10px;
+    }
+
+    .match-options {
+        flex-direction: row !important; /* 横並びを維持 */
+        width: 100%;
+        gap: 10px;
+    }
+
+    /* 文字サイズが大きすぎてはみ出るのを防ぐ微調整 */
+    h1 { font-size: 1.5rem; margin-bottom: 10px; }
+    .match-options h2 { font-size: 1.1rem; }
+    .match-options p { font-size: 0.7rem; }
+}
+
+
+
     body {
         font-family: 'Helvetica Neue', Arial, sans-serif;
         background-color: #333;
