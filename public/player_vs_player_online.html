@@ -181,6 +181,69 @@
     
     /* ▲▲▲ ここまで ▲▲▲ */
 
+
+
+/* チャット全体の幅と位置の調整 */
+#chatContainer {
+  width: 150px !important; /* 横幅をスリムに（元が広すぎる場合） */
+}
+
+/* 「チャット」と書かれたヘッダー部分を小さくする */
+#chatHeader {
+  padding: 5px 10px !important; /* 上下の余白を狭く */
+  font-size: 0.75rem !important;  /* 文字を小さく */
+  border-radius: 5px 5px 0 0 !important; /* 角丸を控えめに */
+  line-height: 1.2 !important;   /* 行間を詰める */
+}
+
+/* チャットの中身の文字も小さくする場合（任意） */
+#chatBody {
+  font-size: 0.7rem !important;
+}
+
+#chatInput {
+  padding: 4px !important;
+  font-size: 0.7rem !important;
+}
+
+/* 入力エリアを横並びにして、はみ出さないようにする */
+#chatInputArea {
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px !important;
+  box-sizing: border-box !important; /* 幅の計算を正確にする */
+  width: 100% !important;
+}
+
+/* 入力欄：残りの幅をすべて使う設定 */
+#chatInput {
+  flex: 1 !important;        /* これでボタンのスペースを確保します */
+  width: 0 !important;       /* flexを優先させるための指定 */
+  height: 24px !important;
+  font-size: 0.75rem !important;
+  padding: 2px 5px !important;
+  margin-right: 4px !important; /* ボタンとの間に少し隙間を作る */
+  border: 1px solid #ccc !important;
+  border-radius: 3px !important;
+}
+
+/* ボタン：幅を固定して消えないようにする */
+#chatInputArea button {
+  white-space: nowrap !important; /* 文字を折り返さない */
+  width: auto !important;
+  min-width: 45px !important;    /* 最低限の幅を確保 */
+  height: 28px !important;
+  padding: 0 5px !important;
+  font-size: 0.7rem !important;
+  flex-shrink: 0 !important;     /* ボタンが圧縮されるのを防ぐ */
+}
+
+/* 入力中の枠線を少しスリムに */
+#chatInput:focus {
+  outline: none !important;
+  border-color: #8b4513 !important;
+}
+
   </style>
 
 </head>
@@ -343,17 +406,21 @@
 <script src="script/characters/Itsumono.js"></script>
 <script src="script/characters/Reisei.js"></script>
 <script src="script/characters/Nekketsu.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
+<script src="script/auth.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script src="script/main_online_player.js"></script>
 <script src="script/auth.js"></script>
 
 <div id="chatContainer">
-  <div id="chatHeader" onclick="toggleChat()">💬 チャット (クリックで開閉)</div>
+  <div id="chatHeader" onclick="toggleChat()">チャット</div>
   <div id="chatBody">
     <div id="chatHistory"></div>
     <div id="chatInputArea">
-      <input type="text" id="chatInput" placeholder="メッセージを入力..." autocomplete="off">
+      <input type="text" id="chatInput" placeholder="ここに入力" autocomplete="off">
       <button onclick="sendChatMessage()">送信</button>
     </div>
   </div>
