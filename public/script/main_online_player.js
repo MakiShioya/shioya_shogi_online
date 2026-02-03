@@ -699,17 +699,49 @@ function render() {
         else statusDiv.textContent = "引き分けです。";
         checkStatusDiv.textContent = "";
 
+        // script/main_online_player.js の render() 関数内の一部
+
         if (!document.getElementById("resetBtn")) {
             const btn = document.createElement("button");
             btn.id = "resetBtn";
-            btn.textContent = "ホームに戻る"; 
-            btn.style.cssText = "padding:10px 20px; font-size:16px; margin-top:10px; background-color:#d32f2f; color:white; border:none; cursor:pointer;";
+            
+            // ★変更点：ボタンの文字を変える
+            btn.textContent = "結果画面へ"; 
+            
+            // スタイル（色は変えたければ変えてOK）
+            btn.style.cssText = "padding:10px 20px; font-size:16px; margin-top:10px; background-color:#d32f2f; color:white; border:none; cursor:pointer; border-radius:5px;";
+            
+            // ★変更点：クリック時の挙動
             btn.onclick = () => {
-                if(confirm("ホーム画面に戻りますか？")) {
-                    localStorage.removeItem('current_shogi_room');
-                    window.location.href = "index.html"; 
+                // 1. 勝敗判定
+                let resultStr = "DRAW";
+                if (winner) {
+                    // 自分の役割と勝者が一致すればWIN
+                    if (winner === myRole) resultStr = "WIN";
+                    else if (myRole === "black" || myRole === "white") resultStr = "LOSE";
+                    else resultStr = "SPECTATOR"; // 観戦者の場合
                 }
+
+                // 2. 自分の使用キャラIDを取得
+                let myCharId = "default";
+                if (myRole === "black") {
+                    myCharId = sessionStorage.getItem('online_black_char') || "default";
+                } else if (myRole === "white") {
+                    myCharId = sessionStorage.getItem('online_white_char') || "default";
+                }
+
+                // 3. 次の画面へ渡すデータを保存
+                sessionStorage.setItem('last_game_result', resultStr);
+                sessionStorage.setItem('last_game_my_char', myCharId);
+                sessionStorage.setItem('last_game_kifu', JSON.stringify(kifu));
+
+                // 4. ルーム情報の掃除（必要なら）
+                localStorage.removeItem('current_shogi_room');
+
+                // 5. 結果画面へ移動
+                window.location.href = "result.html"; 
             };
+            
             statusDiv.appendChild(document.createElement("br"));
             statusDiv.appendChild(btn);
         }
