@@ -247,7 +247,31 @@ socket.on('restore game', (savedState) => {
 });
 
 socket.on('shogi move', (data) => {
-  executeMove(data.sel, data.x, data.y, data.promote, true);
+  // ★★★ 修正：TimeWarp（強制巻き戻し）の場合は、盤面を丸ごと復元する ★★★
+  if (data.isTimeWarp) {
+      console.log("TimeWarpを受信。盤面を強制同期します。");
+      const state = data.gameState;
+
+      // サーバーから送られてきた「戻った後の状態」で上書き
+      boardState = state.boardState;
+      hands = state.hands;
+      turn = state.turn;
+      moveCount = state.moveCount;
+      kifu = state.kifu;
+      p1SkillCount = state.p1SkillCount;
+      p2SkillCount = state.p2SkillCount;
+
+      // エフェクトなどは skill activate で処理済みなので、ここでは描画更新のみ
+      render();
+      startTimer();
+      
+      // ログ表示
+      statusDiv.textContent = "相手が時を戻しました！";
+  } 
+  else {
+      // 通常の駒移動
+      executeMove(data.sel, data.x, data.y, data.promote, true);
+  }
 });
 
 socket.on('skill activate', (data) => {
@@ -333,11 +357,13 @@ function initSkills(blackId, whiteId) {
     if (blackId === 'default' && typeof CharItsumono !== 'undefined') p1Skill = CharItsumono.skill;
     else if (blackId === 'char_a' && typeof CharNekketsu !== 'undefined') p1Skill = CharNekketsu.skill;
     else if (blackId === 'char_b' && typeof CharReisei !== 'undefined') p1Skill = CharReisei.skill;
+    else if (blackId === 'char_d' && typeof CharMachida !== 'undefined') p1Skill = CharMachida.skill;
 
     // 後手のスキル設定
     if (whiteId === 'default' && typeof CharItsumono !== 'undefined') p2Skill = CharItsumono.skill;
     else if (whiteId === 'char_a' && typeof CharNekketsu !== 'undefined') p2Skill = CharNekketsu.skill;
     else if (whiteId === 'char_b' && typeof CharReisei !== 'undefined') p2Skill = CharReisei.skill;
+    else if (whiteId === 'char_d' && typeof CharMachida !== 'undefined') p2Skill = CharMachida.skill;
   
     // 画像反映
     applyPlayerImage();
@@ -497,6 +523,7 @@ function getImageUrlById(charId) {
   if (charId === 'char_a') return "url('script/image/char_a.png')";
   if (charId === 'char_b') return "url('script/image/char_b.png')";
   if (charId === 'default') return "url('script/image/karui_1p.PNG')";
+  if (charId === 'char_d') return "url('script/image/char_d.png')";
   return null;
 }
 
@@ -729,52 +756,124 @@ function renderHands() {
   });
 }
 
+// script/main_online_player.js
+
 function onCellClick(x, y) {
-  if (!isGameStarted) return; 
-  if (gameOver) return;
-  if (myRole && turn !== myRole) return;
+  if (!isGameStarted) return; 
+  if (gameOver) return;
+  if (myRole && turn !== myRole) return;
 
-  if (isSkillTargeting) {
-    if (legalMoves.some(m => m.x === x && m.y === y)) {
-      const result = currentSkill.execute(x, y);
+  // ---------------------------------------------------------
+  // 1. 必殺技のターゲット選択モードの場合
+  // ---------------------------------------------------------
+  if (isSkillTargeting) {
+    // クリックした場所が有効なターゲット（光っている場所）か確認
+    if (legalMoves.some(m => m.x === x && m.y === y)) {
+      
+      // ★★★★★ TimeWarp（時戻し）などのシステム介入型スキルの分岐 ★★★★★
+      if (currentSkill && currentSkill.isSystemAction) {
+          
+          console.log("システムスキル発動:", currentSkill.name);
 
-      if (socket) {
-          socket.emit('skill activate', {
-              x: x, y: y, turn: turn,
-              isFinished: (result !== null) 
-          });
-      }
+          // 1. ターゲットモード解除
+          isSkillTargeting = false;
+          legalMoves = [];
+          selected = null;
+          const boardTable = document.getElementById("board");
+          if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
-      if (result === null) {
-          legalMoves = currentSkill.getValidTargets();
-          render();
-          statusDiv.textContent = "移動させる場所を選んでください";
-          return; 
-      }
-      processSkillAfterEffect(currentSkill, result, turn);
-    }
-    return;
-  }
-  
-  if (!selected) {
-    const piece = boardState[y][x];
-    if (!piece) return;
-    const isWhite = piece === piece.toLowerCase();
-    if (turn === "black" && isWhite) return; 
-    if (turn === "white" && !isWhite) return;
-    selected = { x, y, fromHand: false };
-    legalMoves = getLegalMoves(x, y);
-    if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
-    render();
-    return;
-  }
-  const sel = selected;
-  if (legalMoves.some(m => m.x === x && m.y === y)) {
-    movePieceWithSelected(sel, x, y);
-  }
-  selected = null;
-  legalMoves = [];
-  render();
+          // 2. ローカルで「待った」を実行（自分の画面を戻す）
+          undoMove();
+
+          // 3. 使用回数の加算
+          // 手番が戻っているので、「現在のturn」＝「スキルを使った人」です
+          if (turn === "black") p1SkillCount++; else p2SkillCount++;
+          
+          // 4. ボタン状態の更新
+          syncGlobalSkillState();
+
+          // 5. 【重要】ネットワーク同期処理
+          // 相手に「スキルを使ったよ」という演出を送る
+          if (socket) {
+              socket.emit('skill activate', { 
+                  x: 0, y: 0, // 演出用のダミー座標
+                  turn: turn, 
+                  isFinished: true 
+              });
+
+              // 「戻した後の状態」を定義
+              const newState = {
+                  boardState: boardState,
+                  hands: hands,
+                  turn: turn,
+                  moveCount: moveCount,
+                  kifu: kifu,
+                  p1SkillCount: p1SkillCount,
+                  p2SkillCount: p2SkillCount,
+                  blackCharId: sessionStorage.getItem('online_black_char'),
+                  whiteCharId: sessionStorage.getItem('online_white_char')
+              };
+
+              // サーバーに「この状態に強制変更して！」と送る
+              // isTimeWarp フラグを付けて、相手が普通の移動と区別できるようにする
+              socket.emit('shogi move', { 
+                  gameState: newState,
+                  isTimeWarp: true,     // ★これが相手の画面を戻す合図
+                  sel: {x:0, y:0},      
+                  x:0, y:0, promote:false
+              });
+          }
+
+          render();
+          statusDiv.textContent = "必殺技発動！ 時を戻しました。";
+          return; // ★ここで処理を終了させる（下のexecuteに行かせない）
+      }
+      // ★★★★★ ここまで ★★★★★
+
+
+      // --- 通常のスキル（熱血など）の処理 ---
+      const result = currentSkill.execute(x, y);
+
+      if (socket) {
+          socket.emit('skill activate', {
+              x: x, y: y, turn: turn,
+              isFinished: (result !== null) 
+          });
+      }
+
+      if (result === null) {
+          legalMoves = currentSkill.getValidTargets();
+          render();
+          statusDiv.textContent = "移動させる場所を選んでください";
+          return; 
+      }
+      processSkillAfterEffect(currentSkill, result, turn);
+    }
+    return;
+  }
+  
+  // ---------------------------------------------------------
+  // 2. 通常の駒移動処理（変更なし）
+  // ---------------------------------------------------------
+  if (!selected) {
+    const piece = boardState[y][x];
+    if (!piece) return;
+    const isWhite = piece === piece.toLowerCase();
+    if (turn === "black" && isWhite) return; 
+    if (turn === "white" && !isWhite) return;
+    selected = { x, y, fromHand: false };
+    legalMoves = getLegalMoves(x, y);
+    if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
+    render();
+    return;
+  }
+  const sel = selected;
+  if (legalMoves.some(m => m.x === x && m.y === y)) {
+    movePieceWithSelected(sel, x, y);
+  }
+  selected = null;
+  legalMoves = [];
+  render();
 }
 
 function selectFromHand(player, index) {
@@ -1219,24 +1318,47 @@ function copyKifuText() {
     }
 }
 
-
-// --- 待ったボタンの処理（ポップアップ版） ---
+// 待った機能（TimeWarpから呼ばれる）
 function undoMove() {
-    const modal = document.getElementById("undoModal");
-    if (modal) {
-        modal.style.display = "flex"; // ポップアップを表示
-    } else {
-        // 万が一HTMLがないときはアラートで代用
-        alert("このキャラは「待った」スキルを持っていません。");
-    }
+  // 履歴が足りないときは何もしない
+  if (!history || history.length < 2) {
+      console.log("履歴不足でundoできません");
+      return;
+  }
+  
+  // 2つ前の状態（自分の前の手番）を取り出す
+  const prev = history[history.length - 2];
+  history.length -= 2; 
+  lastMoveFrom = null;
+  
+  // 状態を復元
+  restoreState(prev);
+
+  window.isCaptureRestricted = false;
+  gameOver = false;
+  winner = null;
+  
+  // 表示更新
+  syncGlobalSkillState();
+  render();
+  if (typeof showKifu === "function") showKifu();
+  startTimer();
 }
 
-// ポップアップを閉じる関数
-function closeUndoModal() {
-    const modal = document.getElementById("undoModal");
-    if (modal) {
-        modal.style.display = "none"; // 非表示にする
-    }
+// 状態復元関数（undoMoveから呼ばれる）
+function restoreState(state) {
+    boardState = JSON.parse(JSON.stringify(state.boardState));
+    hands = JSON.parse(JSON.stringify(state.hands));
+    turn = state.turn;
+    moveCount = state.moveCount;
+    kifu = JSON.parse(JSON.stringify(state.kifu));
+    
+    // スキルカウントの復元
+    if (state.p1SkillCount !== undefined) p1SkillCount = state.p1SkillCount;
+    if (state.p2SkillCount !== undefined) p2SkillCount = state.p2SkillCount;
+    
+    // エフェクト消去
+    pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
 }
 
 /**
@@ -1423,4 +1545,26 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
             console.log("未ログインです。");
         }
     });
+}
+
+// script/main_online_player.js の一番下に追加してください
+
+// ★★★ 追加：現在のゲーム状態を丸ごとコピーして返す関数 ★★★
+// これがないと、履歴（history）に正しいデータが保存されず、待った機能でエラーになります。
+function deepCopyState() {
+    return {
+        boardState: JSON.parse(JSON.stringify(boardState)), // 盤面のコピー
+        hands: JSON.parse(JSON.stringify(hands)),           // 持ち駒のコピー
+        turn: turn,                                         // 手番
+        moveCount: moveCount,                               // 手数
+        kifu: JSON.parse(JSON.stringify(kifu)),             // 棋譜
+        
+        // スキルの使用状況も保存
+        p1SkillCount: p1SkillCount,
+        p2SkillCount: p2SkillCount,
+        
+        // 最後に動かした位置（ハイライト用）
+        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
+        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
+    };
 }
