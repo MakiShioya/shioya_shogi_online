@@ -7,7 +7,7 @@ const charData = {
     name: "キャラA",
     image: "script/image/karui_1p.PNG",
     skillName: "シルバーアーマー",
-    skillDesc: "自身の「銀」「成銀」「成桂」「成香」のうち一つを選び、自分の玉の周囲８マスから１マスを選択し、移動させる。手番が終わる。<br>発動条件：なし / 1局に1回のみ"
+    skillDesc: "自身の「銀」「成銀」「成桂」「成香」のうち一つを選び、自分の玉の周囲８マスから１マスを選択し、移動させる。手番が終わる。<br>発動条件：30手以降 / 1局に1回のみ"
   },
   
   // ■熱血（char_a）
@@ -24,7 +24,16 @@ const charData = {
     image: "script/image/char_b.png",
     skillName: "ブループリント",
     skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。<br>発動条件：振り飛車 / 1局に1回のみ"
+  },
+
+  // ■町田（char_d）
+  "char_d": {
+    name: "キャラD",
+    image: "script/image/char_d.png",
+    skillName: "タイムワープ",
+    skillDesc: "ひとつ前の自分の番に戻る。<br>発動条件：なし / 1局に1回のみ"
   }
+
 };
 
 // ページ読み込み時に実行
