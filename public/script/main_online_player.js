@@ -105,7 +105,8 @@ window.addEventListener("load", () => {
   const charNameMap = {
       'default': 'キャラA', 
       'char_a': 'キャラB',
-      'char_b': 'キャラC'
+      'char_b': 'キャラC',
+      'char_d': 'キャラD'
   };
   const myCharName = charNameMap[myCharId] || "不明なキャラ";
   const displaySpan = document.getElementById("myCharNameDisplay");
