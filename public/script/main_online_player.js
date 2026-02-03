@@ -239,18 +239,25 @@ function setupSocketListeners(myUserId) {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
-        // ★追加：相手の必殺技演出を再生
+        // 1. 相手の必殺技演出を再生
         playSkillCutIn(data.turn);
 
         currentSkill = skillToUse; 
-        legalMoves = [{ x: data.x, y: data.y }];
-        isSkillTargeting = true;
+        
+        // 2. 受信側でも必ず execute を実行して、盤面の状態（成る・色変え・移動）を更新する
+        const result = skillToUse.execute(data.x, data.y);
 
+        // 3. 完了判定
         if (data.isFinished) {
-            processSkillAfterEffect(skillToUse, "SYSTEM", data.turn);
+            // 技が完了した場合（BluePrintや、SilverArmorの2手目など）
+            // 実行結果(result)を渡して終了処理を行う
+            // ※万が一 result が null の場合でも進行するように "SYSTEM" をフォールバックにする
+            processSkillAfterEffect(skillToUse, result || "SYSTEM", data.turn);
         } else {
-            const result = skillToUse.execute(data.x, data.y);
-            processSkillAfterEffect(skillToUse, result, data.turn);
+            // 技がまだ続く場合（SilverArmorの1手目など）
+            // ここで processSkillAfterEffect を呼ぶと reset() されてしまうので呼んではいけない。
+            // 盤面を再描画して（選択色の反映など）、次の通信を待つ。
+            render();
         }
     });
 
