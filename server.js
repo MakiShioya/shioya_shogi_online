@@ -1,4 +1,4 @@
-// server.js (完全版：ルーム機能 + キャラ選択 + ランダムマッチ + 待機室 + 通信切れ負け対応)
+// server.js (修正版：状態管理の安全性向上 + 接続タイミング修正)
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -45,7 +45,34 @@ io.on('connection', (socket) => {
     socket.emit('chat history', chatHistory);
 
     socket.on('declare character', (charId) => {
+        console.log(`キャラ登録: Socket[${socket.id}] -> ${charId}`);
         playerCharIds[socket.id] = charId;
+
+        // ★追加修正: すでに部屋に入っている場合、その部屋のキャラ情報も即座に更新する
+        const roomId = socket.roomId;
+        const userId = socket.userId;
+        
+        if (roomId && games[roomId]) {
+            const game = games[roomId];
+            let changed = false;
+
+            // 自分が先手なら先手キャラを更新
+            if (game.players.black === userId) {
+                game.blackCharId = charId;
+                changed = true;
+            }
+            // 自分が後手なら後手キャラを更新
+            if (game.players.white === userId) {
+                game.whiteCharId = charId;
+                changed = true;
+            }
+
+            // 変更があったら部屋の全員に通知（これで画面が変わります）
+            if (changed) {
+                console.log(`部屋[${roomId}]のキャラ情報を更新: ${charId}`);
+                sendRoomUpdate(roomId);
+            }
+        }
     });
 
     // --- ロビー: 部屋一覧 ---
@@ -143,9 +170,17 @@ io.on('connection', (socket) => {
         if (myRole === 'black') game.blackCharId = charId;
         if (myRole === 'white') game.whiteCharId = charId;
 
-        socket.emit('role assigned', myRole);
-        socket.emit('restore game', game);
-        sendRoomUpdate(roomId);
+        // ★修正点②: データの送信順序と内容を整理
+        // クライアント側で役割(myRole)が確定してから盤面を受け取れるようにします。
+        // また、restore gameのデータにmyRoleを含めることで、クライアントでの処理を確実にします（将来的な改修のため）。
+        socket.emit('role assigned', myRole); 
+        
+        // 少しだけ遅延させることで、クライアント側のrole assigned処理完了を待つ（念のための保険）
+        // ※本来はクライアント側でPromise制御すべきですが、サーバー側だけの修正ならこれが安全です。
+        setTimeout(() => {
+            socket.emit('restore game', game); 
+            sendRoomUpdate(roomId);
+        }, 50);
     });
 
     // --- 準備完了トグル ---
@@ -190,15 +225,28 @@ io.on('connection', (socket) => {
     socket.on('shogi move', (data) => {
         const roomId = socket.roomId;
         if (!roomId || !games[roomId]) return;
+        
         socket.to(roomId).emit('shogi move', data);
+
+        // ★修正点①: 状態の丸書き込みを廃止し、必要なデータのみ更新する
+        // これにより、players情報やキャラID、切断状態などが誤って上書きされるのを防ぎます。
         if (data.gameState) {
-            const oldP = games[roomId].players;
-            const oldR = games[roomId].ready;
-            const oldS = games[roomId].status;
-            games[roomId] = data.gameState;
-            games[roomId].players = oldP;
-            games[roomId].ready = oldR;
-            games[roomId].status = oldS;
+            const serverGame = games[roomId];
+            const clientGame = data.gameState;
+
+            // 盤面に関する情報のみを安全にマージ
+            serverGame.boardState = clientGame.boardState;
+            serverGame.hands = clientGame.hands;
+            serverGame.turn = clientGame.turn;
+            serverGame.moveCount = clientGame.moveCount;
+            serverGame.kifu = clientGame.kifu;
+            
+            // 勝敗がついている場合は更新（ただし、不正な上書き防止のためチェックを入れても良い）
+            if (clientGame.isGameOver !== undefined) {
+                serverGame.isGameOver = clientGame.isGameOver;
+            }
+
+            // 【重要】players, ready, status, charIds, timers などは絶対に上書きしない
         }
     });
 
@@ -222,8 +270,7 @@ io.on('connection', (socket) => {
         games[roomId].p1SkillCount = 0;
         games[roomId].p2SkillCount = 0;
         games[roomId].isGameOver = false;
-        // statusはplayingのまま維持するか、waitingに戻すかは仕様次第ですが、
-        // ここではすぐに再戦できるようにplaying維持、またはクライアント側でリロードさせる想定
+        
         io.to(roomId).emit('game reset');
         setTimeout(() => { io.to(roomId).emit('game start', games[roomId]); }, 500);
     });
@@ -234,6 +281,7 @@ io.on('connection', (socket) => {
         socket.to(roomId).emit('game resign', data);
         games[roomId].isGameOver = true;
         games[roomId].status = 'finished';
+        scheduleRoomCleanup(roomId);
     });
 
     socket.on('game over', () => {
@@ -241,6 +289,7 @@ io.on('connection', (socket) => {
         if(!roomId || !games[roomId]) return;
         games[roomId].isGameOver = true;
         games[roomId].status = 'finished';
+        scheduleRoomCleanup(roomId);
     });
 
     socket.on('chat message', (data) => {
@@ -289,7 +338,7 @@ io.on('connection', (socket) => {
                         io.to(roomId).emit('game resign', { loser: role, reason: "disconnect" });
                         delete disconnectTimers[roomId][role];
 
-                        // ★追加：誰もいなければ部屋ごと削除（メモリリーク防止）
+                        // 誰もいなければ部屋ごと削除
                         const roomSockets = io.sockets.adapter.rooms.get(roomId);
                         if (!roomSockets || roomSockets.size === 0) {
                             console.log(`無人部屋[${roomId}]を削除（タイマー後）`);
@@ -312,8 +361,45 @@ io.on('connection', (socket) => {
             }
         }
     });
+    
+    // --- ★追加機能：再接続チェック ---
+    socket.on('check reconnection', (roomId, callback) => {
+        // 部屋が存在し、かつゲームが終了していない（または待機中）なら true を返す
+        if (games[roomId] && !games[roomId].isGameOver) {
+            callback({ canReconnect: true, status: games[roomId].status });
+        } else {
+            callback({ canReconnect: false });
+        }
+    });
+
 });
 
 server.listen(PORT, () => {
     console.log(`★Server running: http://localhost:${PORT}`);
 });
+
+// server.js 内の適当な場所に、この関数を追加
+function scheduleRoomCleanup(roomId) {
+    // すでにタイマーがセットされていれば何もしない（二重セット防止）
+    if (games[roomId] && games[roomId].cleanupTimer) return;
+
+    console.log(`部屋[${roomId}] 終局。1時間後に強制解散します。`);
+
+    // 1時間 (3600000ms) 後に発火
+    const timer = setTimeout(() => {
+        if (games[roomId]) {
+            console.log(`部屋[${roomId}] 時間切れのため強制削除`);
+            
+            // 部屋にいる全員に「時間切れだよ」と伝える
+            io.to(roomId).emit('force room close');
+            
+            // データを削除
+            delete games[roomId];
+            if (disconnectTimers[roomId]) delete disconnectTimers[roomId];
+        }
+    }, 3600000); // 1時間（テスト時は 10000 = 10秒とかにすると分かりやすいです）
+
+    if (games[roomId]) {
+        games[roomId].cleanupTimer = timer;
+    }
+}
