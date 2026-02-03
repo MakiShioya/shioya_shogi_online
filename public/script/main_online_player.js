@@ -1,21 +1,10 @@
 // script/main_online_player.js (キャラクター同期 完全版)
 
 
-// ★★★ 1. ユーザーIDの生成・取得関数を追加 ★★★
-function getUniqueUserId() {
-    // すでに保存されていたらそれを使う
-    let id = localStorage.getItem('shogi_user_id');
-    if (!id) {
-        // なければランダムに生成して保存（簡易的なID生成）
-        id = 'user_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-        localStorage.setItem('shogi_user_id', id);
-    }
-    return id;
-}
+// script/main_online_player.js (キャラクター同期 + アカウント認証版)
 
-
-// ★★★  サーバー接続 ★★★
-const socket = io();
+// ★★★ 1. 自動接続をオフにしてSocket初期化（認証を待つため） ★★★
+const socket = io({ autoConnect: false });
 
 // DOM要素の参照
 const board = document.getElementById("board");
@@ -28,41 +17,69 @@ const resignBtn = document.getElementById("resignBtn");
 // ★ 自分の選んだキャラIDを取得（なければデフォルト）
 const myCharId = sessionStorage.getItem('my_character') || 'default';
 
-// ★★★ 接続時、サーバーに「私はこのキャラです」と伝える ★★★
-// script/main_online_player.js
+// ★★★ 2. Firebaseの認証状態を監視し、ログインしていれば接続開始 ★★★
+if (typeof firebase !== 'undefined' && firebase.auth) {
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // --- ログイン済み ---
+            console.log("ログイン確認:", user.uid);
+            
+            // ユーザー名を保存（表示用）
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            localStorage.setItem('shogi_username', displayName);
 
-socket.on('connect', () => {
-    console.log("サーバーに接続しました。");
-    
-    const userId = getUniqueUserId();
-    console.log("My User ID:", userId);
+            // ★ここで初めてSocket接続を開始
+            // queryオプションを使うと、接続時のハンドシェイクでIDをサーバーに渡せます（念のため）
+            socket.io.opts.query = { userId: user.uid };
+            socket.connect();
 
-    // ★修正点1: 個別の declare character は削除しても良いですが、
-    // 念のため残すとしても、enter game にキャラIDを同梱することが最重要です。
-    socket.emit('declare character', myCharId);
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    let roomId = urlParams.get('room');
-    if (!roomId) {
-        roomId = "default";
-    }
+            // 接続後の処理をセットアップ
+            setupSocketListeners(user.uid);
 
-    console.log(`部屋 [${roomId}] に入室します (User: ${userId}, Char: ${myCharId})`);
-    localStorage.setItem('current_shogi_room', roomId);
-
-    // ★修正点2: enter game イベントを送る際、roomId, userId に加えて 'charId' も一緒に送る！
-    socket.emit('enter game', { 
-        roomId: roomId, 
-        userId: userId,
-        charId: myCharId  // <--- これを追加！！！
+        } else {
+            // --- 未ログイン ---
+            alert("オンライン対戦をするにはログインが必要です。");
+            window.location.href = "index.html"; // ホームへ強制送還
+        }
     });
+} else {
+    console.error("Firebaseが読み込まれていません。");
+    alert("エラー：認証システムが動きません。");
+}
 
-    const name = localStorage.getItem('shogi_username') || "ゲスト";
-    socket.emit('chat message', {
-        text: `${name}さんが入室しました`,
-        isSystem: true
+// ★★★ 3. 接続確立後の処理を関数化 ★★★
+function setupSocketListeners(myUserId) {
+    
+    socket.on('connect', () => {
+        console.log("サーバーに接続しました。Account ID:", myUserId);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('room');
+        if (!roomId) {
+            roomId = "default";
+        }
+
+        console.log(`部屋 [${roomId}] に入室します (UID: ${myUserId}, Char: ${myCharId})`);
+        localStorage.setItem('current_shogi_room', roomId);
+
+        // ★ここで FirebaseのUID をサーバーに送る
+        socket.emit('enter game', { 
+            roomId: roomId, 
+            userId: myUserId, // ★これが絶対的な身分証明になります
+            charId: myCharId 
+        });
+
+        const name = localStorage.getItem('shogi_username') || "ゲスト";
+        socket.emit('chat message', {
+            text: `${name}さんが入室しました`,
+            isSystem: true
+        });
     });
-});
+}
+
+// ----------------------------------------------------
+// ここから下は、変数定義
+// ----------------------------------------------------
 
 // 変数定義
 let lastSkillKifu = ""; 
