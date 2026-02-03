@@ -53,8 +53,16 @@ const TimeWarp = {
     return targets;
   },
 
+  // ★★★ ここを変更：演出を追加 ★★★
   execute: function(x, y) {
-    // ★ここでは何もしません。
+    // 演出を再生（画像と音声は適宜用意してください）
+    if (typeof playSkillEffect === "function") {
+        // 画像: TimeWarp.PNG
+        // 音声: TimeWarp.mp3 と skill.mp3
+        // 色: ボタンに合わせて orange
+        playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3", "skill.mp3"], "yellow");
+    }
+
     // main.js 側で undoMove を呼んでもらいます。
     return "時を戻しました";
   }
