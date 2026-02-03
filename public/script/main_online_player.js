@@ -1,4 +1,4 @@
-// script/main_online_player.js (Final Corrected Version)
+// script/main_online_player.js (Final Complete Version)
 
 // ★★★ 1. Socket初期化 ★★★
 const socket = io({ autoConnect: false });
@@ -78,6 +78,8 @@ window.addEventListener("load", () => {
 
     playBGM();
     statusDiv.textContent = "認証を確認中..."; 
+    
+    // ★ここでの render はデータがないのでスキップされるが安全
     render();
 
     if (typeof showKifu === "function") showKifu();
@@ -239,7 +241,6 @@ function setupSocketListeners(myUserId) {
             startTimer();
             statusDiv.textContent = "相手が時を戻しました！";
         } else {
-            // スタイル情報の同期
             if (data.gameState && data.gameState.pieceStyles) {
                 pieceStyles = data.gameState.pieceStyles;
             }
@@ -254,26 +255,21 @@ function setupSocketListeners(myUserId) {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
-        // ★削除: playSkillCutIn (これが悪さをしていました)
-        // 演出は execute() 内の playSkillEffect で行われます
+        playSkillEffect(data.turn); // 演出再生
 
         currentSkill = skillToUse; 
         legalMoves = [{ x: data.x, y: data.y }];
         isSkillTargeting = true;
 
         if (data.isFinished) {
-            // システム系（TimeWarpなど）の場合、ここで演出を呼ぶ必要がある
             if (skillToUse.isSystemAction) {
-                 playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3"], "gold");
+                 // TimeWarp等はエフェクト音をここで追加してもよい
             }
             processSkillAfterEffect(skillToUse, "SYSTEM", data.turn);
         } else {
-            // 通常スキル
             const result = skillToUse.execute(data.x, data.y);
-            
-            // ステップ1（駒選択中）なら処理を中断して描画のみ更新
             if (result === null) {
-                render();
+                render(); // 相手がまだ選択中
             } else {
                 processSkillAfterEffect(skillToUse, result, data.turn);
             }
@@ -299,6 +295,7 @@ function initGameSequence() {
         overlay.style.opacity = "0";
         setTimeout(() => { overlay.style.display = "none"; }, 500);
     }
+    // 開始時のカットイン
     const cutInImg = document.getElementById("skillCutIn");
     const isSente = (myRole !== "white");
     const imgPath = isSente ? "script/image/sente.PNG" : "script/image/gote.PNG";
@@ -503,11 +500,10 @@ function onCellClick(x, y) {
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
             
+            playSkillEffect(turn);
+
             // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
-                // TimeWarpの演出
-                playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3"], "gold");
-
                 isSkillTargeting = false; legalMoves = []; selected = null;
                 document.getElementById("board").classList.remove("skill-targeting-mode");
                 undoMove(); 
@@ -534,11 +530,9 @@ function onCellClick(x, y) {
                 statusDiv.textContent = "必殺技発動！ 時を戻しました。";
                 return;
             }
-            
-            // 通常スキル
+            // Normal Skill
             const result = currentSkill.execute(x, y);
             if (socket) socket.emit('skill activate', { x: x, y: y, turn: turn, isFinished: (result !== null) });
-            
             if (result === null) {
                 legalMoves = currentSkill.getValidTargets();
                 render();
@@ -778,7 +772,7 @@ function render() {
                 const name = pieceName[key];
                 textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
                 
-                // ★修正：pieceStylesの適用（オレンジ色を追加）
+                // ★修正：pieceStylesの適用
                 if (pieceStyles[y][x] === "green") {
                     textSpan.style.color = "#32CD32";
                     textSpan.style.fontWeight = "bold";
@@ -815,34 +809,32 @@ function render() {
     updateSkillButton();
 }
 
-// ★★★ 必殺技演出関数（正しい実装） ★★★
-function playSkillEffect(imageName, soundNames, colorTheme) {
-    // 1. 画像表示
+// ★必殺技カットイン演出（画像パス修正版）★
+function playSkillEffect(playerColor) {
+    const charId = (playerColor === 'black') 
+        ? sessionStorage.getItem('online_black_char') 
+        : sessionStorage.getItem('online_white_char');
+
+    let rawString = getImageUrlById(charId);
+    let src = "";
+    if (rawString) {
+        src = rawString.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
+    }
+    
+    const audio = new Audio("script/audio/move.mp3"); 
+    audio.play().catch(()=>{});
+
     const cutInImg = document.getElementById("skillCutIn");
-    if (cutInImg && imageName) {
-        // スキルファイルが指定した画像ファイル名をそのまま使う
-        cutInImg.src = "script/image/" + imageName; 
-        
+    if(cutInImg && src) {
+        cutInImg.src = src;
         cutInImg.classList.remove("cut-in-active");
         void cutInImg.offsetWidth;
         cutInImg.classList.add("cut-in-active");
-        
-        // 3秒後に消す
-        setTimeout(() => {
-            cutInImg.classList.remove("cut-in-active");
-        }, 3000);
-    }
-    
-    // 2. 音声再生
-    if (soundNames && soundNames.length > 0) {
-        const audioPath = "script/audio/" + soundNames[0];
-        const audio = new Audio(audioPath);
-        audio.volume = 1.0;
-        audio.play().catch(e => {});
+        setTimeout(() => cutInImg.classList.remove("cut-in-active"), 2000);
     }
 }
 
-// ★★★ 勝敗演出 ★★★
+// ★勝敗演出（修正版）★
 function playGameEndEffect(winnerColor) {
     const cutInImg = document.getElementById("skillCutIn");
     let imgPath, audioPath;
@@ -868,7 +860,7 @@ function playGameEndEffect(winnerColor) {
     }
 }
 
-// ★★★ 技の後処理 ★★★
+// ★技の後処理（修正版）★
 function processSkillAfterEffect(skillObj, result, playerColor) {
     history.push(deepCopyState());
     const boardTable = document.getElementById("board");
@@ -906,7 +898,6 @@ function deepCopyState() {
         hands: JSON.parse(JSON.stringify(hands)),
         turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)),
         p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
-        // ★スタイル情報と攻撃禁止フラグも保存
         pieceStyles: JSON.parse(JSON.stringify(pieceStyles)),
         isCaptureRestricted: window.isCaptureRestricted,
         lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
@@ -924,13 +915,173 @@ function undoMove() {
     kifu = JSON.parse(JSON.stringify(prev.kifu));
     if (prev.p1SkillCount !== undefined) p1SkillCount = prev.p1SkillCount;
     if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
-    // ★スタイルとフラグも履歴から戻す
     if (prev.pieceStyles) pieceStyles = JSON.parse(JSON.stringify(prev.pieceStyles));
     else pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
     if (prev.isCaptureRestricted !== undefined) window.isCaptureRestricted = prev.isCaptureRestricted;
     else window.isCaptureRestricted = false;
 }
 
+// ---------------- UI Helper Functions ----------------
+function toggleChat() {
+    const body = document.getElementById("chatBody");
+    body.style.display = (body.style.display === "none") ? "flex" : "none";
+}
+function sendChatMessage() {
+    const input = document.getElementById("chatInput");
+    const text = input.value.trim();
+    if (!text) return;
+    const currentName = localStorage.getItem('shogi_username') || "ゲスト";
+    socket.emit('chat message', { name: currentName, text: text, role: myRole });
+    input.value = ""; 
+}
+function addMessageToChatHistory(data) {
+    const historyDiv = document.getElementById("chatHistory");
+    if (!historyDiv) return;
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "chat-msg";
+    if (data.isSystem) {
+        msgDiv.className += " chat-system";
+        msgDiv.textContent = data.text;
+    } else {
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "chat-name";
+        nameSpan.textContent = data.name + ":";
+        if (data.role === "black") nameSpan.style.color = "#000000"; 
+        else if (data.role === "white") nameSpan.style.color = "#666666";
+        else nameSpan.style.color = "#28a745";
+        const textSpan = document.createElement("span");
+        textSpan.className = "chat-text";
+        textSpan.textContent = " " + data.text; 
+        msgDiv.appendChild(nameSpan);
+        msgDiv.appendChild(textSpan);
+    }
+    historyDiv.appendChild(msgDiv);
+    historyDiv.scrollTop = historyDiv.scrollHeight;
+}
+document.addEventListener("DOMContentLoaded", () => {
+    const chatInput = document.getElementById("chatInput");
+    if (chatInput) chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChatMessage(); });
+});
+function resignGame() {
+    if (gameOver) return;
+    if (myRole === "spectator") return; 
+    const modal = document.getElementById("resignModal");
+    if (modal) modal.style.display = "flex";
+}
+function executeResign() {
+    closeResignModal();
+    if (socket) socket.emit('game resign', { loser: myRole });
+    const winColor = (myRole === "black") ? "white" : "black";
+    resolveResignation(winColor, "resign");
+}
+function closeResignModal() { document.getElementById("resignModal").style.display = "none"; }
+function resolveResignation(winnerColor, reason) {
+    gameOver = true;
+    stopTimer();
+    winner = winnerColor;
+    const winnerName = (winner === "black") ? "先手" : "後手";
+    if (reason === "timeout") endReason = "時間切れにより、" + winnerName + "の勝ちです。";
+    else if (reason === "disconnect") endReason = "通信切れにより、" + winnerName + "の勝ちです。";
+    else endReason = "投了により、" + winnerName + "の勝ちです。";
+    if (typeof showKifu === "function") showKifu();
+    if (myRole === "black" || myRole === "white") {
+        const result = (winner === myRole) ? "win" : "lose";
+        saveGameResult(result);
+    }
+    render();
+}
+function saveGameResult(resultStatus) {
+    const user = auth.currentUser;
+    if (!user) return; 
+    const isWin = (resultStatus === "win");
+    const gameRecord = {
+        date: new Date(), opponent: "オンライン対戦", moves: moveCount,
+        result: isWin ? "WIN" : "LOSE", mode: "online", kifuData: kifu 
+    };
+    db.collection("users").doc(user.uid).update({
+        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).catch(console.error);
+}
+function toggleKifu() {
+    const area = document.getElementById("kifuArea");
+    area.style.display = (area.style.display === "none") ? "flex" : "none";
+    if (area.style.display === "flex") {
+        const scrollBox = document.getElementById("kifu");
+        if (scrollBox) setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 50);
+    }
+}
+function copyKifuText() {
+    const kifuDiv = document.getElementById("kifu");
+    if (kifuDiv) navigator.clipboard.writeText(kifuDiv.innerText).then(() => alert("コピーしました"));
+}
+function toggleVolume() { document.getElementById("volumeModal").style.display = "flex"; }
+function closeVolumeModal() { document.getElementById("volumeModal").style.display = "none"; }
+function updateVolume() {
+    const bgm = document.getElementById("bgm");
+    const range = document.getElementById("bgmRange");
+    if (bgm && range) { bgm.volume = range.value; bgm.muted = false; }
+}
+function showRules() { document.getElementById("rulesModal").style.display = "flex"; }
+function closeRulesModal() { document.getElementById("rulesModal").style.display = "none"; }
+function toggleMenu() {
+    const panel = document.getElementById('menuPanel');
+    panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
+}
+function resolvePromotion(doPromote) {
+    document.getElementById("promoteModal").style.display = "none";
+    if (pendingMove) {
+        executeMove(pendingMove.sel, pendingMove.x, pendingMove.y, doPromote);
+        pendingMove = null;
+    }
+}
+function updateHandLayout(role) {
+    const leftSide = document.querySelector(".side.left");
+    const rightSide = document.querySelector(".side.right");
+    const blackBox = document.getElementById("blackHandBox");
+    const whiteBox = document.getElementById("whiteHandBox");
+    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
+    if (role === "white") { leftSide.prepend(blackBox); rightSide.appendChild(whiteBox); }
+    else { leftSide.prepend(whiteBox); rightSide.appendChild(blackBox); }
+}
+function resetGame() {
+    hasShownEndEffect = false; turn = "black"; gameOver = false; winner = null; moveCount = 0;
+    kifu = []; history = []; lastMoveFrom = null;
+    p1SkillCount = 0; p2SkillCount = 0; window.skillUsed = false; lastSkillKifu = "";
+    remainingTime = { black: 1200, white: 1200 };
+    boardState = JSON.parse(JSON.stringify(INITIAL_BOARD_CONST));
+    hands = { black: [], white: [] };
+    pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
+    if (p1Skill && p1Skill.reset) p1Skill.reset();
+    if (p2Skill && p2Skill.reset) p2Skill.reset();
+    syncGlobalSkillState();
+    statusDiv.textContent = "対局開始！";
+    const resetBtn = document.getElementById("resetBtn");
+    if (resetBtn) resetBtn.remove();
+    render(); startTimer();
+}
+function deepCopyState() {
+    return {
+        boardState: JSON.parse(JSON.stringify(boardState)), hands: JSON.parse(JSON.stringify(hands)),
+        turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)),
+        p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
+        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
+        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
+    };
+}
+function undoMove() {
+    if (!history || history.length < 2) return;
+    const prev = history[history.length - 2];
+    history.length -= 2; lastMoveFrom = null;
+    boardState = JSON.parse(JSON.stringify(prev.boardState));
+    hands = JSON.parse(JSON.stringify(prev.hands));
+    turn = prev.turn; moveCount = prev.moveCount;
+    kifu = JSON.parse(JSON.stringify(prev.kifu));
+    if (prev.p1SkillCount !== undefined) p1SkillCount = prev.p1SkillCount;
+    if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
+    pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
+}
 const INITIAL_BOARD_CONST = [
     ["l", "n", "s", "g", "k", "g", "s", "n", "l"], ["", "r", "", "", "", "", "", "b", ""],
     ["p", "p", "p", "p", "p", "p", "p", "p", "p"], ["", "", "", "", "", "", "", "", ""],
