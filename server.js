@@ -331,72 +331,97 @@ io.on('connection', (socket) => {
     });
 
     // --- 切断処理 ---
-    socket.on('disconnect', () => {
-        console.log('切断: ' + socket.id);
-        waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
-        delete playerCharIds[socket.id];
+    // --- 切断処理（アカウントベース判定版） ---
+    socket.on('disconnect', () => {
+        // console.log('切断: ' + socket.id); // うるさいのでコメントアウトでもOK
+        
+        // 自分のSocket情報を削除
+        waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
+        delete playerCharIds[socket.id];
 
-        const roomId = socket.roomId;
-        const userId = socket.userId;
-        if (!roomId || !games[roomId]) return;
+        const roomId = socket.roomId;
+        const userId = socket.userId; // ★これは enter game で受け取ったFirebase UID
+        
+        if (!roomId || !games[roomId]) return;
 
-        const game = games[roomId];
+        const game = games[roomId];
 
-        // 待機中ならReady解除
-        if (game.status === 'waiting') {
-            if (game.players.black === userId) game.ready.black = false;
-            if (game.players.white === userId) game.ready.white = false;
-            sendRoomUpdate(roomId);
-        }
+        // 待機中ならReady解除（ここは変更なし）
+        if (game.status === 'waiting') {
+            if (game.players.black === userId) game.ready.black = false;
+            if (game.players.white === userId) game.ready.white = false;
+            sendRoomUpdate(roomId);
+        }
 
-        // 対局中なら切断タイマーセット
-        if (game.status === 'playing' && !game.isGameOver) {
-            if (!disconnectTimers[roomId]) disconnectTimers[roomId] = {};
-            let role = null;
-            if (game.players.black === userId) role = 'black';
-            else if (game.players.white === userId) role = 'white';
+        // ★★★ ここが最重要：対局中の切断判定 ★★★
+        if (game.status === 'playing' && !game.isGameOver) {
+            
+            // 1. 「この部屋に、同じUser IDを持つ別の接続が生きていないか？」を探す
+            const roomSockets = io.sockets.adapter.rooms.get(roomId);
+            let isAccountAlive = false;
 
-            if (role) {
-                console.log(`${role}(${userId}) 切断。2分タイマー開始。`);
-                socket.to(roomId).emit('chat message', { text: "相手が切断しました。2分以内に復帰しないと勝利になります。", isSystem: true });
-                
-                disconnectTimers[roomId][role] = setTimeout(() => {
-                    // まだゲームが終わってなければ
-                    if (games[roomId] && !games[roomId].isGameOver) {
-                        console.log(`時間切れ！ ${role} の通信切れ負け。`);
-                        games[roomId].isGameOver = true;
-                        games[roomId].status = 'finished';
-                        io.to(roomId).emit('game resign', { loser: role, reason: "disconnect" });
-                        delete disconnectTimers[roomId][role];
+            if (roomSockets) {
+                for (const socketId of roomSockets) {
+                    const s = io.sockets.sockets.get(socketId);
+                    // 自分以外のソケットで、かつ同じUser IDなら「生きている」とみなす
+                    if (s && s.id !== socket.id && s.userId === userId) {
+                        isAccountAlive = true;
+                        break;
+                    }
+                }
+            }
 
-                        // 誰もいなければ部屋ごと削除
-                        const roomSockets = io.sockets.adapter.rooms.get(roomId);
-                        if (!roomSockets || roomSockets.size === 0) {
-                            console.log(`無人部屋[${roomId}]を削除（タイマー後）`);
-                            delete games[roomId];
-                            delete disconnectTimers[roomId];
-                        }
-                    }
-                }, 120000); // 2分
-            }
-        }
+            // 2. まだ同じアカウントの接続があるなら、何もしない（タイマーを作動させない）
+            if (isAccountAlive) {
+                console.log(`User[${userId}] は別タブ等で接続中のため、切断扱いしません。`);
+                return; 
+            }
+
+            // 3. 同じアカウントが一つもなくなった場合のみ、切断タイマーをセット
+            if (!disconnectTimers[roomId]) disconnectTimers[roomId] = {};
+            let role = null;
+            if (game.players.black === userId) role = 'black';
+            else if (game.players.white === userId) role = 'white';
+
+            if (role) {
+                console.log(`${role}(${userId}) 完全切断。2分タイマー開始。`);
+                socket.to(roomId).emit('chat message', { text: "相手が切断しました。2分以内に復帰しないと勝利になります。", isSystem: true });
+                
+                disconnectTimers[roomId][role] = setTimeout(() => {
+                    if (games[roomId] && !games[roomId].isGameOver) {
+                        console.log(`時間切れ！ ${role} の通信切れ負け。`);
+                        games[roomId].isGameOver = true;
+                        games[roomId].status = 'finished';
+                        io.to(roomId).emit('game resign', { loser: role, reason: "disconnect" });
+                        delete disconnectTimers[roomId][role];
+                        
+                        // 誰もいなければ削除
+                        const socketsCheck = io.sockets.adapter.rooms.get(roomId);
+                        if (!socketsCheck || socketsCheck.size === 0) {
+                             delete games[roomId];
+                             delete disconnectTimers[roomId];
+                        }
+                    }
+                }, 120000); // 2分
+            }
+        }
 
         // 即座の部屋削除判定（通常切断時）
         // server.js 切断処理の最後の方
         const roomSockets = io.sockets.adapter.rooms.get(roomId);
         if (!roomSockets || roomSockets.size === 0) {
-            // ★修正：勝負がついていても、すぐには消さずに5分だけ猶予を与える
-            // （これにより、ブラウザを閉じても5分以内なら結果画面に戻れるようになる）
+            // ★修正：勝負がついていても、すぐには消さずに0.5分だけ猶予を与える
+            // （これにより、ブラウザを閉じても0.5分以内なら結果画面に戻れるようになる）
             if (game.isGameOver) {
-                 console.log(`部屋[${roomId}] 全員退出。5分後に削除予約。`);
+                 console.log(`部屋[${roomId}] 全員退出。0.5分後に削除予約。`);
                  setTimeout(() => {
-                     // 5分後にまだ部屋があり、かつ無人なら削除
+                     // 0.5分後にまだ部屋があり、かつ無人なら削除
                      const checkSockets = io.sockets.adapter.rooms.get(roomId);
                      if ((!checkSockets || checkSockets.size === 0) && games[roomId]) {
                          console.log(`部屋削除(遅延実行): ${roomId}`);
                          delete games[roomId];
                      }
-                 }, 300000); // 300000ms = 5分
+                 }, 30000); // 30000ms = 0.5分
             } 
             else if (game.moveCount === 0) {
                 // 初期状態なら即削除でOK
@@ -437,4 +462,3 @@ function scheduleRoomCleanup(roomId) {
         games[roomId].cleanupTimer = timer;
     }
 }
-
