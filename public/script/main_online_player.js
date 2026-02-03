@@ -239,8 +239,7 @@ function setupSocketListeners(myUserId) {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
-        // 1. 相手の必殺技演出を再生
-        playSkillCutIn(data.turn);
+
 
         currentSkill = skillToUse; 
         
@@ -484,8 +483,7 @@ function onCellClick(x, y) {
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
             
-            // ★追加：自分の必殺技演出を再生
-            playSkillCutIn(turn);
+
 
             // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
@@ -1061,3 +1059,51 @@ const INITIAL_BOARD_CONST = [
     ["P", "P", "P", "P", "P", "P", "P", "P", "P"], ["", "B", "", "", "", "", "", "R", ""],
     ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
 ];
+
+
+// ★★★ main_player.js と同じ演出関数を追加 ★★★
+window.playSkillEffect = function(imageName, soundName, flashColor) {
+    // 1. カットイン画像の表示
+    const img = document.getElementById("skillCutIn");
+    if (img && imageName) {
+        img.src = "script/image/" + imageName;
+        img.classList.remove("cut-in-active");
+        void img.offsetWidth; // リフロー発生（アニメーションリセット用）
+        img.classList.add("cut-in-active");
+        
+        // 3秒後にクラスを消す（念のため）
+        setTimeout(() => { 
+            if(img) img.classList.remove("cut-in-active"); 
+        }, 3000);
+    }
+
+    // 2. 音声再生（配列対応）
+    if (soundName) {
+        if (Array.isArray(soundName)) {
+            soundName.forEach(name => {
+                const a = new Audio("script/audio/" + name);
+                a.volume = 1.0; // 音量調整
+                a.play().catch(e => {});
+            });
+        } else {
+            const audio = document.getElementById("skillSound") || new Audio("script/audio/" + soundName);
+            audio.src = "script/audio/" + soundName;
+            audio.volume = 1.0;
+            audio.play().catch(e => {});
+        }
+    }
+
+    // 3. 盤面のフラッシュ演出
+    const boardTable = document.getElementById("board");
+    if (boardTable && flashColor) {
+        // 既存のフラッシュクラスを削除
+        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
+        void boardTable.offsetWidth; // リフロー
+        boardTable.classList.add("flash-" + flashColor);
+        
+        // 2秒後にフラッシュを消す
+        setTimeout(() => {
+            if (boardTable) boardTable.classList.remove("flash-" + flashColor);
+        }, 2000);
+    }
+};
