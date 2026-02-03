@@ -31,7 +31,7 @@ const charData = {
     name: "キャラD",
     image: "script/image/char_d.png",
     skillName: "タイムワープ",
-    skillDesc: "ひとつ前の自分の番に戻る。<br>発動条件：なし / 1局に1回のみ"
+    skillDesc: "ひとつ前の自分の番に戻る。<br>発動条件：なし（ただし直前の手番に相手が必殺技を使っていたら、巻き戻すことはできない。） / 1局に1回のみ"
   }
 
 };
