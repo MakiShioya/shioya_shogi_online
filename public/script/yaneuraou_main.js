@@ -897,7 +897,7 @@ function playSkillEffect(imageName, soundName, flashColor) {
   }
   const boardTable = document.getElementById("board");
   if (boardTable && flashColor) {
-    boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
+    boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
     void boardTable.offsetWidth; 
     if (flashColor) boardTable.classList.add("flash-" + flashColor);
   }
