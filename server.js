@@ -16,7 +16,6 @@ app.use(express.static('public'));
 let games = {}; 
 let playerCharIds = {}; 
 let waitingQueue = []; 
-// ★削除: disconnectTimers 変数を削除しました
 
 let chatHistory = [];
 if (fs.existsSync(DATA_FILE)) {
@@ -43,8 +42,9 @@ io.on('connection', (socket) => {
     console.log('接続: ' + socket.id);
     socket.emit('chat history', chatHistory);
 
+    // --- キャラクター変更要求 ---
     socket.on('declare character', (charId) => {
-        console.log(`キャラ登録: Socket[${socket.id}] -> ${charId}`);
+        console.log(`キャラ登録要求: Socket[${socket.id}] -> ${charId}`);
         playerCharIds[socket.id] = charId;
 
         const roomId = socket.roomId;
@@ -52,7 +52,18 @@ io.on('connection', (socket) => {
         
         if (roomId && games[roomId]) {
             const game = games[roomId];
+            
+            // ★修正：対局中(playing)なら、キャラ変更は絶対に許可しない
+            if (game.status === 'playing') {
+                console.log(`対局中のためキャラ変更を拒否: Room[${roomId}]`);
+                return;
+            }
+
             let changed = false;
+
+            // 待機中なら変更を許可しても良いが、ここでもロックしたい場合は
+            // 下記のif文に `&& game.blackCharId === 'default'` を追加すれば完璧なロックになります。
+            // 今回は「対局中の変更禁止」を優先して実装しています。
 
             if (game.players.black === userId) {
                 game.blackCharId = charId;
@@ -70,7 +81,7 @@ io.on('connection', (socket) => {
         }
     });
     
-    // 再接続チェック（statusを返すだけ）
+    // 再接続チェック
     socket.on('check reconnection', (roomId, callback) => {
         if (games[roomId]) {
             callback({ canReconnect: true, status: games[roomId].status });
@@ -116,7 +127,7 @@ io.on('connection', (socket) => {
         waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
     });
 
-    // --- 入室処理 ---
+    // --- 入室処理 (ここでキャラ固定を行う) ---
     socket.on('enter game', (data) => {
         let roomId, userId, userCharId;
         if (typeof data === 'object') { 
@@ -133,8 +144,8 @@ io.on('connection', (socket) => {
         socket.roomId = roomId;
         socket.userId = userId;
 
+        // 一応メモリには入れておくが、ゲームへの適用は慎重に行う
         if (userCharId) {
-            console.log(`入室と同時にキャラ登録: ${userId} -> ${userCharId}`);
             playerCharIds[socket.id] = userCharId;
         }
 
@@ -150,7 +161,7 @@ io.on('connection', (socket) => {
                 players: { black: null, white: null },
                 ready: { black: false, white: false },
                 status: 'waiting',
-                blackCharId: 'default',
+                blackCharId: 'default', // ★ここが「空」の状態
                 whiteCharId: 'default',
                 p1SkillCount: 0,
                 p2SkillCount: 0,
@@ -160,9 +171,6 @@ io.on('connection', (socket) => {
 
         const game = games[roomId];
 
-        // ★削除: ここにあった「切断タイマー解除処理」を削除しました。
-        // タイマーが存在しないので、解除する必要もありません。
-
         // 席の割り当て
         let myRole = "spectator";
         if (game.players.black === userId) myRole = "black";
@@ -170,12 +178,35 @@ io.on('connection', (socket) => {
         else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
         else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
 
-        const charId = playerCharIds[socket.id] || userCharId || 'default';
-        if (myRole === 'black') game.blackCharId = charId;
-        if (myRole === 'white') game.whiteCharId = charId;
+        // ★★★ 修正ポイント：キャラクター情報の固定ロジック ★★★
+        // クライアントから送られてきたキャラID (incomingCharId)
+        const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
+
+        if (myRole === 'black') {
+            // まだ誰も設定していない('default')なら、今回入ってきた情報で固定する
+            if (game.blackCharId === 'default') {
+                game.blackCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
+            } else {
+                // すでに設定されているなら、入ってきた情報は無視してサーバーの情報を優先
+                console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
+            }
+        }
+        
+        if (myRole === 'white') {
+            // 後手も同様
+            if (game.whiteCharId === 'default') {
+                game.whiteCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
+            } else {
+                console.log(`部屋[${roomId}] 後手キャラ固定済み(${game.whiteCharId})。上書き拒否。`);
+            }
+        }
 
         socket.emit('role assigned', myRole); 
         
+        // クライアントへは「サーバーで確定しているキャラ情報」を送り返す
+        // これでクライアント側の表示がサーバーと同期される
         setTimeout(() => {
             socket.emit('restore game', game); 
             sendRoomUpdate(roomId);
@@ -267,6 +298,10 @@ io.on('connection', (socket) => {
         games[roomId].p2SkillCount = 0;
         games[roomId].isGameOver = false;
         
+        // ★リセット時はキャラ固定を維持するか、解除するか？
+        // 今回は「部屋に居座る限りキャラはそのまま」とするため、
+        // blackCharId / whiteCharId は初期化しません。
+        
         io.to(roomId).emit('game reset');
         setTimeout(() => { io.to(roomId).emit('game start', games[roomId]); }, 500);
     });
@@ -307,22 +342,16 @@ io.on('connection', (socket) => {
 
         const game = games[roomId];
 
-        // 待機中ならReady解除
         if (game.status === 'waiting') {
             if (game.players.black === userId) game.ready.black = false;
             if (game.players.white === userId) game.ready.white = false;
             sendRoomUpdate(roomId);
         }
 
-        // ★削除: ここにあった「対局中の切断タイマー処理（負け判定）」を完全に削除しました。
-        // 対局中に切断しても、部屋はそのまま維持されます。
-        // 戻ってくれば再開できます。
-
         // 即座の部屋削除判定（誰もいなくなった場合の掃除）
         const roomSockets = io.sockets.adapter.rooms.get(roomId);
         if (!roomSockets || roomSockets.size === 0) {
             
-            // 勝負がついた後なら削除予約（既存ロジック）
             if (game.isGameOver) {
                  console.log(`部屋[${roomId}] 全員退出。0.5分後に削除予約。`);
                  setTimeout(() => {
@@ -333,15 +362,10 @@ io.on('connection', (socket) => {
                      }
                  }, 30000); // 30秒
             } 
-            // ゲーム開始前（0手目）なら即削除
             else if (game.moveCount === 0) {
                 console.log(`部屋削除: ${roomId}`);
                 delete games[roomId];
             }
-            // ★注意: ゲーム中(moveCount > 0)で全員いなくなった場合は、
-            // 部屋は削除されずに残ります（いつでも再開できるようにするため）。
-            // 1時間後の強制削除(scheduleRoomCleanup)は機能しないため、
-            // サーバー再起動までメモリに残りますが、バグ回避を優先します。
         }
     });
 });
@@ -350,7 +374,6 @@ server.listen(PORT, () => {
     console.log(`★Server running: http://localhost:${PORT}`);
 });
 
-// server.js 内の適当な場所に、この関数を追加
 function scheduleRoomCleanup(roomId) {
     if (games[roomId] && games[roomId].cleanupTimer) return;
 
@@ -359,13 +382,10 @@ function scheduleRoomCleanup(roomId) {
     const timer = setTimeout(() => {
         if (games[roomId]) {
             console.log(`部屋[${roomId}] 時間切れのため強制削除`);
-            
             io.to(roomId).emit('force room close');
-            
             delete games[roomId];
-            // ★削除: disconnectTimers の削除処理も不要なので削除
         }
-    }, 3600000); // 1時間
+    }, 3600000); 
 
     if (games[roomId]) {
         games[roomId].cleanupTimer = timer;
