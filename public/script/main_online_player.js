@@ -487,6 +487,7 @@ function onCellClick(x, y) {
 
             // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
+                currentSkill.execute(x, y);
                 isSkillTargeting = false; legalMoves = []; selected = null;
                 document.getElementById("board").classList.remove("skill-targeting-mode");
                 undoMove(); 
