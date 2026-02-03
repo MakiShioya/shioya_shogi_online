@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>対局結果</title>
+<link rel="stylesheet" href="script/style.css">
+<style>
+    body {
+        background-color: #222;
+        color: white;
+        text-align: center;
+        overflow-y: auto; /* 縦スクロール許可 */
+        font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    }
+
+    /* 全体のレイアウトコンテナ */
+    .result-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+    }
+
+    /* 勝敗テキスト */
+    #resultTitle {
+        font-size: 4rem;
+        font-weight: 900;
+        margin: 20px 0;
+        text-shadow: 0 0 10px rgba(0,0,0,0.8);
+        animation: popIn 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    
+    .res-win { color: #ffeb3b; text-shadow: 0 0 20px #ff4500; }
+    .res-lose { color: #87ceeb; text-shadow: 0 0 20px #0000cd; }
+    .res-draw { color: #ccc; }
+
+    @keyframes popIn {
+        100% { opacity: 1; transform: scale(1); }
+    }
+
+    /* キャラクター画像エリア */
+    .char-display {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        margin: 10px 0 30px 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* 背景のエフェクト */
+    .char-bg-effect {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        z-index: 0;
+        filter: blur(20px);
+        opacity: 0.6;
+    }
+    
+    #charImage {
+        position: relative;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        z-index: 1;
+        drop-shadow: 5px 5px 10px rgba(0,0,0,0.8);
+        transition: transform 0.3s;
+    }
+    #charImage:hover { transform: scale(1.05); }
+
+    /* キャラ名 */
+    #charName {
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin-top: -20px;
+        margin-bottom: 20px;
+        z-index: 2;
+        text-shadow: 2px 2px 4px #000;
+    }
+
+    /* 棋譜エリア */
+    .kifu-box {
+        width: 90%;
+        background: #fdf5e6; /* 将棋盤っぽい色 */
+        color: #333;
+        padding: 15px;
+        border-radius: 8px;
+        border: 4px solid #8b4513;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+    .kifu-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid #8b4513;
+        padding-bottom: 5px;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #8b4513;
+    }
+    #kifuContent {
+        height: 150px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+
+    /* ボタングループ */
+    .btn-group {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .action-btn {
+        padding: 15px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: white;
+        background: #8b4513;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: transform 0.1s, background 0.2s;
+        text-decoration: none;
+        display: block;
+    }
+    .action-btn:active { transform: scale(0.95); }
+    .action-btn.home { background: #d32f2f; }
+    .action-btn.copy { background: #1976d2; font-size: 1rem; padding: 10px; }
+
+</style>
+</head>
+<body>
+
+<div class="result-container">
+    <div id="resultTitle">RESULT</div>
+
+    <div class="char-display">
+        <div id="charBg" class="char-bg-effect"></div>
+        <img id="charImage" src="" alt="My Character">
+    </div>
+    <div id="charName"></div>
+
+    <div class="kifu-box">
+        <div class="kifu-header">
+            <span>📝 対局の記録</span>
+            <button class="action-btn copy" onclick="copyKifu()">コピー</button>
+        </div>
+        <div id="kifuContent"></div>
+    </div>
+
+    <div class="btn-group">
+        <a href="home.html" class="action-btn home">ホームに戻る</a>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('load', () => {
+        // 1. データの受け取り
+        const result = sessionStorage.getItem('last_game_result'); // "WIN" or "LOSE" or "DRAW"
+        const charId = sessionStorage.getItem('last_game_my_char');
+        const kifuJson = sessionStorage.getItem('last_game_kifu');
+
+        // 2. 勝敗の表示
+        const title = document.getElementById('resultTitle');
+        const charBg = document.getElementById('charBg');
+
+        if (result === 'WIN') {
+            title.textContent = "YOU WIN!";
+            title.classList.add('res-win');
+            charBg.style.background = "radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(255,69,0,0) 70%)";
+            playAudio("shori.mp3");
+        } else if (result === 'LOSE') {
+            title.textContent = "YOU LOSE...";
+            title.classList.add('res-lose');
+            charBg.style.background = "radial-gradient(circle, rgba(135,206,235,0.8) 0%, rgba(0,0,139,0) 70%)";
+            // playAudio("haiboku.mp3"); // すでにゲーム終了時に鳴っていれば不要
+        } else {
+            title.textContent = "DRAW";
+            title.classList.add('res-draw');
+            charBg.style.background = "radial-gradient(circle, rgba(200,200,200,0.8) 0%, rgba(100,100,100,0) 70%)";
+        }
+
+        // 3. キャラ画像の表示
+        const img = document.getElementById('charImage');
+        const nameDiv = document.getElementById('charName');
+        const charData = getCharData(charId);
+        
+        if (charData) {
+            img.src = charData.src;
+            nameDiv.textContent = "使用キャラ: " + charData.name;
+        } else {
+            img.style.display = "none";
+            nameDiv.textContent = "";
+        }
+
+        // 4. 棋譜の表示
+        const kifuDiv = document.getElementById('kifuContent');
+        if (kifuJson) {
+            try {
+                const kifuArray = JSON.parse(kifuJson);
+                kifuDiv.textContent = kifuArray.join("\n");
+            } catch(e) {
+                kifuDiv.textContent = "棋譜データの読み込みに失敗しました";
+            }
+        }
+    });
+
+    // キャラクター情報の定義（main.jsなどの内容と合わせる）
+    function getCharData(id) {
+        // 画像パスはご自身の環境に合わせて調整してください
+        // script/image/○○.png が基本構成と仮定しています
+        if (id === 'char_a') return { src: 'script/image/char_a.png', name: '熱血' };
+        if (id === 'char_b') return { src: 'script/image/char_b.png', name: '冷静' };
+        if (id === 'char_d') return { src: 'script/image/char_d.png', name: '町田' };
+        // デフォルト
+        return { src: 'script/image/karui_1p.PNG', name: 'いつも通り' };
+    }
+
+    function copyKifu() {
+        const text = document.getElementById('kifuContent').textContent;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("棋譜をコピーしました！");
+        });
+    }
+
+    function playAudio(filename) {
+        // 結果画面に入った瞬間に音を鳴らしたい場合に使用
+        // const a = new Audio("script/audio/" + filename);
+        // a.volume = 0.5;
+        // a.play().catch(()=>{});
+    }
+</script>
+
+</body>
+</html>
