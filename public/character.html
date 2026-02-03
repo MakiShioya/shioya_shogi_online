@@ -7,6 +7,8 @@
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+
+<script src="/socket.io/socket.io.js"></script>
   <style>
     body {
       background-image: url('script/image/haikei.PNG');
@@ -165,11 +167,11 @@
       <div class="char-name">キャラC</div>
     </div>
 
-  <div class="char-card disabled-card" onclick="onCharSelected('char_d')">
+  <div class="char-card" onclick="onCharSelected('char_d')">
   <div class="img-wrapper">
     <img src="script/image/char_b.png" alt="キャラD画像">
   </div>
-  <div class="char-name">準備中</div>
+  <div class="char-name">キャラD</div>
 </div>
 
 <div class="char-card disabled-card" onclick="onCharSelected('char_e')">
@@ -189,6 +191,45 @@
   </div>
 
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. 保存されているルームIDがあるか確認
+    const savedRoomId = localStorage.getItem('current_shogi_room');
+    
+    if (savedRoomId) {
+        // 2. ソケット接続してサーバーに確認
+        const socket = io();
+        
+        socket.on('connect', () => {
+            // サーバーに「この部屋、まだやってる？」と聞く
+            socket.emit('check reconnection', savedRoomId, (response) => {
+                
+                if (response.canReconnect) {
+                    // 3. まだ対局中（または待機中）の場合
+                    // いきなり飛ばすか、確認するかは選択できますが、今回は確認を出します
+                    const shouldRejoin = confirm(
+                        "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
+                    );
+
+                    if (shouldRejoin) {
+                        // ★対局画面へ直行！
+                        // ユーザーが説明した画面遷移によると、対局画面は player_vs_player_online.html
+                        window.location.href = `player_vs_player_online.html?room=${savedRoomId}`;
+                    } else {
+                        // 破棄する場合
+                        localStorage.removeItem('current_shogi_room');
+                        // 必要ならサーバーに投了を送信する処理などをここに追加してもよい
+                    }
+                } else {
+                    // 4. すでに終了している部屋の場合
+                    // ゴミデータを消去
+                    console.log("古い対局データが見つかりましたが、すでに終了しています。");
+                    localStorage.removeItem('current_shogi_room');
+                }
+            });
+        });
+    }
+});
+
   // 機能は一切変更していません
   const urlParams = new URLSearchParams(window.location.search);
   const mode = urlParams.get('mode');   
