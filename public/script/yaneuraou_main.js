@@ -453,6 +453,40 @@ function onCellClick(x, y) {
   if (isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
       
+      // ★★★ ここから追加：時戻し用の特別処理 ★★★
+      if (currentSkill && currentSkill.isSystemAction) {
+        
+        // 1. エンジンの思考中なら停止させる
+        if (typeof stopPondering === "function") stopPondering();
+
+        // 2. 演出のために execute を実行（これで光と音が出る）
+        currentSkill.execute(x, y);
+
+        // 3. ターゲットモードを解除
+        isSkillTargeting = false;
+        legalMoves = [];
+        selected = null;
+        
+        const boardTable = document.getElementById("board");
+        if (boardTable) {
+            boardTable.classList.remove("skill-targeting-mode");
+        }
+
+        // 4. 実際に「待った」を実行
+        if (typeof undoMove === "function") {
+             undoMove();
+        }
+
+        // 5. 必殺技を使ったことにする
+        window.skillUsed = true;
+        skillUseCount = 1;
+        
+        updateSkillButton();
+        render();
+        statusDiv.textContent = "必殺技発動！ 時を戻しました。";
+        return; // ここで終了
+      }
+      
       if (typeof stopPondering === "function") stopPondering();
 
       const result = currentSkill.execute(x, y);
