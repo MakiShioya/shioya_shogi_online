@@ -88,7 +88,6 @@
       position: absolute;
       top: 0;
       width: 100%;
-      /* 上下のパディングを10pxから5pxへ変更して細くしました */
       padding: 10px 20px; 
       background: rgba(0, 0, 0, 0.6);
       color: white;
@@ -168,19 +167,18 @@
       box-sizing: border-box;
     }
     
-    /* ★追加: ボタンを2列に並べるためのグリッド設定 */
+    /* ボタンを2列に並べるためのグリッド設定 */
     .modal-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr; /* 横2列 */
-      gap: 10px; /* ボタン同士の隙間 */
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
       margin: 10px 0;
     }
 
-    /* 汎用サブボタンの微調整 */
     .sub-btn {
       display: block;
       width: 100%;
-      margin: 0; /* ★ここを0にする（隙間はgrid-gapで制御するため） */
+      margin: 0;
       padding: 12px 5px;
       font-size: 1rem;
       background: #8b4513;
@@ -260,6 +258,7 @@
       #lobbyChatHistory { padding: 8px; }
     }
   </style>
+
 </head>
 <body>
 
@@ -278,13 +277,7 @@
     </div>
   </div>
 
-
-
-
   <div id="characterBubble" class="speech-bubble"></div>
-
-
-
 
   <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
 
@@ -292,14 +285,10 @@
     <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
     <button onclick="location.href='character.html?mode=online'" class="menu-btn online-color">
     	オンライン
-</button>
+    </button>
     <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button> <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
-
-
   </div>
-
-
 
   <div id="newsModal" class="overlay">
     <div class="modal-box">
@@ -340,12 +329,10 @@
   <div id="languageMenu" class="overlay">
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
-      
       <div class="modal-grid">
         <button class="sub-btn">日本語</button>
         <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
       </div>
-      
       <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
     </div>
   </div>
@@ -405,31 +392,173 @@
     </div>
   </div>
 
-<div id="lobbyChatModal" class="overlay">
-  <div class="modal-box">
-    <button class="close-small-btn" onclick="closeModal('lobbyChatModal')">閉じる</button>
-    
-    <h3 id="lobbyChatTitle">ロビーチャット</h3>
-    
-    <div id="lobbyChatHistory"></div>
-    
-    <div class="chat-input-area">
-      <input type="text" id="lobbyChatInput" placeholder="ここにメッセージを入力" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px; font-size: 16px;">
-      <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信する</button>
+  <div id="lobbyChatModal" class="overlay">
+    <div class="modal-box">
+      <button class="close-small-btn" onclick="closeModal('lobbyChatModal')">閉じる</button>
+      
+      <h3 id="lobbyChatTitle">ロビーチャット</h3>
+      
+      <div id="lobbyChatHistory"></div>
+      
+      <div class="chat-input-area">
+        <input type="text" id="lobbyChatInput" placeholder="ここにメッセージを入力" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px; font-size: 16px;">
+        <button onclick="sendLobbyMessage()" style="background:#28a745; color:white; border:none; padding:10px 15px; border-radius:5px; font-weight:bold;">送信する</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <div id="practiceMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
+      <div class="modal-grid"> <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
+        <button class="sub-btn" onclick="startGame('easy')">おあそび (入門)</button>
+        <button class="sub-btn" onclick="startGame('normal')">たしなみ (普通)</button>
+      </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('practiceMenu')">閉じる</button>
+    </div>
+  </div>
+  
+  <div id="onePlayerModeSelect" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">対局相手を選んでください</h3>
+      <div class="modal-grid"> <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
+        <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
+        <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
+        <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
+      </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
+      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
+    </div>
+  </div>
+
+  <div id="helpMainMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #17a2b8; margin-top: 0;">ヘルプ</h3>
+      <div class="modal-grid">
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
+        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラについて</button>
+        <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・要望</button>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
+    </div>
+  </div>
+
+  <div id="helpMode" class="overlay">
+    <div class="modal-box" style="max-width: 350px;">
+      <h3 style="color: #8b4513;">モードについて</h3>
+      <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
+        <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対局ができます。この端末のみを使用して、プレイヤー同士でも対局ができます。</p>
+        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+        <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
+        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="helpDifficulty" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin: 0 0 10px 0;">難易度について</h3>
+      
+      <div style="text-align: left; font-size: 0.85rem; line-height: 1.4;">
+        <p style="margin: 0 0 5px 0;">CPUの難易度は、下に行くほど強いです。</p>
+        <ul style="padding-left: 20px; margin: 0 0 10px 0;">
+          <li>たわむれ</li>
+          <li>おあそび</li>
+          <li>たしなみ</li>
+          <li>しおや / こみや</li>
+          <li>しおやEX / こみやEX</li>
+          <li style="font-weight: bold; color: #d35400;">試験実装（最強）</li>
+        </ul>
+        <p style="margin: 0; font-size: 0.75rem;">※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
+      </div>
+      
+      <button class="sub-btn" style="background:#666; margin: 15px 0 0 0;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="helpChar" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513;">キャラクターについて</h3>
+      <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
+        <p>このゲームでは、対局前に自身のキャラクターを選択します。</p>
+        <p>キャラクターはそれぞれ独自の<strong>「必殺技」</strong>を持っており、対局を有利に進めることができます。</p>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpChar', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="helpContact" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513;">不具合・ご要望</h3>
+      <div style="margin: 20px 0; line-height: 1.6;">
+        <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
+        <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
+          onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
+          回答フォームを開く ↗
+        </button>
+      </div>
+      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
+    </div>
+  </div>
+
+  <div id="offlineMenu" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">オフライン対局</h3>
+      <div class="modal-grid"> <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+        <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
+        <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
+      </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('offlineMenu')">戻る</button>
+    </div>
+  </div>
 
   <script src="script/auth.js"></script>
   <script>
-    // --- Socket.io 初期化 (チャット用) ---
-    // ※サーバーが立っていないとエラーになる場合がありますが、通常動作には影響しません
+    // --- ★★★ 修正点：Socket.ioをここで一括初期化 ★★★ ---
     let socket = null;
-    let globalChatHistory = []; // ★★★ 追加：チャット履歴を記憶しておく変数 ★★★
+    let globalChatHistory = [];
     try {
         socket = io();
     } catch(e) {
         console.log("チャットサーバーに接続できませんでした");
+    }
+
+    // --- ★★★ 復帰機能（統合済み） ★★★ ---
+    document.addEventListener("DOMContentLoaded", () => {
+        // 1. 保存されているルームIDがあるか確認
+        const savedRoomId = localStorage.getItem('current_shogi_room');
+        
+        if (savedRoomId && socket) {
+            // 2. サーバーに「この部屋、まだやってる？」と聞く
+            // socket.connected が false でも emit すると自動でバッファリングされますが、
+            // 念のため接続確認イベント内で実行します
+            if (socket.connected) {
+                checkReconnection(savedRoomId);
+            } else {
+                socket.on('connect', () => {
+                   checkReconnection(savedRoomId);
+                });
+            }
+        }
+    });
+
+    function checkReconnection(roomId) {
+        socket.emit('check reconnection', roomId, (response) => {
+            if (response.canReconnect) {
+                // 対局中（または待機中）
+                const shouldRejoin = confirm(
+                    "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
+                );
+                if (shouldRejoin) {
+                    window.location.href = `player_vs_player_online.html?room=${roomId}`;
+                } else {
+                    localStorage.removeItem('current_shogi_room');
+                }
+            } else {
+                // 終了済み
+                console.log("古い対局データが見つかりましたが、すでに終了しています。");
+                localStorage.removeItem('current_shogi_room');
+            }
+        });
     }
 
     // --- モーダル操作 ---
@@ -484,7 +613,6 @@
             `画面の向こう側って、\nどんな景色なんですか？`,
             `わたしのこの服、\n実は動きやすいんですよ。`,
             `次はどんな棋譜を\n見せてくれるんですか？`,
-
             `将棋の駒なら、\わたしは銀が好きですよ。`,
             `わたしは銀なので、\横には動きませんよ。`,
             `くすぐったいですよ。`,
@@ -492,8 +620,6 @@
             `銀って、成れるのに成らないこと多くないですか？`,
             `わたし思うんです。\n将棋は銀の使い方がうまい人が勝ちます。`,
             `将棋の前に\nちょっとお水飲んできます。`,
-
-
             `銀の動きって、可愛いですよね。`,
             `対局の後のカレーは、\n格別の味がします。`,
             `駒の音って、\n心が落ち着きませんか？`,
@@ -550,15 +676,12 @@
                 `${userName}さん、\n朝ごはんは食べましたか？\n私はカレーでした！`,
                 `今日も一日、\n清々しく指しましょう！`,
                 `朝ごはんは、\nもう食べましたか？`,
-
-
                 `朝はパンですか？お米ですか？\nあ、麺ですか？`,
                 `おはようございます！\n眠そうですね？`,
                 `早起きは三文の徳…\nいえ、三手の得、ですね！\n玉の早逃げのほうがお得です。`,
                 `まだ眠いですか？\n将棋を指せば目が覚めますよ！`,
                 `朝の空気は澄んでいて、\n盤面がよく見渡せる気がします。`,
                 `どちらか一つ許されるとしたら、\n二度寝ですか？二歩ですか？`,
-
                 `朝の光を浴びながらの\n対局…贅沢ですね。`
             ];
         } else if (hour >= 11 && hour < 17) {
@@ -566,7 +689,6 @@
                 `お昼休みですか？\n対局してから戻りますか？`,
                 `午後も頑張りましょう！\n応援していますね。`,
                 `あ、お昼ごはんの匂い…`,
-
                 `お昼寝したくなる時間ですね。長考中にこっそり寝てませんよね？`,
                 `午後の眠気覚ましに、激しい攻め合いをしましょうか！`,
                 `お昼はまったり将棋をします。`,
@@ -580,12 +702,10 @@
                 `夜の静かな対局、\n私は大好きですよ。`,
                 `こんばんは。\n今日も将棋しますか？`,
                 `少し眠くなってきたような\n気がします。`,
-
                 `一日の締めくくりに、良い手を指してスッキリしましょう！`,
                 `お風呂に入ってサッパリしてから指しますか？`,
                 `夜に向けて、わたしの集中力も上がってきましたよ！`,
                 `街の明かりが灯り始めましたね。\n盤上の明かりも灯しましょう。`,
-
                 `晩ごはんは、\nもう食べましたか？`
             ];
         } else {
@@ -596,14 +716,12 @@
                 `深夜の対局は、負けると悔しくて眠れなくなっちゃいますよ？`,
                 `今日は徹夜で将棋ですか？`,
                 `夜食なに食べます？`,
-
                 `明日も早いんじゃないですか？大丈夫ですか？`,
                 `草木も眠る丑三つ時…将棋の駒たちが動き出す時間ですよ。`,
                 `外は真っ暗ですね。でも、盤上だけは輝いて見えます。`,
                 `充電残量は大丈夫ですか？わたしの体力は${userName}さん次第です。`,
                 `美濃囲いってお布団みたいです。\nおやすみなさい。`,
                 `こんばんは、\n${userName}さん。`,
-
                 `静かな真夜中…\n駒の音が響いて心地いいですね。`
             ];
         }
@@ -620,7 +738,7 @@
         }, 2000);
     }
 
-    // --- ★★★ 追加: ロビーチャット機能 ★★★ ---
+    // --- ロビーチャット機能 ---
     function openLobbyChat() {
         openModal('lobbyChatModal');
         // チャットを開いたら入室メッセージを送る（任意）
@@ -638,62 +756,57 @@
         socket.emit('chat message', {
             name: myName,
             text: text,
-            role: 'lobby' // ロビー用として区別（色分けなどに利用可能）
+            role: 'lobby' 
         });
         input.value = "";
     }
 
     // チャット受信処理
     if (socket) {
-        // ★★★ 修正：履歴を受け取ったら変数に保存して描画 ★★★
         socket.on('chat history', (history) => {
-            globalChatHistory = history; // 変数に保存
-            renderLobbyChat();           // 描画関数を呼ぶ
+            globalChatHistory = history; 
+            renderLobbyChat();           
         });
 
-        // 通常のチャット受信
         socket.on('chat message', (data) => {
-            globalChatHistory.push(data); // 新しいメッセージも保存
-            // 1件だけ追加してもいいですが、念のため再描画（またはaddMessageを使う）
+            globalChatHistory.push(data); 
             addMessageToLobbyChat(data); 
         });
     }
-// ★★★ 追加：履歴全体を再描画する関数 ★★★
+
+    // 履歴全体を再描画する関数
     function renderLobbyChat() {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
 
-        historyDiv.innerHTML = ""; // 一度クリア
+        historyDiv.innerHTML = ""; 
         
-        // 保存しておいた履歴を使って全部表示しなおす
         globalChatHistory.forEach(data => {
             addMessageToLobbyChat(data);
         });
     }
-    // ★★★ 修正版：画像アイコン付きメッセージ表示関数 ★★★
+
+    // 画像アイコン付きメッセージ表示関数
     function addMessageToLobbyChat(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
 
-        // 自分かどうかの判定
         const domName = document.getElementById("userNameDisplay").textContent;
         const storageName = localStorage.getItem('shogi_username');
         const isMe = (data.name.trim() === (domName || "").trim()) || 
                      (data.name.trim() === (storageName || "").trim());
 
         if (data.isSystem) {
-            // システムメッセージ
             const sysDiv = document.createElement("div");
             sysDiv.className = "chat-system-box";
             sysDiv.textContent = data.text;
             historyDiv.appendChild(sysDiv);
         } else {
-            // --- 行のコンテナ ---
             const rowDiv = document.createElement("div");
             rowDiv.className = "chat-row";
             if (isMe) rowDiv.classList.add("mine");
 
-            // --- 1. アイコンと名前の列 ---
+            // 1. アイコンと名前の列
             const iconCol = document.createElement("div");
             iconCol.className = "icon-container";
 
@@ -702,23 +815,20 @@
             nameDiv.className = "chat-name-badge";
             nameDiv.textContent = data.name;
 
-            // アイコン画像 (test.icon.PNG を使用)
+            // アイコン画像
             const iconImg = document.createElement("img");
-            // ★画像を保存しているフォルダパスに合わせて調整してください
             iconImg.src = "script/image/test.icon.PNG"; 
             iconImg.className = "chat-icon-img";
-            // 画像読み込みエラー時のダミー
             iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
 
             iconCol.appendChild(nameDiv);
             iconCol.appendChild(iconImg);
 
-            // --- 2. 吹き出し ---
+            // 2. 吹き出し
             const bubbleDiv = document.createElement("div");
             bubbleDiv.className = "chat-bubble";
             bubbleDiv.textContent = data.text;
 
-            // 組み立て
             rowDiv.appendChild(iconCol);
             rowDiv.appendChild(bubbleDiv);
 
@@ -753,169 +863,43 @@
       }
     };
 
-
-// ★★★ 追加：ログイン状態が確定したら、チャットの色を更新する ★★★
+    // ログイン状態が確定したら、チャットの色を更新する
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
-            // ログイン完了！
-            // 少し待ってから（名前の表示更新を待つため）再描画
             setTimeout(() => {
                 renderLobbyChat();
             }, 500); 
         }
     });
-  </script>
 
-  <div id="practiceMenu" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">練習相手を選んでください</h3>
-    <div class="modal-grid"> <button class="sub-btn" onclick="startGame('saijaku')">たわむれ (最弱)</button>
-      <button class="sub-btn" onclick="startGame('easy')">おあそび (入門)</button>
-      <button class="sub-btn" onclick="startGame('normal')">たしなみ (普通)</button>
-    </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('practiceMenu')">閉じる</button>
-  </div>
-</div>
+    function autoRotateTitle() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const isPortrait = h > w;
 
-  <div id="onePlayerModeSelect" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">対局相手を選んでください</h3>
-    <div class="modal-grid"> <button class="sub-btn" onclick="startGame('hard1')">こみや</button>
-      <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
-      <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
-      <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
-    </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
-    <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
-  </div>
-</div>
-
-  <div id="helpMainMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #17a2b8; margin-top: 0;">ヘルプ</h3>
-      <div class="modal-grid">
-        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpMode')">モードについて</button>
-        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpDifficulty')">難易度について</button>
-        <button class="sub-btn" onclick="switchModal('helpMainMenu', 'helpChar')">キャラについて</button>
-        <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('helpMainMenu', 'helpContact')">不具合・要望</button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('helpMainMenu')">閉じる</button>
-    </div>
-  </div>
-
-  <div id="helpMode" class="overlay">
-    <div class="modal-box" style="max-width: 350px;">
-      <h3 style="color: #8b4513;">モードについて</h3>
-      <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
-        <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対局ができます。この端末のみを使用して、プレイヤー同士でも対局ができます。</p>
-        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
-        <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
-        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
-    </div>
-  </div>
-
-<div id="helpDifficulty" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin: 0 0 10px 0;">難易度について</h3>
-      
-      <div style="text-align: left; font-size: 0.85rem; line-height: 1.4;">
-        <p style="margin: 0 0 5px 0;">CPUの難易度は、下に行くほど強いです。</p>
-        <ul style="padding-left: 20px; margin: 0 0 10px 0;">
-          <li>たわむれ</li>
-          <li>おあそび</li>
-          <li>たしなみ</li>
-          <li>しおや / こみや</li>
-          <li>しおやEX / こみやEX</li>
-          <li style="font-weight: bold; color: #d35400;">試験実装（最強）</li>
-        </ul>
-        <p style="margin: 0; font-size: 0.75rem;">※しおや系とこみや系の強さは同じですが、性格が異なります。</p>
-      </div>
-      
-      <button class="sub-btn" style="background:#666; margin: 15px 0 0 0;" onclick="switchModal('helpDifficulty', 'helpMainMenu')">もどる</button>
-    </div>
-  </div>
-  <div id="helpChar" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513;">キャラクターについて</h3>
-      <div style="text-align: left; font-size: 0.9rem; line-height: 1.6;">
-        <p>このゲームでは、対局前に自身のキャラクターを選択します。</p>
-        <p>キャラクターはそれぞれ独自の<strong>「必殺技」</strong>を持っており、対局を有利に進めることができます。</p>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpChar', 'helpMainMenu')">もどる</button>
-    </div>
-  </div>
-
-  <div id="helpContact" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513;">不具合・ご要望</h3>
-      <div style="margin: 20px 0; line-height: 1.6;">
-        <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
-        <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
-          onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
-          回答フォームを開く ↗
-        </button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
-    </div>
-  </div>
-
-  <div id="offlineMenu" class="overlay">
-  <div class="modal-box">
-    <h3 style="color: #8b4513; margin-top: 0;">オフライン対局</h3>
-    <div class="modal-grid"> <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
-      <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
-      <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
-    </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('offlineMenu')">戻る</button>
-  </div>
-</div>
-
-
-<script>
-  function autoRotateTitle() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
-    const isPortrait = h > w;
-
-    if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
-      document.body.style.position = "fixed";
-      document.body.style.top = "50%";
-      document.body.style.left = "50%";
-      document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
-      document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
-      document.body.style.width = h + "px";
-      document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
-      document.body.style.overflow = "hidden";
-
-    } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.transform = "";
-      document.body.style.width = "100vw";
-      document.body.style.height = "100vh";
+        if (isPortrait) {
+          document.body.style.position = "fixed";
+          document.body.style.top = "50%";
+          document.body.style.left = "50%";
+          document.body.style.transformOrigin = "center center";
+          document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
+          document.body.style.width = h + "px";
+          document.body.style.height = w + "px";
+          document.body.style.overflow = "hidden";
+        } else {
+          document.body.style.position = "";
+          document.body.style.top = "";
+          document.body.style.left = "";
+          document.body.style.transform = "";
+          document.body.style.width = "100vw";
+          document.body.style.height = "100vh";
+        }
     }
-  }
 
-  // 読み込み時とリサイズ時に実行
-  window.addEventListener('load', autoRotateTitle);
-  window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
-  setTimeout(autoRotateTitle, 100);
-</script>
+    window.addEventListener('load', autoRotateTitle);
+    window.addEventListener('resize', autoRotateTitle);
+    setTimeout(autoRotateTitle, 100);
+  </script>
 
 </body>
 </html>
