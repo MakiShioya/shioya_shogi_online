@@ -374,7 +374,7 @@ function onCellClick(x, y) {
 
 // ★★★ 追加：システム介入型（待った等）の分岐 ★★★
       if (currentSkill.isSystemAction) {
-        
+        currentSkill.execute(x, y);
         // 1. 先にターゲットモードを確実に解除する（変数を直接操作）
         isSkillTargeting = false;
         legalMoves = [];
