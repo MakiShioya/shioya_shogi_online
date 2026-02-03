@@ -569,26 +569,51 @@ function stopBGM() {
 let timerInterval = null;
 let currentSeconds = 0;
 
+// --- 新・タイマー関連 ---
+let timerInterval = null;
+
 function startTimer() {
-  stopTimer();
-  currentSeconds = 0;
-  updateTimerDisplay();
-  timerInterval = setInterval(() => {
-    currentSeconds++;
-    updateTimerDisplay();
-  }, 1000);
+    stopTimer();
+    updateTimeDisplay();
+    
+    // 1秒ごとに減らす（表示上の演出）
+    // ※本当の時間はサーバーが管理しているので、あくまで目安です
+    timerInterval = setInterval(() => {
+        if (remainingTime[turn] > 0) {
+            remainingTime[turn]--;
+            updateTimeDisplay();
+        }
+    }, 1000);
 }
 
 function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
 }
 
-function updateTimerDisplay() {
-  const timerBox = document.getElementById("timerBox");
-  if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
+function updateTimeDisplay() {
+    const blackTimer = document.getElementById("blackTimer");
+    const whiteTimer = document.getElementById("whiteTimer");
+    
+    if (blackTimer) blackTimer.textContent = "▲先手: " + formatTime(remainingTime.black);
+    if (whiteTimer) whiteTimer.textContent = "△後手: " + formatTime(remainingTime.white);
+    
+    // 手番の方を赤くするなど強調しても良い
+    if (turn === 'black') {
+        if(blackTimer) blackTimer.style.fontWeight = "bold";
+        if(whiteTimer) whiteTimer.style.fontWeight = "normal";
+    } else {
+        if(blackTimer) blackTimer.style.fontWeight = "normal";
+        if(whiteTimer) whiteTimer.style.fontWeight = "bold";
+    }
+}
+
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 // --- 修正版 render関数 (Online Hybrid Version) ---
@@ -1219,30 +1244,26 @@ function resetGame() {
 // resolveResignation 関数を修正
 
 function resolveResignation(winnerColor, reason) {
-    gameOver = true;
-    stopTimer();
-    winner = winnerColor;
-    
-    const winnerName = (winner === "black") ? "先手" : "後手";
-    
-    // 理由に応じてメッセージを変える
-    if (reason === "disconnect") {
-        endReason = "通信切れにより、" + winnerName + "の勝ちです。";
-    } else {
-        endReason = "投了により、" + winnerName + "の勝ちです。";
-    }
-    
-    if (typeof showKifu === "function") showKifu();
-    
-    // 自分が対局者の場合のみ保存を実行
-    if (myRole === "black" || myRole === "white") {
-        const result = (winner === myRole) ? "win" : "lose";
-        
-        // ★修正：通信切れの場合は勝敗理由も保存すると良いかも（今回は既存の関数を使うためそのまま）
-        saveGameResult(result);
-    }
-
-    render();
+    gameOver = true;
+    stopTimer();
+    winner = winnerColor;
+    
+    const winnerName = (winner === "black") ? "先手" : "後手";
+    
+    if (reason === "disconnect") {
+        endReason = "通信切れにより、" + winnerName + "の勝ちです。";
+    } else if (reason === "timeout") {
+        endReason = "時間切れにより、" + winnerName + "の勝ちです。";
+    } else {
+        endReason = "投了により、" + winnerName + "の勝ちです。";
+    }
+    
+    if (typeof showKifu === "function") showKifu();
+    if (myRole === "black" || myRole === "white") {
+        const result = (winner === myRole) ? "win" : "lose";
+        saveGameResult(result);
+    }
+    render();
 }
 
 
