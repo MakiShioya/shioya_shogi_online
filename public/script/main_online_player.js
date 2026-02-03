@@ -15,37 +15,55 @@ const resignBtn = document.getElementById("resignBtn");
 const myCharId = sessionStorage.getItem('my_character') || 'default';
 
 // --- 変数定義 ---
-let boardState = []; 
-let hands = { black: [], white: [] };
-let turn = "black";
-let moveCount = 0;
-let kifu = [];
-let pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
-let history = []; // 履歴保存用
 
-let lastMoveTo = null;
-let lastMoveFrom = null;
-let selected = null;
-let legalMoves = [];
+// 【重要】globals.js で定義済みの変数は、ここでの再宣言(let)を削除し、初期化だけ行います。
+
+// 既存変数のリセット（型合わせ）
+boardState = []; 
+hands = { black: [], white: [] };
+turn = "black";
+moveCount = 0;
+kifu = [];
+pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
+history = []; 
+
+lastMoveTo = null;
+lastMoveFrom = null;
+selected = null;
+legalMoves = [];
+
+// スキル用（globals.jsにあるもの）
+currentSkill = null;
+skillUseCount = 0;
+isSkillTargeting = false;
+// skillUsed は window.skillUsed として扱われているのでそのままでOK
+
+// 勝敗系（globals.jsにあるもの）
+gameOver = false;
+winner = null;
+
+// 音声系（globals.jsにあるもの）
+bgm = null;
+moveSound = null;
+promoteSound = null;
+cpuEnabled = false; // オンラインなのでFalse
+
+// ----------------------------------------------------
+// ★ 以下は globals.js に無い、オンライン対戦専用の変数（letが必要）
+// ----------------------------------------------------
 
 let p1Skill = null;      // 先手の技
 let p2Skill = null;      // 後手の技
-let currentSkill = null;
-let p1SkillCount = 0;    
-let p2SkillCount = 0;    
-let skillUseCount = 0;
+let p1SkillCount = 0;    // オンライン用の個別カウント
+let p2SkillCount = 0;    // オンライン用の個別カウント
 
 let pendingMove = null; 
 let myRole = null;
 let endReason = null;
 let isGameStarted = false;
-let gameOver = false;
-let winner = null;
 let hasShownEndEffect = false;
 
-// 必殺技・特殊モード用フラグ
-let isSkillTargeting = false;
-window.skillUsed = false;
+// 攻撃禁止フラグ（globals.jsにないのでwindowに追加）
 window.isCaptureRestricted = false;
 
 let lastSkillKifu = ""; 
@@ -53,12 +71,7 @@ let lastSkillKifu = "";
 // ★時間管理用
 let remainingTime = { black: 1200, white: 1200 }; // 20分
 let timerInterval = null;
-
-// 音声ファイル
-let bgm = null;
-let moveSound = null;
-let promoteSound = null;
-let cpuEnabled = false; // オンラインなのでFalse
+let lastReceivedTime = Date.now();
 
 // ★★★ 2. 初期化処理 (load) ★★★
 window.addEventListener("load", () => {
