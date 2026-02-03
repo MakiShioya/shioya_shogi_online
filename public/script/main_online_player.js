@@ -1,9 +1,9 @@
-// script/main_online_player.js (Cleaned & Fixed)
+// script/main_online_player.js (Fixed Version)
 
-// ★★★ 1. Socket初期化（自動接続オフ） ★★★
+// ★★★ 1. Socket初期化 ★★★
 const socket = io({ autoConnect: false });
 
-// DOM要素の参照
+// DOM要素
 const board = document.getElementById("board");
 const blackHandDiv = document.getElementById("blackHand");
 const whiteHandDiv = document.getElementById("whiteHand");
@@ -11,11 +11,10 @@ const statusDiv = document.getElementById("status");
 const checkStatusDiv = document.getElementById("checkStatus");
 const resignBtn = document.getElementById("resignBtn");
 
-// ★ 自分の選んだキャラIDを取得
+// 自分のキャラID
 const myCharId = sessionStorage.getItem('my_character') || 'default';
 
-// --- 変数定義 (globals.jsとの重複回避のためletなし) ---
-// ※globals.js で定義されている変数は再宣言しない
+// --- 変数定義 (globals.jsにあるものは let をつけない) ---
 boardState = []; 
 hands = { black: [], white: [] };
 turn = "black";
@@ -39,7 +38,7 @@ moveSound = null;
 promoteSound = null;
 cpuEnabled = false; 
 
-// オンライン専用変数（globals.jsにないもの）
+// --- オンライン専用変数 (ここから下は let が必要) ---
 let p1Skill = null;      
 let p2Skill = null;      
 let p1SkillCount = 0;    
@@ -66,16 +65,15 @@ window.addEventListener("load", () => {
     promoteSound = document.getElementById("promoteSound");
 
     const charNameMap = {
-        'default': 'いつも通り', 
-        'char_a': '熱血',
-        'char_b': '冷静',
-        'char_d': '町田'
+        'default': 'いつも通り', 'char_a': '熱血',
+        'char_b': '冷静', 'char_d': '町田'
     };
     const myCharName = charNameMap[myCharId] || "不明なキャラ";
     const displaySpan = document.getElementById("myCharNameDisplay");
     if (displaySpan) displaySpan.textContent = myCharName;
 
-    initSkills(null, null); 
+    // ★修正：引数なしで呼ぶ（nullで上書きさせないため）
+    applyPlayerImage(); 
 
     if (resignBtn) resignBtn.addEventListener("click", resignGame);
 
@@ -98,42 +96,31 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
             socket.io.opts.query = { userId: user.uid };
             socket.connect();
 
-            // リスナー登録
             setupSocketListeners(user.uid);
-
         } else {
             alert("オンライン対戦をするにはログインが必要です。");
             window.location.href = "index.html"; 
         }
     });
 } else {
-    console.error("Firebaseが読み込まれていません。");
-    alert("エラー：認証システムが動きません。");
+    console.error("Firebase load error");
 }
 
 // ★★★ 4. Socketイベント定義 ★★★
 function setupSocketListeners(myUserId) {
     
     socket.on('connect', () => {
-        console.log("サーバーに接続しました。Account ID:", myUserId);
+        console.log("Connected. ID:", myUserId);
         const urlParams = new URLSearchParams(window.location.search);
         let roomId = urlParams.get('room') || "default";
-
-        console.log(`部屋 [${roomId}] に入室します (UID: ${myUserId}, Char: ${myCharId})`);
         localStorage.setItem('current_shogi_room', roomId);
 
-        // 入室リクエスト
         socket.emit('enter game', { 
-            roomId: roomId, 
-            userId: myUserId, 
-            charId: myCharId 
+            roomId: roomId, userId: myUserId, charId: myCharId 
         });
 
         const name = localStorage.getItem('shogi_username') || "ゲスト";
-        socket.emit('chat message', {
-            text: `${name}さんが入室しました`,
-            isSystem: true
-        });
+        socket.emit('chat message', { text: `${name}さんが入室しました`, isSystem: true });
     });
 
     socket.on('force room close', () => {
@@ -158,14 +145,13 @@ function setupSocketListeners(myUserId) {
     });
 
     socket.on('update room status', (data) => {
-        console.log("部屋の状態更新を受信:", data);
+        // キャラ情報があれば更新
         if (data.blackChar && data.whiteChar) {
             initSkills(data.blackChar, data.whiteChar);
         }
         if (!isGameStarted) {
             let msg = "待機中...";
             const isOpponentPresent = (myRole === 'black' && data.whiteId) || (myRole === 'white' && data.blackId);
-            
             if (isOpponentPresent) {
                 const amIReady = (myRole === 'black' ? data.blackReady : data.whiteReady);
                 const isOpponentReady = (myRole === 'black' ? data.whiteReady : data.blackReady);
@@ -187,10 +173,8 @@ function setupSocketListeners(myUserId) {
         initGameSequence(); 
     });
 
-    // 復元処理（時間対応版）
     socket.on('restore game', (savedState) => {
-        console.log("サーバーからゲーム状態を復元:", savedState);
-
+        console.log("Restore:", savedState);
         boardState = savedState.boardState;
         hands = savedState.hands;
         turn = savedState.turn;
@@ -199,15 +183,12 @@ function setupSocketListeners(myUserId) {
         
         lastMoveTo = savedState.lastMoveTo || null;
         lastMoveFrom = savedState.lastMoveFrom || null;
-
         p1SkillCount = savedState.p1SkillCount || 0;
         p2SkillCount = savedState.p2SkillCount || 0;
 
         if (savedState.blackCharId && savedState.whiteCharId) {
             initSkills(savedState.blackCharId, savedState.whiteCharId);
         }
-
-        // 時間復元
         if (savedState.remainingTime) {
             remainingTime = savedState.remainingTime;
         }
@@ -230,7 +211,6 @@ function setupSocketListeners(myUserId) {
         }
     });
 
-    // 時間同期
     socket.on('sync time', (times) => {
         remainingTime = times;
         updateTimeDisplay();
@@ -238,7 +218,7 @@ function setupSocketListeners(myUserId) {
 
     socket.on('shogi move', (data) => {
         if (data.isTimeWarp) {
-            console.log("TimeWarp受信: 強制同期");
+            console.log("TimeWarp受信");
             const state = data.gameState;
             boardState = state.boardState;
             hands = state.hands;
@@ -257,7 +237,6 @@ function setupSocketListeners(myUserId) {
     });
 
     socket.on('skill activate', (data) => {
-        console.log("スキル発動受信:", data);
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
@@ -278,17 +257,12 @@ function setupSocketListeners(myUserId) {
         resolveResignation(winColor, data.reason);
     });
 
-    socket.on('game reset', () => {
-        resetGame(); 
-    });
-
-    socket.on('chat message', (data) => {
-        addMessageToChatHistory(data);
-    });
+    socket.on('game reset', () => { resetGame(); });
+    socket.on('chat message', (data) => { addMessageToChatHistory(data); });
 }
 
 // ----------------------------------------------------
-// ★★★ ゲームロジック関数 ★★★
+// ★★★ ロジック関数 ★★★
 // ----------------------------------------------------
 
 function initGameSequence() {
@@ -297,12 +271,11 @@ function initGameSequence() {
         overlay.style.opacity = "0";
         setTimeout(() => { overlay.style.display = "none"; }, 500);
     }
-
+    // カットイン演出
     const cutInImg = document.getElementById("skillCutIn");
     const isSente = (myRole !== "white");
     const imgPath = isSente ? "script/image/sente.PNG" : "script/image/gote.PNG";
     const audioPath = isSente ? "script/audio/sente.mp3" : "script/audio/gote.mp3";
-
     const audio = new Audio(audioPath);
     audio.volume = 1.0;
     audio.play().catch(e => {});
@@ -313,7 +286,6 @@ function initGameSequence() {
         void cutInImg.offsetWidth; 
         cutInImg.classList.add("cut-in-active");
     }
-
     setTimeout(() => {
         if (cutInImg) cutInImg.classList.remove("cut-in-active");
         startActualGame();
@@ -327,19 +299,24 @@ function startActualGame() {
     render();
 }
 
+// ★修正：nullチェックを強化
 function initSkills(blackId, whiteId) {
-    sessionStorage.setItem('online_black_char', blackId);
-    sessionStorage.setItem('online_white_char', whiteId);
+    if (blackId) sessionStorage.setItem('online_black_char', blackId);
+    if (whiteId) sessionStorage.setItem('online_white_char', whiteId);
 
-    if (blackId === 'default' && typeof CharItsumono !== 'undefined') p1Skill = CharItsumono.skill;
-    else if (blackId === 'char_a' && typeof CharNekketsu !== 'undefined') p1Skill = CharNekketsu.skill;
-    else if (blackId === 'char_b' && typeof CharReisei !== 'undefined') p1Skill = CharReisei.skill;
-    else if (blackId === 'char_d' && typeof CharMachida !== 'undefined') p1Skill = CharMachida.skill;
+    // 再取得（nullならdefault）
+    const b = blackId || sessionStorage.getItem('online_black_char') || 'default';
+    const w = whiteId || sessionStorage.getItem('online_white_char') || 'default';
 
-    if (whiteId === 'default' && typeof CharItsumono !== 'undefined') p2Skill = CharItsumono.skill;
-    else if (whiteId === 'char_a' && typeof CharNekketsu !== 'undefined') p2Skill = CharNekketsu.skill;
-    else if (whiteId === 'char_b' && typeof CharReisei !== 'undefined') p2Skill = CharReisei.skill;
-    else if (whiteId === 'char_d' && typeof CharMachida !== 'undefined') p2Skill = CharMachida.skill;
+    if (b === 'default' && typeof CharItsumono !== 'undefined') p1Skill = CharItsumono.skill;
+    else if (b === 'char_a' && typeof CharNekketsu !== 'undefined') p1Skill = CharNekketsu.skill;
+    else if (b === 'char_b' && typeof CharReisei !== 'undefined') p1Skill = CharReisei.skill;
+    else if (b === 'char_d' && typeof CharMachida !== 'undefined') p1Skill = CharMachida.skill;
+
+    if (w === 'default' && typeof CharItsumono !== 'undefined') p2Skill = CharItsumono.skill;
+    else if (w === 'char_a' && typeof CharNekketsu !== 'undefined') p2Skill = CharNekketsu.skill;
+    else if (w === 'char_b' && typeof CharReisei !== 'undefined') p2Skill = CharReisei.skill;
+    else if (w === 'char_d' && typeof CharMachida !== 'undefined') p2Skill = CharMachida.skill;
  
     applyPlayerImage();
     syncGlobalSkillState();
@@ -353,7 +330,6 @@ function syncGlobalSkillState() {
         currentSkill = p2Skill;
         skillUseCount = p2SkillCount; 
     }
-
     if (currentSkill) {
         const max = currentSkill.maxUses || 1;
         window.skillUsed = (skillUseCount >= max);
@@ -377,17 +353,14 @@ function updateSkillButton() {
     if (mySkill) {
         skillBtn.style.display = "inline-block";
         skillBtn.textContent = mySkill.name;
-
         if (mySkill.buttonStyle) Object.assign(skillBtn.style, mySkill.buttonStyle);
         else {
             skillBtn.style.backgroundColor = "#ff4500";
             skillBtn.style.color = "white";
             skillBtn.style.border = "none";
         }
-
         const max = mySkill.maxUses || 1;
         const isUsedUp = (myUseCount >= max);
-
         if (turn !== myRole || isUsedUp) {
             skillBtn.disabled = true;
             skillBtn.style.opacity = 0.5;
@@ -409,49 +382,38 @@ function toggleSkillMode() {
     if (myRole && turn !== myRole) return;
     if (!currentSkill) return;
     if (isSkillTargeting) return;
-    
     if (window.skillUsed) { alert("必殺技はもう使えません。"); return; }
     if (!currentSkill.canUse()) { alert("発動条件を満たしていません。"); return; }
-
-    const modal = document.getElementById("skillModal");
-    if (modal) modal.style.display = "flex";
+    document.getElementById("skillModal").style.display = "flex";
 }
 
 function confirmSkillActivate() {
     closeSkillModal();
     if (currentSkill.reset) currentSkill.reset();
     selected = null;
-    
     const targets = currentSkill.getValidTargets();
     if (!targets || targets.length === 0) {
         alert("有効なターゲットがありません。");
         isSkillTargeting = false;
         return; 
     }
-
     isSkillTargeting = true;
     legalMoves = targets;
-    const boardTable = document.getElementById("board");
-    if (boardTable) boardTable.classList.add("skill-targeting-mode");
-    
+    document.getElementById("board").classList.add("skill-targeting-mode");
     render();
     statusDiv.textContent = `必殺技【${currentSkill.name}】：対象を選んでください`;
 }
 
-function closeSkillModal() {
-    const modal = document.getElementById("skillModal");
-    if (modal) modal.style.display = "none";
-}
+function closeSkillModal() { document.getElementById("skillModal").style.display = "none"; }
 
-// --- 画像表示 ---
 function applyPlayerImage() {
     const blackHandBox = document.getElementById("blackHandBox");
-    const charBlackId = sessionStorage.getItem('online_black_char');
-    if (blackHandBox) blackHandBox.style.backgroundImage = getImageUrlById(charBlackId) || 'none';
+    const bId = sessionStorage.getItem('online_black_char');
+    if (blackHandBox) blackHandBox.style.backgroundImage = getImageUrlById(bId) || 'none';
 
     const whiteHandBox = document.getElementById("whiteHandBox");
-    const charWhiteId = sessionStorage.getItem('online_white_char');
-    if (whiteHandBox) whiteHandBox.style.backgroundImage = getImageUrlById(charWhiteId) || 'none';
+    const wId = sessionStorage.getItem('online_white_char');
+    if (whiteHandBox) whiteHandBox.style.backgroundImage = getImageUrlById(wId) || 'none';
 }
 
 function getImageUrlById(charId) {
@@ -463,7 +425,7 @@ function getImageUrlById(charId) {
     return null;
 }
 
-// --- タイマー (時間管理版) ---
+// --- タイマー ---
 function startTimer() {
     stopTimer();
     updateTimeDisplay();
@@ -476,16 +438,12 @@ function startTimer() {
 }
 
 function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 }
 
 function updateTimeDisplay() {
     const blackTimer = document.getElementById("blackTimer");
     const whiteTimer = document.getElementById("whiteTimer");
-    
     if (blackTimer) blackTimer.textContent = "▲先手: " + formatTime(remainingTime.black);
     if (whiteTimer) whiteTimer.textContent = "△後手: " + formatTime(remainingTime.white);
     
@@ -508,80 +466,47 @@ function playBGM() {
     if (!bgm) return;
     bgm.volume = 0.3;
     bgm.play().catch(() => {
-        document.addEventListener("click", () => {
-            bgm.play().catch(e => {});
-        }, { once: true });
+        document.addEventListener("click", () => { bgm.play().catch(e => {}); }, { once: true });
     });
 }
 
-function stopBGM() {
-    if (!bgm) return;
-    bgm.pause();
-    bgm.currentTime = 0;
-}
-
-// --- 盤面操作 (Click) ---
 function onCellClick(x, y) {
     if (!isGameStarted) return; 
     if (gameOver) return;
     if (myRole && turn !== myRole) return;
 
-    // 1. スキルターゲットモード
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
-            
-            // ★ TimeWarp (システム介入型)
+            // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
-                console.log("TimeWarp発動");
-                
-                isSkillTargeting = false;
-                legalMoves = [];
-                selected = null;
-                const boardTable = document.getElementById("board");
-                if (boardTable) boardTable.classList.remove("skill-targeting-mode");
-
-                undoMove(); // ローカル実行
-
+                isSkillTargeting = false; legalMoves = []; selected = null;
+                document.getElementById("board").classList.remove("skill-targeting-mode");
+                undoMove(); 
                 if (turn === "black") p1SkillCount++; else p2SkillCount++;
                 syncGlobalSkillState();
 
                 if (socket) {
-                    // エフェクト送信
                     socket.emit('skill activate', { x: 0, y: 0, turn: turn, isFinished: true });
-                    
-                    // 盤面同期送信
                     const newState = deepCopyState(); 
+                    // 送信データ作成
                     const sendState = {
-                        boardState: newState.boardState,
-                        hands: newState.hands,
-                        turn: newState.turn,
-                        moveCount: newState.moveCount,
-                        kifu: newState.kifu,
-                        p1SkillCount: newState.p1SkillCount,
-                        p2SkillCount: newState.p2SkillCount,
+                        boardState: newState.boardState, hands: newState.hands, turn: newState.turn,
+                        moveCount: newState.moveCount, kifu: newState.kifu,
+                        p1SkillCount: newState.p1SkillCount, p2SkillCount: newState.p2SkillCount,
                         blackCharId: sessionStorage.getItem('online_black_char'),
                         whiteCharId: sessionStorage.getItem('online_white_char')
                     };
-
                     socket.emit('shogi move', { 
-                        gameState: sendState,
-                        isTimeWarp: true,
-                        sel: {x:0, y:0}, x:0, y:0, promote:false
+                        gameState: sendState, isTimeWarp: true, sel: {x:0,y:0}, x:0, y:0, promote:false
                     });
                 }
                 render();
                 statusDiv.textContent = "必殺技発動！ 時を戻しました。";
                 return;
             }
-
-            // ★ 通常スキル
+            // Normal Skill
             const result = currentSkill.execute(x, y);
-            if (socket) {
-                socket.emit('skill activate', {
-                    x: x, y: y, turn: turn, isFinished: (result !== null) 
-                });
-            }
-
+            if (socket) socket.emit('skill activate', { x: x, y: y, turn: turn, isFinished: (result !== null) });
             if (result === null) {
                 legalMoves = currentSkill.getValidTargets();
                 render();
@@ -593,7 +518,6 @@ function onCellClick(x, y) {
         return;
     }
     
-    // 2. 通常移動
     if (!selected) {
         const piece = boardState[y][x];
         if (!piece) return;
@@ -607,12 +531,8 @@ function onCellClick(x, y) {
         return;
     }
     const sel = selected;
-    if (legalMoves.some(m => m.x === x && m.y === y)) {
-        movePieceWithSelected(sel, x, y);
-    }
-    selected = null;
-    legalMoves = [];
-    render();
+    if (legalMoves.some(m => m.x === x && m.y === y)) movePieceWithSelected(sel, x, y);
+    selected = null; legalMoves = []; render();
 }
 
 function selectFromHand(player, index) {
@@ -626,10 +546,7 @@ function selectFromHand(player, index) {
 }
 
 function movePieceWithSelected(sel, x, y) {
-    if (sel.fromHand) {
-        executeMove(sel, x, y, false);
-        return;
-    }
+    if (sel.fromHand) { executeMove(sel, x, y, false); return; }
     const piece = boardState[sel.y][sel.x];
     const isWhite = piece === piece.toLowerCase();
     const player = isWhite ? "white" : "black";
@@ -638,14 +555,10 @@ function movePieceWithSelected(sel, x, y) {
 
     if (!isPromoted && canPromote(base) && 
         (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
-        
-        const mustPromote =
-            (base === "P" || base === "L") && (y === (player === "black" ? 0 : 8)) ||
-            (base === "N") && (y === (player === "black" ? 0 : 8) || y === (player === "black" ? 1 : 7));
-
-        if (mustPromote) {
-            executeMove(sel, x, y, true);
-        } else {
+        const mustPromote = (base === "P" || base === "L") && (y === (player === "black" ? 0 : 8)) ||
+                            (base === "N") && (y === (player === "black" ? 0 : 8) || y === (player === "black" ? 1 : 7));
+        if (mustPromote) executeMove(sel, x, y, true);
+        else {
             pendingMove = { sel, x, y }; 
             const modal = document.getElementById("promoteModal");
             if (modal) modal.style.display = "flex";
@@ -654,27 +567,17 @@ function movePieceWithSelected(sel, x, y) {
                 else executeMove(sel, x, y, false);
             }
         }
-    } else {
-        executeMove(sel, x, y, false);
-    }
+    } else executeMove(sel, x, y, false);
 }
 
 function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     history.push(deepCopyState());
-    
-    if (sel.fromHand) lastMoveFrom = null; 
-    else lastMoveFrom = { x: sel.x, y: sel.y }; 
+    if (sel.fromHand) lastMoveFrom = null; else lastMoveFrom = { x: sel.x, y: sel.y }; 
 
     const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
-    const boardBefore = boardState.map(r => r.slice());
     const moveNumber = kifu.length + 1; 
+    if (moveSound) { moveSound.currentTime = 0; moveSound.play().catch(() => {}); }
 
-    if (moveSound) {
-        moveSound.currentTime = 0;
-        moveSound.play().catch(() => {});
-    }
-
-    // 盤面更新
     if (sel.fromHand) {
         const piece = hands[sel.player][sel.index];
         boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
@@ -703,9 +606,7 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
             }
         } else {
             if (!piece.includes("+") && canPromote(base) && 
-                (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
-                sel.unpromoted = true;
-            }
+                (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) sel.unpromoted = true;
         }
         boardState[sel.y][sel.x] = "";
         boardState[y][x] = piece;
@@ -713,16 +614,13 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
         pieceStyles[sel.y][sel.x] = null;
     }
 
-    // 棋譜
-    const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
+    const currentMoveStr = formatMove(sel, x, y, pieceBefore, [], moveNumber);
     const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
     kifu.push(""); 
     if (typeof lastSkillKifu !== 'undefined' && lastSkillKifu !== "") {
         kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
         lastSkillKifu = ""; 
-    } else {
-        kifu[kifu.length - 1] = currentMoveStr;
-    }
+    } else kifu[kifu.length - 1] = currentMoveStr;
 
     lastMoveTo = { x, y };
     turn = turn === "black" ? "white" : "black";
@@ -732,26 +630,19 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     if (typeof showKifu === "function") showKifu();
     render(); 
 
-    if (!gameOver) startTimer();
-    else stopTimer();
-    
+    if (!gameOver) startTimer(); else stopTimer();
     moveCount++; 
 
-    // 送信
     if (!fromNetwork) {
         const newState = {
-            boardState: boardState, hands: hands, turn: turn,
-            moveCount: moveCount, kifu: kifu,
+            boardState: boardState, hands: hands, turn: turn, moveCount: moveCount, kifu: kifu,
             p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
             blackCharId: sessionStorage.getItem('online_black_char'),
             whiteCharId: sessionStorage.getItem('online_white_char')
         };
-        socket.emit('shogi move', { 
-            sel: sel, x: x, y: y, promote: doPromote, gameState: newState 
-        });
+        socket.emit('shogi move', { sel: sel, x: x, y: y, promote: doPromote, gameState: newState });
     }
 
-    // 終了判定
     if (moveCount >= 500) {
         gameOver = true; winner = null;
         statusDiv.textContent = "500手引き分け";
@@ -787,37 +678,6 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     }
 }
 
-function processSkillAfterEffect(skillObj, result, playerColor) {
-    history.push(deepCopyState());
-    const boardTable = document.getElementById("board");
-    if (boardTable) boardTable.classList.remove("skill-targeting-mode");
-
-    if (result !== "SYSTEM") {
-        const endsTurn = (skillObj.endsTurn !== false);
-        if (endsTurn) {
-            kifu.push(""); kifu[kifu.length - 1] = result;
-            moveCount++; 
-            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
-            turn = (turn === "black" ? "white" : "black");
-        } else {
-            const movePart = result.split("：")[1] || result;
-            lastSkillKifu = movePart; 
-            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
-        }
-    }
-    
-    lastMoveTo = null;
-    if (moveSound) { moveSound.currentTime = 0; moveSound.play().catch(() => {}); }
-    if (skillObj.reset) skillObj.reset();
-    isSkillTargeting = false;
-    legalMoves = [];
-    selected = null;
-    syncGlobalSkillState();
-    render();
-    if (typeof showKifu === "function") showKifu();
-    startTimer();
-}
-
 function render() {
     if (!boardState || boardState.length === 0) return;
 
@@ -830,7 +690,6 @@ function render() {
         else if (winner === "black") statusDiv.textContent = "先手の勝ちです！";
         else if (winner === "white") statusDiv.textContent = "後手の勝ちです！";
         else statusDiv.textContent = "引き分けです。";
-        
         checkStatusDiv.textContent = "";
 
         if (!document.getElementById("resetBtn")) {
@@ -862,7 +721,6 @@ function render() {
         checkStatusDiv.textContent = "";
     }
 
-    // 盤面描画
     board.innerHTML = "";
     for (let y = 0; y < 9; y++) {
         const tr = document.createElement("tr");
@@ -875,10 +733,8 @@ function render() {
                 const container = document.createElement("div");
                 container.className = "piece-container";
                 if (isWhite) container.classList.add("gote");
-                
                 const baseType = piece.replace("+", "").toUpperCase();
                 container.classList.add("size-" + baseType);
-                
                 const textSpan = document.createElement("span");
                 textSpan.className = "piece-text";
                 if (key.startsWith("+")) textSpan.classList.add("promoted");
@@ -931,32 +787,23 @@ function renderHands() {
         textSpan.className = "piece-text";
         textSpan.textContent = pieceName[p];
         container.appendChild(textSpan);
-        if (selected && selected.fromHand && selected.player === player && selected.index === i) {
-            container.classList.add("selected");
-        }
+        if (selected && selected.fromHand && selected.player === player && selected.index === i) container.classList.add("selected");
         container.onclick = () => selectFromHand(player, i);
-        
         let shouldRotate = false;
         if (myRole === "white") { if (player === "black") shouldRotate = true; }
         else { if (player === "white") shouldRotate = true; }
         if (shouldRotate) container.style.transform = "rotate(180deg)";
-        
         return container;
     };
-
     hands.black.forEach((p, i) => blackHandDiv.appendChild(createHandPiece("black", p, i)));
     hands.white.forEach((p, i) => whiteHandDiv.appendChild(createHandPiece("white", p, i)));
 }
 
-// ----------------------------------------------------
-// ★★★ UI系・ヘルパー関数 ★★★
-// ----------------------------------------------------
-
+// ---------------- UI Helper Functions ----------------
 function toggleChat() {
     const body = document.getElementById("chatBody");
     body.style.display = (body.style.display === "none") ? "flex" : "none";
 }
-
 function sendChatMessage() {
     const input = document.getElementById("chatInput");
     const text = input.value.trim();
@@ -965,7 +812,6 @@ function sendChatMessage() {
     socket.emit('chat message', { name: currentName, text: text, role: myRole });
     input.value = ""; 
 }
-
 function addMessageToChatHistory(data) {
     const historyDiv = document.getElementById("chatHistory");
     if (!historyDiv) return;
@@ -990,43 +836,31 @@ function addMessageToChatHistory(data) {
     historyDiv.appendChild(msgDiv);
     historyDiv.scrollTop = historyDiv.scrollHeight;
 }
-
 document.addEventListener("DOMContentLoaded", () => {
     const chatInput = document.getElementById("chatInput");
-    if (chatInput) {
-        chatInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") sendChatMessage();
-        });
-    }
+    if (chatInput) chatInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendChatMessage(); });
 });
-
 function resignGame() {
     if (gameOver) return;
     if (myRole === "spectator") return; 
     const modal = document.getElementById("resignModal");
     if (modal) modal.style.display = "flex";
 }
-
 function executeResign() {
     closeResignModal();
     if (socket) socket.emit('game resign', { loser: myRole });
     const winColor = (myRole === "black") ? "white" : "black";
     resolveResignation(winColor, "resign");
 }
-
-function closeResignModal() {
-    document.getElementById("resignModal").style.display = "none";
-}
-
+function closeResignModal() { document.getElementById("resignModal").style.display = "none"; }
 function resolveResignation(winnerColor, reason) {
     gameOver = true;
     stopTimer();
     winner = winnerColor;
     const winnerName = (winner === "black") ? "先手" : "後手";
-    
     if (reason === "timeout") endReason = "時間切れにより、" + winnerName + "の勝ちです。";
+    else if (reason === "disconnect") endReason = "通信切れにより、" + winnerName + "の勝ちです。";
     else endReason = "投了により、" + winnerName + "の勝ちです。";
-    
     if (typeof showKifu === "function") showKifu();
     if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
@@ -1034,18 +868,13 @@ function resolveResignation(winnerColor, reason) {
     }
     render();
 }
-
 function saveGameResult(resultStatus) {
     const user = auth.currentUser;
     if (!user) return; 
     const isWin = (resultStatus === "win");
     const gameRecord = {
-        date: new Date(), 
-        opponent: "オンライン対戦",
-        moves: moveCount,
-        result: isWin ? "WIN" : "LOSE",
-        mode: "online",  
-        kifuData: kifu 
+        date: new Date(), opponent: "オンライン対戦", moves: moveCount,
+        result: isWin ? "WIN" : "LOSE", mode: "online", kifuData: kifu 
     };
     db.collection("users").doc(user.uid).update({
         win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
@@ -1053,7 +882,6 @@ function saveGameResult(resultStatus) {
         history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
     }).catch(console.error);
 }
-
 function toggleKifu() {
     const area = document.getElementById("kifuArea");
     area.style.display = (area.style.display === "none") ? "flex" : "none";
@@ -1062,12 +890,10 @@ function toggleKifu() {
         if (scrollBox) setTimeout(() => { scrollBox.scrollTop = scrollBox.scrollHeight; }, 50);
     }
 }
-
 function copyKifuText() {
     const kifuDiv = document.getElementById("kifu");
     if (kifuDiv) navigator.clipboard.writeText(kifuDiv.innerText).then(() => alert("コピーしました"));
 }
-
 function toggleVolume() { document.getElementById("volumeModal").style.display = "flex"; }
 function closeVolumeModal() { document.getElementById("volumeModal").style.display = "none"; }
 function updateVolume() {
@@ -1075,14 +901,12 @@ function updateVolume() {
     const range = document.getElementById("bgmRange");
     if (bgm && range) { bgm.volume = range.value; bgm.muted = false; }
 }
-
 function showRules() { document.getElementById("rulesModal").style.display = "flex"; }
 function closeRulesModal() { document.getElementById("rulesModal").style.display = "none"; }
 function toggleMenu() {
     const panel = document.getElementById('menuPanel');
     panel.style.display = (panel.style.display === 'none') ? 'block' : 'none';
 }
-
 function resolvePromotion(doPromote) {
     document.getElementById("promoteModal").style.display = "none";
     if (pendingMove) {
@@ -1090,95 +914,56 @@ function resolvePromotion(doPromote) {
         pendingMove = null;
     }
 }
-
 function updateHandLayout(role) {
     const leftSide = document.querySelector(".side.left");
     const rightSide = document.querySelector(".side.right");
     const blackBox = document.getElementById("blackHandBox");
     const whiteBox = document.getElementById("whiteHandBox");
     if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
-
-    if (role === "white") {
-        leftSide.prepend(blackBox);
-        rightSide.appendChild(whiteBox);
-    } else {
-        leftSide.prepend(whiteBox);
-        rightSide.appendChild(blackBox);
-    }
+    if (role === "white") { leftSide.prepend(blackBox); rightSide.appendChild(whiteBox); }
+    else { leftSide.prepend(whiteBox); rightSide.appendChild(blackBox); }
 }
-
 function resetGame() {
-    hasShownEndEffect = false; 
-    turn = "black";
-    gameOver = false;
-    winner = null;
-    moveCount = 0;
-    kifu = [];
-    history = []; 
-    lastMoveFrom = null;
-    p1SkillCount = 0;
-    p2SkillCount = 0;
-    window.skillUsed = false;
-    lastSkillKifu = "";
+    hasShownEndEffect = false; turn = "black"; gameOver = false; winner = null; moveCount = 0;
+    kifu = []; history = []; lastMoveFrom = null;
+    p1SkillCount = 0; p2SkillCount = 0; window.skillUsed = false; lastSkillKifu = "";
     remainingTime = { black: 1200, white: 1200 };
-    
-    boardState = JSON.parse(JSON.stringify(INITIAL_BOARD_CONST)); // ★後述の定義が必要
+    boardState = JSON.parse(JSON.stringify(INITIAL_BOARD_CONST));
     hands = { black: [], white: [] };
     pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
-
     if (p1Skill && p1Skill.reset) p1Skill.reset();
     if (p2Skill && p2Skill.reset) p2Skill.reset();
     syncGlobalSkillState();
-
     statusDiv.textContent = "対局開始！";
     const resetBtn = document.getElementById("resetBtn");
     if (resetBtn) resetBtn.remove();
-
-    render();
-    startTimer();
+    render(); startTimer();
 }
-
-// 履歴用コピー関数
 function deepCopyState() {
     return {
-        boardState: JSON.parse(JSON.stringify(boardState)),
-        hands: JSON.parse(JSON.stringify(hands)),
-        turn: turn,
-        moveCount: moveCount,
-        kifu: JSON.parse(JSON.stringify(kifu)),
-        p1SkillCount: p1SkillCount,
-        p2SkillCount: p2SkillCount,
+        boardState: JSON.parse(JSON.stringify(boardState)), hands: JSON.parse(JSON.stringify(hands)),
+        turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)),
+        p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
         lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
         lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
     };
 }
-
-// 待った（ローカル用）
 function undoMove() {
     if (!history || history.length < 2) return;
     const prev = history[history.length - 2];
-    history.length -= 2; 
-    lastMoveFrom = null;
-    
+    history.length -= 2; lastMoveFrom = null;
     boardState = JSON.parse(JSON.stringify(prev.boardState));
     hands = JSON.parse(JSON.stringify(prev.hands));
-    turn = prev.turn;
-    moveCount = prev.moveCount;
+    turn = prev.turn; moveCount = prev.moveCount;
     kifu = JSON.parse(JSON.stringify(prev.kifu));
     if (prev.p1SkillCount !== undefined) p1SkillCount = prev.p1SkillCount;
     if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
     pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
 }
-
-// 初期盤面定義（リセット用）
 const INITIAL_BOARD_CONST = [
-    ["l", "n", "s", "g", "k", "g", "s", "n", "l"],
-    ["", "r", "", "", "", "", "", "b", ""],
-    ["p", "p", "p", "p", "p", "p", "p", "p", "p"],
-    ["", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", ""],
-    ["P", "P", "P", "P", "P", "P", "P", "P", "P"],
-    ["", "B", "", "", "", "", "", "R", ""],
+    ["l", "n", "s", "g", "k", "g", "s", "n", "l"], ["", "r", "", "", "", "", "", "b", ""],
+    ["p", "p", "p", "p", "p", "p", "p", "p", "p"], ["", "", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", ""],
+    ["P", "P", "P", "P", "P", "P", "P", "P", "P"], ["", "B", "", "", "", "", "", "R", ""],
     ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
 ];
