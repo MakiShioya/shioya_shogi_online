@@ -19,62 +19,62 @@ const myCharId = sessionStorage.getItem('my_character') || 'default';
 
 // ★★★ 2. Firebaseの認証状態を監視し、ログインしていれば接続開始 ★★★
 if (typeof firebase !== 'undefined' && firebase.auth) {
-    firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
-            // --- ログイン済み ---
-            console.log("ログイン確認:", user.uid);
-            
-            // ユーザー名を保存（表示用）
-            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
-            localStorage.setItem('shogi_username', displayName);
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            // --- ログイン済み ---
+            console.log("ログイン確認:", user.uid);
+            
+            // ユーザー名を保存（表示用）
+            const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
+            localStorage.setItem('shogi_username', displayName);
 
-            // ★ここで初めてSocket接続を開始
-            // queryオプションを使うと、接続時のハンドシェイクでIDをサーバーに渡せます（念のため）
-            socket.io.opts.query = { userId: user.uid };
-            socket.connect();
+            // ★ここで初めてSocket接続を開始
+            // queryオプションを使うと、接続時のハンドシェイクでIDをサーバーに渡せます（念のため）
+            socket.io.opts.query = { userId: user.uid };
+            socket.connect();
 
-            // 接続後の処理をセットアップ
-            setupSocketListeners(user.uid);
+            // 接続後の処理をセットアップ
+            setupSocketListeners(user.uid);
 
-        } else {
-            // --- 未ログイン ---
-            alert("オンライン対戦をするにはログインが必要です。");
-            window.location.href = "index.html"; // ホームへ強制送還
-        }
-    });
+        } else {
+            // --- 未ログイン ---
+            alert("オンライン対戦をするにはログインが必要です。");
+            window.location.href = "index.html"; // ホームへ強制送還
+        }
+    });
 } else {
-    console.error("Firebaseが読み込まれていません。");
-    alert("エラー：認証システムが動きません。");
+    console.error("Firebaseが読み込まれていません。");
+    alert("エラー：認証システムが動きません。");
 }
 
 // ★★★ 3. 接続確立後の処理を関数化 ★★★
 function setupSocketListeners(myUserId) {
-    
-    socket.on('connect', () => {
-        console.log("サーバーに接続しました。Account ID:", myUserId);
+    
+    socket.on('connect', () => {
+        console.log("サーバーに接続しました。Account ID:", myUserId);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        let roomId = urlParams.get('room');
-        if (!roomId) {
-            roomId = "default";
-        }
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomId = urlParams.get('room');
+        if (!roomId) {
+            roomId = "default";
+        }
 
-        console.log(`部屋 [${roomId}] に入室します (UID: ${myUserId}, Char: ${myCharId})`);
-        localStorage.setItem('current_shogi_room', roomId);
+        console.log(`部屋 [${roomId}] に入室します (UID: ${myUserId}, Char: ${myCharId})`);
+        localStorage.setItem('current_shogi_room', roomId);
 
-        // ★ここで FirebaseのUID をサーバーに送る
-        socket.emit('enter game', { 
-            roomId: roomId, 
-            userId: myUserId, // ★これが絶対的な身分証明になります
-            charId: myCharId 
-        });
+        // ★ここで FirebaseのUID をサーバーに送る
+        socket.emit('enter game', { 
+            roomId: roomId, 
+            userId: myUserId, // ★これが絶対的な身分証明になります
+            charId: myCharId 
+        });
 
-        const name = localStorage.getItem('shogi_username') || "ゲスト";
-        socket.emit('chat message', {
-            text: `${name}さんが入室しました`,
-            isSystem: true
-        });
-    });
+        const name = localStorage.getItem('shogi_username') || "ゲスト";
+        socket.emit('chat message', {
+            text: `${name}さんが入室しました`,
+            isSystem: true
+        });
+    });
 }
 
 // ----------------------------------------------------
@@ -92,47 +92,44 @@ let myRole = null;
 let endReason = null;
 let isGameStarted = false;
 let hasShownEndEffect = false;
-// 変数定義
-let remainingTime = { black: 1200, white: 1200 }; // 20分 = 1200秒
-let lastReceivedTime = Date.now(); // 同期用
 window.skillUsed = false;
 window.isCaptureRestricted = false;
 
 // 初期化処理
 window.addEventListener("load", () => {
-  cpuEnabled = false;
-  bgm = document.getElementById("bgm");
-  
-  // 自分のキャラ名の表示（オーバーレイ用）は、ローカル情報なのでそのままでOK
-  const myCharId = sessionStorage.getItem('my_character') || 'default';
-  const charNameMap = {
-      'default': 'キャラA', 
-      'char_a': 'キャラB',
-      'char_b': 'キャラC',
-      'char_d': 'キャラD'
-  };
-  const myCharName = charNameMap[myCharId] || "不明なキャラ";
-  const displaySpan = document.getElementById("myCharNameDisplay");
-  if (displaySpan) displaySpan.textContent = myCharName;
+  cpuEnabled = false;
+  bgm = document.getElementById("bgm");
+  
+  // 自分のキャラ名の表示（オーバーレイ用）は、ローカル情報なのでそのままでOK
+  const myCharId = sessionStorage.getItem('my_character') || 'default';
+  const charNameMap = {
+      'default': 'キャラA', 
+      'char_a': 'キャラB',
+      'char_b': 'キャラC',
+      'char_d': 'キャラD'
+  };
+  const myCharName = charNameMap[myCharId] || "不明なキャラ";
+  const displaySpan = document.getElementById("myCharNameDisplay");
+  if (displaySpan) displaySpan.textContent = myCharName;
 
-  moveSound = document.getElementById("moveSound");
-  promoteSound = document.getElementById("promoteSound");
+  moveSound = document.getElementById("moveSound");
+  promoteSound = document.getElementById("promoteSound");
 
-  // ★重要変更★
-  // これまではとりあえず初期化していましたが、それをやめます。
-  // 引数に null を渡すことで、「まだキャラは未定」という状態にします。
-  initSkills(null, null); 
+  // ★重要変更★
+  // これまではとりあえず初期化していましたが、それをやめます。
+  // 引数に null を渡すことで、「まだキャラは未定」という状態にします。
+  initSkills(null, null); 
 
-  if (resignBtn) resignBtn.addEventListener("click", resignGame);
+  if (resignBtn) resignBtn.addEventListener("click", resignGame);
 
-  playBGM();
-  statusDiv.textContent = "対戦相手の入室を待っています..."; 
-  render();
+  playBGM();
+  statusDiv.textContent = "対戦相手の入室を待っています..."; 
+  render();
 
-  if (typeof showKifu === "function") showKifu();
+  if (typeof showKifu === "function") showKifu();
 
-  const key = getPositionKey();
-  positionHistory[key] = 1;
+  const key = getPositionKey();
+  positionHistory[key] = 1;
 });
 
 // ----------------------------------------------------
@@ -216,45 +213,47 @@ socket.on('game start', (data) => {
 
 // main_online_player.js に追加
 
-// ★★★ 修正：復元時に「時間」も同期する ★★★
+// ★★★ 追加：サーバーから「ゲーム復元」の指示が来た時の処理 ★★★
 socket.on('restore game', (savedState) => {
     console.log("サーバーからゲーム状態を復元します:", savedState);
 
-    boardState = savedState.boardState;
-    hands = savedState.hands;
-    turn = savedState.turn;
-    moveCount = savedState.moveCount;
-    kifu = savedState.kifu;
+    // 1. 変数をサーバーのデータで上書き
+    boardState = savedState.boardState; // 盤面
+    hands = savedState.hands;           // 持ち駒
+    turn = savedState.turn;             // 手番
+    moveCount = savedState.moveCount;   // 手数
+    kifu = savedState.kifu;             // 棋譜
     
+    // 2. 最後に動かした位置などの復元
     lastMoveTo = savedState.lastMoveTo || null;
     lastMoveFrom = savedState.lastMoveFrom || null;
 
+    // 3. スキル情報の復元
     p1SkillCount = savedState.p1SkillCount || 0;
     p2SkillCount = savedState.p2SkillCount || 0;
 
+    // 4. キャラクター情報の再設定
+    // ※保存されたIDを使ってスキルなどをセットし直す
     if (savedState.blackCharId && savedState.whiteCharId) {
         initSkills(savedState.blackCharId, savedState.whiteCharId);
     }
 
-    // ★追加：時間の復元
-    if (savedState.remainingTime) {
-        remainingTime = savedState.remainingTime;
-    }
-
+    // 5. ゲーム進行フラグを立てる
     isGameStarted = true;
     gameOver = false;
     
+    // 6. 待機画面を強制的に消す
     const overlay = document.getElementById("waitingOverlay");
     if (overlay) {
         overlay.style.display = "none";
     }
 
-    // 時間表示を更新してからタイマー再開
-    updateTimeDisplay();
+    // 7. 画面の再描画とタイマー再開
     render();
     statusDiv.textContent = `再接続しました。現在 ${moveCount} 手目です。`;
     startTimer();
     
+    // 8. 自分の役割に応じて盤面の向きを調整
     if (myRole) {
         updateHandLayout(myRole);
         if (myRole === "white") {
@@ -265,38 +264,32 @@ socket.on('restore game', (savedState) => {
     }
 });
 
-// ★★★ 追加：サーバーからの定期的な時間同期を受け取る ★★★
-socket.on('sync time', (times) => {
-    remainingTime = times;
-    updateTimeDisplay();
-});
-
 socket.on('shogi move', (data) => {
-  // ★★★ 修正：TimeWarp（強制巻き戻し）の場合は、盤面を丸ごと復元する ★★★
-  if (data.isTimeWarp) {
-      console.log("TimeWarpを受信。盤面を強制同期します。");
-      const state = data.gameState;
+  // ★★★ 修正：TimeWarp（強制巻き戻し）の場合は、盤面を丸ごと復元する ★★★
+  if (data.isTimeWarp) {
+      console.log("TimeWarpを受信。盤面を強制同期します。");
+      const state = data.gameState;
 
-      // サーバーから送られてきた「戻った後の状態」で上書き
-      boardState = state.boardState;
-      hands = state.hands;
-      turn = state.turn;
-      moveCount = state.moveCount;
-      kifu = state.kifu;
-      p1SkillCount = state.p1SkillCount;
-      p2SkillCount = state.p2SkillCount;
+      // サーバーから送られてきた「戻った後の状態」で上書き
+      boardState = state.boardState;
+      hands = state.hands;
+      turn = state.turn;
+      moveCount = state.moveCount;
+      kifu = state.kifu;
+      p1SkillCount = state.p1SkillCount;
+      p2SkillCount = state.p2SkillCount;
 
-      // エフェクトなどは skill activate で処理済みなので、ここでは描画更新のみ
-      render();
-      startTimer();
-      
-      // ログ表示
-      statusDiv.textContent = "相手が時を戻しました！";
-  } 
-  else {
-      // 通常の駒移動
-      executeMove(data.sel, data.x, data.y, data.promote, true);
-  }
+      // エフェクトなどは skill activate で処理済みなので、ここでは描画更新のみ
+      render();
+      startTimer();
+      
+      // ログ表示
+      statusDiv.textContent = "相手が時を戻しました！";
+  } 
+  else {
+      // 通常の駒移動
+      executeMove(data.sel, data.x, data.y, data.promote, true);
+  }
 });
 
 socket.on('skill activate', (data) => {
@@ -318,10 +311,9 @@ socket.on('skill activate', (data) => {
   }
 });
 
-// ★★★ 修正：時間切れなどの理由を受け取れるようにする ★★★
 socket.on('game resign', (data) => {
     const winColor = (data.loser === "black") ? "white" : "black";
-    // data.reason (timeout, disconnect, default) を渡す
+    // 理由があればそれも渡す
     resolveResignation(winColor, data.reason);
 });
 
@@ -383,13 +375,13 @@ function initSkills(blackId, whiteId) {
     if (blackId === 'default' && typeof CharItsumono !== 'undefined') p1Skill = CharItsumono.skill;
     else if (blackId === 'char_a' && typeof CharNekketsu !== 'undefined') p1Skill = CharNekketsu.skill;
     else if (blackId === 'char_b' && typeof CharReisei !== 'undefined') p1Skill = CharReisei.skill;
-    else if (blackId === 'char_d' && typeof CharMachida !== 'undefined') p1Skill = CharMachida.skill;
+    else if (blackId === 'char_d' && typeof CharMachida !== 'undefined') p1Skill = CharMachida.skill;
 
     // 後手のスキル設定
     if (whiteId === 'default' && typeof CharItsumono !== 'undefined') p2Skill = CharItsumono.skill;
     else if (whiteId === 'char_a' && typeof CharNekketsu !== 'undefined') p2Skill = CharNekketsu.skill;
     else if (whiteId === 'char_b' && typeof CharReisei !== 'undefined') p2Skill = CharReisei.skill;
-    else if (whiteId === 'char_d' && typeof CharMachida !== 'undefined') p2Skill = CharMachida.skill;
+    else if (whiteId === 'char_d' && typeof CharMachida !== 'undefined') p2Skill = CharMachida.skill;
   
     // 画像反映
     applyPlayerImage();
@@ -525,31 +517,31 @@ function closeSkillModal() {
 
 // ★★★ 修正：サーバーから送られてきたIDを使って画像を表示 ★★★
 function applyPlayerImage() {
-  const blackHandBox = document.getElementById("blackHandBox");
-  // initSkills で保存したIDを使う（まだ無ければ null になる）
-  const charBlackId = sessionStorage.getItem('online_black_char');
-  
-  if (blackHandBox) {
-    const bgUrl = getImageUrlById(charBlackId);
-    // ★修正: URLがあれば表示、なければ 'none' で確実に消す
-    blackHandBox.style.backgroundImage = bgUrl || 'none';
-  }
+  const blackHandBox = document.getElementById("blackHandBox");
+  // initSkills で保存したIDを使う（まだ無ければ null になる）
+  const charBlackId = sessionStorage.getItem('online_black_char');
+  
+  if (blackHandBox) {
+    const bgUrl = getImageUrlById(charBlackId);
+    // ★修正: URLがあれば表示、なければ 'none' で確実に消す
+    blackHandBox.style.backgroundImage = bgUrl || 'none';
+  }
 
-  const whiteHandBox = document.getElementById("whiteHandBox");
-  const charWhiteId = sessionStorage.getItem('online_white_char');
-  
-  if (whiteHandBox) {
-    const bgUrl = getImageUrlById(charWhiteId);
-    // ★修正: URLがあれば表示、なければ 'none' で確実に消す
-    whiteHandBox.style.backgroundImage = bgUrl || 'none';
-  }
+  const whiteHandBox = document.getElementById("whiteHandBox");
+  const charWhiteId = sessionStorage.getItem('online_white_char');
+  
+  if (whiteHandBox) {
+    const bgUrl = getImageUrlById(charWhiteId);
+    // ★修正: URLがあれば表示、なければ 'none' で確実に消す
+    whiteHandBox.style.backgroundImage = bgUrl || 'none';
+  }
 }
 
 function getImageUrlById(charId) {
   if (charId === 'char_a') return "url('script/image/char_a.png')";
   if (charId === 'char_b') return "url('script/image/char_b.png')";
   if (charId === 'default') return "url('script/image/karui_1p.PNG')";
-  if (charId === 'char_d') return "url('script/image/char_d.png')";
+  if (charId === 'char_d') return "url('script/image/char_d.png')";
   return null;
 }
 
@@ -574,51 +566,26 @@ function stopBGM() {
 let timerInterval = null;
 let currentSeconds = 0;
 
-// --- 新・タイマー関連 ---
-let timerInterval = null;
-
 function startTimer() {
-    stopTimer();
-    updateTimeDisplay();
-    
-    // 1秒ごとに減らす（表示上の演出）
-    // ※本当の時間はサーバーが管理しているので、あくまで目安です
-    timerInterval = setInterval(() => {
-        if (remainingTime[turn] > 0) {
-            remainingTime[turn]--;
-            updateTimeDisplay();
-        }
-    }, 1000);
+  stopTimer();
+  currentSeconds = 0;
+  updateTimerDisplay();
+  timerInterval = setInterval(() => {
+    currentSeconds++;
+    updateTimerDisplay();
+  }, 1000);
 }
 
 function stopTimer() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
 }
 
-function updateTimeDisplay() {
-    const blackTimer = document.getElementById("blackTimer");
-    const whiteTimer = document.getElementById("whiteTimer");
-    
-    if (blackTimer) blackTimer.textContent = "▲先手: " + formatTime(remainingTime.black);
-    if (whiteTimer) whiteTimer.textContent = "△後手: " + formatTime(remainingTime.white);
-    
-    // 手番の方を赤くするなど強調しても良い
-    if (turn === 'black') {
-        if(blackTimer) blackTimer.style.fontWeight = "bold";
-        if(whiteTimer) whiteTimer.style.fontWeight = "normal";
-    } else {
-        if(blackTimer) blackTimer.style.fontWeight = "normal";
-        if(whiteTimer) whiteTimer.style.fontWeight = "bold";
-    }
-}
-
-function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
+function updateTimerDisplay() {
+  const timerBox = document.getElementById("timerBox");
+  if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
 }
 
 // --- 修正版 render関数 (Online Hybrid Version) ---
@@ -810,121 +777,121 @@ function renderHands() {
 // script/main_online_player.js
 
 function onCellClick(x, y) {
-  if (!isGameStarted) return; 
-  if (gameOver) return;
-  if (myRole && turn !== myRole) return;
+  if (!isGameStarted) return; 
+  if (gameOver) return;
+  if (myRole && turn !== myRole) return;
 
-  // ---------------------------------------------------------
-  // 1. 必殺技のターゲット選択モードの場合
-  // ---------------------------------------------------------
-  if (isSkillTargeting) {
-    // クリックした場所が有効なターゲット（光っている場所）か確認
-    if (legalMoves.some(m => m.x === x && m.y === y)) {
-      
-      // ★★★★★ TimeWarp（時戻し）などのシステム介入型スキルの分岐 ★★★★★
-      if (currentSkill && currentSkill.isSystemAction) {
-          
-          console.log("システムスキル発動:", currentSkill.name);
+  // ---------------------------------------------------------
+  // 1. 必殺技のターゲット選択モードの場合
+  // ---------------------------------------------------------
+  if (isSkillTargeting) {
+    // クリックした場所が有効なターゲット（光っている場所）か確認
+    if (legalMoves.some(m => m.x === x && m.y === y)) {
+      
+      // ★★★★★ TimeWarp（時戻し）などのシステム介入型スキルの分岐 ★★★★★
+      if (currentSkill && currentSkill.isSystemAction) {
+          
+          console.log("システムスキル発動:", currentSkill.name);
 
-          // 1. ターゲットモード解除
-          isSkillTargeting = false;
-          legalMoves = [];
-          selected = null;
-          const boardTable = document.getElementById("board");
-          if (boardTable) boardTable.classList.remove("skill-targeting-mode");
+          // 1. ターゲットモード解除
+          isSkillTargeting = false;
+          legalMoves = [];
+          selected = null;
+          const boardTable = document.getElementById("board");
+          if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
-          // 2. ローカルで「待った」を実行（自分の画面を戻す）
-          undoMove();
+          // 2. ローカルで「待った」を実行（自分の画面を戻す）
+          undoMove();
 
-          // 3. 使用回数の加算
-          // 手番が戻っているので、「現在のturn」＝「スキルを使った人」です
-          if (turn === "black") p1SkillCount++; else p2SkillCount++;
-          
-          // 4. ボタン状態の更新
-          syncGlobalSkillState();
+          // 3. 使用回数の加算
+          // 手番が戻っているので、「現在のturn」＝「スキルを使った人」です
+          if (turn === "black") p1SkillCount++; else p2SkillCount++;
+          
+          // 4. ボタン状態の更新
+          syncGlobalSkillState();
 
-          // 5. 【重要】ネットワーク同期処理
-          // 相手に「スキルを使ったよ」という演出を送る
-          if (socket) {
-              socket.emit('skill activate', { 
-                  x: 0, y: 0, // 演出用のダミー座標
-                  turn: turn, 
-                  isFinished: true 
-              });
+          // 5. 【重要】ネットワーク同期処理
+          // 相手に「スキルを使ったよ」という演出を送る
+          if (socket) {
+              socket.emit('skill activate', { 
+                  x: 0, y: 0, // 演出用のダミー座標
+                  turn: turn, 
+                  isFinished: true 
+              });
 
-              // 「戻した後の状態」を定義
-              const newState = {
-                  boardState: boardState,
-                  hands: hands,
-                  turn: turn,
-                  moveCount: moveCount,
-                  kifu: kifu,
-                  p1SkillCount: p1SkillCount,
-                  p2SkillCount: p2SkillCount,
-                  blackCharId: sessionStorage.getItem('online_black_char'),
-                  whiteCharId: sessionStorage.getItem('online_white_char')
-              };
+              // 「戻した後の状態」を定義
+              const newState = {
+                  boardState: boardState,
+                  hands: hands,
+                  turn: turn,
+                  moveCount: moveCount,
+                  kifu: kifu,
+                  p1SkillCount: p1SkillCount,
+                  p2SkillCount: p2SkillCount,
+                  blackCharId: sessionStorage.getItem('online_black_char'),
+                  whiteCharId: sessionStorage.getItem('online_white_char')
+              };
 
-              // サーバーに「この状態に強制変更して！」と送る
-              // isTimeWarp フラグを付けて、相手が普通の移動と区別できるようにする
-              socket.emit('shogi move', { 
-                  gameState: newState,
-                  isTimeWarp: true,     // ★これが相手の画面を戻す合図
-                  sel: {x:0, y:0},      
-                  x:0, y:0, promote:false
-              });
-          }
+              // サーバーに「この状態に強制変更して！」と送る
+              // isTimeWarp フラグを付けて、相手が普通の移動と区別できるようにする
+              socket.emit('shogi move', { 
+                  gameState: newState,
+                  isTimeWarp: true,     // ★これが相手の画面を戻す合図
+                  sel: {x:0, y:0},      
+                  x:0, y:0, promote:false
+              });
+          }
 
-          render();
-          statusDiv.textContent = "必殺技発動！ 時を戻しました。";
-          return; // ★ここで処理を終了させる（下のexecuteに行かせない）
-      }
-      // ★★★★★ ここまで ★★★★★
+          render();
+          statusDiv.textContent = "必殺技発動！ 時を戻しました。";
+          return; // ★ここで処理を終了させる（下のexecuteに行かせない）
+      }
+      // ★★★★★ ここまで ★★★★★
 
 
-      // --- 通常のスキル（熱血など）の処理 ---
-      const result = currentSkill.execute(x, y);
+      // --- 通常のスキル（熱血など）の処理 ---
+      const result = currentSkill.execute(x, y);
 
-      if (socket) {
-          socket.emit('skill activate', {
-              x: x, y: y, turn: turn,
-              isFinished: (result !== null) 
-          });
-      }
+      if (socket) {
+          socket.emit('skill activate', {
+              x: x, y: y, turn: turn,
+              isFinished: (result !== null) 
+          });
+      }
 
-      if (result === null) {
-          legalMoves = currentSkill.getValidTargets();
-          render();
-          statusDiv.textContent = "移動させる場所を選んでください";
-          return; 
-      }
-      processSkillAfterEffect(currentSkill, result, turn);
-    }
-    return;
-  }
-  
-  // ---------------------------------------------------------
-  // 2. 通常の駒移動処理（変更なし）
-  // ---------------------------------------------------------
-  if (!selected) {
-    const piece = boardState[y][x];
-    if (!piece) return;
-    const isWhite = piece === piece.toLowerCase();
-    if (turn === "black" && isWhite) return; 
-    if (turn === "white" && !isWhite) return;
-    selected = { x, y, fromHand: false };
-    legalMoves = getLegalMoves(x, y);
-    if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
-    render();
-    return;
-  }
-  const sel = selected;
-  if (legalMoves.some(m => m.x === x && m.y === y)) {
-    movePieceWithSelected(sel, x, y);
-  }
-  selected = null;
-  legalMoves = [];
-  render();
+      if (result === null) {
+          legalMoves = currentSkill.getValidTargets();
+          render();
+          statusDiv.textContent = "移動させる場所を選んでください";
+          return; 
+      }
+      processSkillAfterEffect(currentSkill, result, turn);
+    }
+    return;
+  }
+  
+  // ---------------------------------------------------------
+  // 2. 通常の駒移動処理（変更なし）
+  // ---------------------------------------------------------
+  if (!selected) {
+    const piece = boardState[y][x];
+    if (!piece) return;
+    const isWhite = piece === piece.toLowerCase();
+    if (turn === "black" && isWhite) return; 
+    if (turn === "white" && !isWhite) return;
+    selected = { x, y, fromHand: false };
+    legalMoves = getLegalMoves(x, y);
+    if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
+    render();
+    return;
+  }
+  const sel = selected;
+  if (legalMoves.some(m => m.x === x && m.y === y)) {
+    movePieceWithSelected(sel, x, y);
+  }
+  selected = null;
+  legalMoves = [];
+  render();
 }
 
 function selectFromHand(player, index) {
@@ -1255,19 +1222,23 @@ function resolveResignation(winnerColor, reason) {
     
     const winnerName = (winner === "black") ? "先手" : "後手";
     
+    // 理由に応じてメッセージを変える
     if (reason === "disconnect") {
         endReason = "通信切れにより、" + winnerName + "の勝ちです。";
-    } else if (reason === "timeout") {
-        endReason = "時間切れにより、" + winnerName + "の勝ちです。";
     } else {
         endReason = "投了により、" + winnerName + "の勝ちです。";
     }
     
     if (typeof showKifu === "function") showKifu();
+    
+    // 自分が対局者の場合のみ保存を実行
     if (myRole === "black" || myRole === "white") {
         const result = (winner === myRole) ? "win" : "lose";
+        
+        // ★修正：通信切れの場合は勝敗理由も保存すると良いかも（今回は既存の関数を使うためそのまま）
         saveGameResult(result);
     }
+
     render();
 }
 
@@ -1367,45 +1338,45 @@ function copyKifuText() {
 
 // 待った機能（TimeWarpから呼ばれる）
 function undoMove() {
-  // 履歴が足りないときは何もしない
-  if (!history || history.length < 2) {
-      console.log("履歴不足でundoできません");
-      return;
-  }
-  
-  // 2つ前の状態（自分の前の手番）を取り出す
-  const prev = history[history.length - 2];
-  history.length -= 2; 
-  lastMoveFrom = null;
-  
-  // 状態を復元
-  restoreState(prev);
+  // 履歴が足りないときは何もしない
+  if (!history || history.length < 2) {
+      console.log("履歴不足でundoできません");
+      return;
+  }
+  
+  // 2つ前の状態（自分の前の手番）を取り出す
+  const prev = history[history.length - 2];
+  history.length -= 2; 
+  lastMoveFrom = null;
+  
+  // 状態を復元
+  restoreState(prev);
 
-  window.isCaptureRestricted = false;
-  gameOver = false;
-  winner = null;
-  
-  // 表示更新
-  syncGlobalSkillState();
-  render();
-  if (typeof showKifu === "function") showKifu();
-  startTimer();
+  window.isCaptureRestricted = false;
+  gameOver = false;
+  winner = null;
+  
+  // 表示更新
+  syncGlobalSkillState();
+  render();
+  if (typeof showKifu === "function") showKifu();
+  startTimer();
 }
 
 // 状態復元関数（undoMoveから呼ばれる）
 function restoreState(state) {
-    boardState = JSON.parse(JSON.stringify(state.boardState));
-    hands = JSON.parse(JSON.stringify(state.hands));
-    turn = state.turn;
-    moveCount = state.moveCount;
-    kifu = JSON.parse(JSON.stringify(state.kifu));
-    
-    // スキルカウントの復元
-    if (state.p1SkillCount !== undefined) p1SkillCount = state.p1SkillCount;
-    if (state.p2SkillCount !== undefined) p2SkillCount = state.p2SkillCount;
-    
-    // エフェクト消去
-    pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
+    boardState = JSON.parse(JSON.stringify(state.boardState));
+    hands = JSON.parse(JSON.stringify(state.hands));
+    turn = state.turn;
+    moveCount = state.moveCount;
+    kifu = JSON.parse(JSON.stringify(state.kifu));
+    
+    // スキルカウントの復元
+    if (state.p1SkillCount !== undefined) p1SkillCount = state.p1SkillCount;
+    if (state.p2SkillCount !== undefined) p2SkillCount = state.p2SkillCount;
+    
+    // エフェクト消去
+    pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
 }
 
 /**
@@ -1599,20 +1570,19 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
 // ★★★ 追加：現在のゲーム状態を丸ごとコピーして返す関数 ★★★
 // これがないと、履歴（history）に正しいデータが保存されず、待った機能でエラーになります。
 function deepCopyState() {
-    return {
-        boardState: JSON.parse(JSON.stringify(boardState)), // 盤面のコピー
-        hands: JSON.parse(JSON.stringify(hands)),           // 持ち駒のコピー
-        turn: turn,                                         // 手番
-        moveCount: moveCount,                               // 手数
-        kifu: JSON.parse(JSON.stringify(kifu)),             // 棋譜
-        
-        // スキルの使用状況も保存
-        p1SkillCount: p1SkillCount,
-        p2SkillCount: p2SkillCount,
-        
-        // 最後に動かした位置（ハイライト用）
-        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
-        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
-    };
+    return {
+        boardState: JSON.parse(JSON.stringify(boardState)), // 盤面のコピー
+        hands: JSON.parse(JSON.stringify(hands)),           // 持ち駒のコピー
+        turn: turn,                                         // 手番
+        moveCount: moveCount,                               // 手数
+        kifu: JSON.parse(JSON.stringify(kifu)),             // 棋譜
+        
+        // スキルの使用状況も保存
+        p1SkillCount: p1SkillCount,
+        p2SkillCount: p2SkillCount,
+        
+        // 最後に動かした位置（ハイライト用）
+        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
+        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
+    };
 }
-　これでうまくできていますか？しっかりと確認し、教えてください。
