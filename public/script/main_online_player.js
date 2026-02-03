@@ -967,3 +967,36 @@ const INITIAL_BOARD_CONST = [
     ["P", "P", "P", "P", "P", "P", "P", "P", "P"], ["", "B", "", "", "", "", "", "R", ""],
     ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
 ];
+
+// ↓↓↓ main_online_player.js の一番下にこれを追加してください ↓↓↓
+
+function playGameEndEffect(winnerColor) {
+    const cutInImg = document.getElementById("skillCutIn");
+    let imgPath, audioPath;
+
+    // 自分が勝ったかどうか
+    // (自分が観戦者の場合は、先手が勝ったら勝利演出とする、などの調整も可)
+    if (winnerColor === myRole) {
+        imgPath = "script/image/shori.PNG";
+        audioPath = "script/audio/shori.mp3";
+    } else {
+        imgPath = "script/image/haiboku.PNG";
+        audioPath = "script/audio/haiboku.mp3";
+    }
+
+    const audio = new Audio(audioPath);
+    audio.volume = 1.0;
+    audio.play().catch(e => {});
+
+    if (cutInImg) {
+        cutInImg.src = imgPath;
+        cutInImg.classList.remove("cut-in-active");
+        void cutInImg.offsetWidth; 
+        cutInImg.classList.add("cut-in-active");
+        
+        // 3秒後に消す
+        setTimeout(() => { 
+            cutInImg.classList.remove("cut-in-active"); 
+        }, 3000);
+    }
+}
