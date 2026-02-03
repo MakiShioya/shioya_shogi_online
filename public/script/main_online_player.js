@@ -216,55 +216,59 @@ socket.on('game start', (data) => {
 
 // main_online_player.js に追加
 
-// ★★★ 追加：サーバーから「ゲーム復元」の指示が来た時の処理 ★★★
+// ★★★ 修正：復元時に「時間」も同期する ★★★
 socket.on('restore game', (savedState) => {
-    console.log("サーバーからゲーム状態を復元します:", savedState);
+    console.log("サーバーからゲーム状態を復元します:", savedState);
 
-    // 1. 変数をサーバーのデータで上書き
-    boardState = savedState.boardState; // 盤面
-    hands = savedState.hands;           // 持ち駒
-    turn = savedState.turn;             // 手番
-    moveCount = savedState.moveCount;   // 手数
-    kifu = savedState.kifu;             // 棋譜
-    
-    // 2. 最後に動かした位置などの復元
-    lastMoveTo = savedState.lastMoveTo || null;
-    lastMoveFrom = savedState.lastMoveFrom || null;
+    boardState = savedState.boardState;
+    hands = savedState.hands;
+    turn = savedState.turn;
+    moveCount = savedState.moveCount;
+    kifu = savedState.kifu;
+    
+    lastMoveTo = savedState.lastMoveTo || null;
+    lastMoveFrom = savedState.lastMoveFrom || null;
 
-    // 3. スキル情報の復元
-    p1SkillCount = savedState.p1SkillCount || 0;
-    p2SkillCount = savedState.p2SkillCount || 0;
+    p1SkillCount = savedState.p1SkillCount || 0;
+    p2SkillCount = savedState.p2SkillCount || 0;
 
-    // 4. キャラクター情報の再設定
-    // ※保存されたIDを使ってスキルなどをセットし直す
-    if (savedState.blackCharId && savedState.whiteCharId) {
-        initSkills(savedState.blackCharId, savedState.whiteCharId);
-    }
+    if (savedState.blackCharId && savedState.whiteCharId) {
+        initSkills(savedState.blackCharId, savedState.whiteCharId);
+    }
 
-    // 5. ゲーム進行フラグを立てる
-    isGameStarted = true;
-    gameOver = false;
-    
-    // 6. 待機画面を強制的に消す
-    const overlay = document.getElementById("waitingOverlay");
-    if (overlay) {
-        overlay.style.display = "none";
-    }
+    // ★追加：時間の復元
+    if (savedState.remainingTime) {
+        remainingTime = savedState.remainingTime;
+    }
 
-    // 7. 画面の再描画とタイマー再開
-    render();
-    statusDiv.textContent = `再接続しました。現在 ${moveCount} 手目です。`;
-    startTimer();
-    
-    // 8. 自分の役割に応じて盤面の向きを調整
-    if (myRole) {
-        updateHandLayout(myRole);
-        if (myRole === "white") {
-            document.body.classList.add("view-white");
-        } else {
-            document.body.classList.remove("view-white");
-        }
-    }
+    isGameStarted = true;
+    gameOver = false;
+    
+    const overlay = document.getElementById("waitingOverlay");
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+
+    // 時間表示を更新してからタイマー再開
+    updateTimeDisplay();
+    render();
+    statusDiv.textContent = `再接続しました。現在 ${moveCount} 手目です。`;
+    startTimer();
+    
+    if (myRole) {
+        updateHandLayout(myRole);
+        if (myRole === "white") {
+            document.body.classList.add("view-white");
+        } else {
+            document.body.classList.remove("view-white");
+        }
+    }
+});
+
+// ★★★ 追加：サーバーからの定期的な時間同期を受け取る ★★★
+socket.on('sync time', (times) => {
+    remainingTime = times;
+    updateTimeDisplay();
 });
 
 socket.on('shogi move', (data) => {
@@ -314,10 +318,11 @@ socket.on('skill activate', (data) => {
   }
 });
 
+// ★★★ 修正：時間切れなどの理由を受け取れるようにする ★★★
 socket.on('game resign', (data) => {
-    const winColor = (data.loser === "black") ? "white" : "black";
-    // 理由があればそれも渡す
-    resolveResignation(winColor, data.reason);
+    const winColor = (data.loser === "black") ? "white" : "black";
+    // data.reason (timeout, disconnect, default) を渡す
+    resolveResignation(winColor, data.reason);
 });
 
 socket.on('game reset', () => {
