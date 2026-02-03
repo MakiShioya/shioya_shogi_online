@@ -1,4 +1,4 @@
-// script/main_online_player.js (Fixed Version)
+// script/main_online_player.js (Final Fixed Version)
 
 // ★★★ 1. Socket初期化 ★★★
 const socket = io({ autoConnect: false });
@@ -14,7 +14,8 @@ const resignBtn = document.getElementById("resignBtn");
 // 自分のキャラID
 const myCharId = sessionStorage.getItem('my_character') || 'default';
 
-// --- 変数定義 (globals.jsにあるものは let をつけない) ---
+// --- 変数定義 ---
+// globals.js にある変数は let を付けずに初期化
 boardState = []; 
 hands = { black: [], white: [] };
 turn = "black";
@@ -38,7 +39,7 @@ moveSound = null;
 promoteSound = null;
 cpuEnabled = false; 
 
-// --- オンライン専用変数 (ここから下は let が必要) ---
+// オンライン専用変数 (let必要)
 let p1Skill = null;      
 let p2Skill = null;      
 let p1SkillCount = 0;    
@@ -72,7 +73,6 @@ window.addEventListener("load", () => {
     const displaySpan = document.getElementById("myCharNameDisplay");
     if (displaySpan) displaySpan.textContent = myCharName;
 
-    // ★修正：引数なしで呼ぶ（nullで上書きさせないため）
     applyPlayerImage(); 
 
     if (resignBtn) resignBtn.addEventListener("click", resignGame);
@@ -145,7 +145,6 @@ function setupSocketListeners(myUserId) {
     });
 
     socket.on('update room status', (data) => {
-        // キャラ情報があれば更新
         if (data.blackChar && data.whiteChar) {
             initSkills(data.blackChar, data.whiteChar);
         }
@@ -240,6 +239,9 @@ function setupSocketListeners(myUserId) {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
+        // ★追加：相手の必殺技演出を再生
+        playSkillCutIn(data.turn);
+
         currentSkill = skillToUse; 
         legalMoves = [{ x: data.x, y: data.y }];
         isSkillTargeting = true;
@@ -271,7 +273,6 @@ function initGameSequence() {
         overlay.style.opacity = "0";
         setTimeout(() => { overlay.style.display = "none"; }, 500);
     }
-    // カットイン演出
     const cutInImg = document.getElementById("skillCutIn");
     const isSente = (myRole !== "white");
     const imgPath = isSente ? "script/image/sente.PNG" : "script/image/gote.PNG";
@@ -299,12 +300,10 @@ function startActualGame() {
     render();
 }
 
-// ★修正：nullチェックを強化
 function initSkills(blackId, whiteId) {
     if (blackId) sessionStorage.setItem('online_black_char', blackId);
     if (whiteId) sessionStorage.setItem('online_white_char', whiteId);
 
-    // 再取得（nullならdefault）
     const b = blackId || sessionStorage.getItem('online_black_char') || 'default';
     const w = whiteId || sessionStorage.getItem('online_white_char') || 'default';
 
@@ -477,6 +476,10 @@ function onCellClick(x, y) {
 
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
+            
+            // ★追加：自分の必殺技演出を再生
+            playSkillCutIn(turn);
+
             // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
                 isSkillTargeting = false; legalMoves = []; selected = null;
@@ -488,7 +491,6 @@ function onCellClick(x, y) {
                 if (socket) {
                     socket.emit('skill activate', { x: 0, y: 0, turn: turn, isFinished: true });
                     const newState = deepCopyState(); 
-                    // 送信データ作成
                     const sendState = {
                         boardState: newState.boardState, hands: newState.hands, turn: newState.turn,
                         moveCount: newState.moveCount, kifu: newState.kifu,
@@ -960,67 +962,44 @@ function undoMove() {
     if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
     pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
 }
-const INITIAL_BOARD_CONST = [
-    ["l", "n", "s", "g", "k", "g", "s", "n", "l"], ["", "r", "", "", "", "", "", "b", ""],
-    ["p", "p", "p", "p", "p", "p", "p", "p", "p"], ["", "", "", "", "", "", "", "", ""],
-    ["", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", ""],
-    ["P", "P", "P", "P", "P", "P", "P", "P", "P"], ["", "B", "", "", "", "", "", "R", ""],
-    ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
-];
 
-// ↓↓↓ script/main_online_player.js の一番下に追加してください ↓↓↓
-
-// ★これが抜けていたため、技を使うとエラーになっていました
+// ★★★ 追加した重要関数 1: 技を使った後の処理 ★★★
 function processSkillAfterEffect(skillObj, result, playerColor) {
-    // 履歴保存
     history.push(deepCopyState());
-    
     const boardTable = document.getElementById("board");
     if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
-    // "SYSTEM"（TimeWarpなど）以外なら手番を進める処理
     if (result !== "SYSTEM") {
         const endsTurn = (skillObj.endsTurn !== false);
         if (endsTurn) {
-            kifu.push(""); 
-            kifu[kifu.length - 1] = result;
+            kifu.push(""); kifu[kifu.length - 1] = result;
             moveCount++; 
-            
-            // スキル回数加算
             if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
-            
-            // 手番交代
             turn = (turn === "black" ? "white" : "black");
         } else {
-            // 手番が終わらないスキル用
             const movePart = result.split("：")[1] || result;
             lastSkillKifu = movePart; 
             if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
         }
     }
     
-    // 状態リセット
     lastMoveTo = null;
     if (moveSound) { moveSound.currentTime = 0; moveSound.play().catch(() => {}); }
     if (skillObj.reset) skillObj.reset();
-    
     isSkillTargeting = false;
     legalMoves = [];
     selected = null;
-    
-    // UI更新
     syncGlobalSkillState();
     render();
     if (typeof showKifu === "function") showKifu();
     startTimer();
 }
 
-// ★これが抜けていたため、投了や決着時にエラーになっていました
+// ★★★ 追加した重要関数 2: 勝敗・終了時の演出 ★★★
 function playGameEndEffect(winnerColor) {
     const cutInImg = document.getElementById("skillCutIn");
     let imgPath, audioPath;
 
-    // 自分が勝ったかどうか
     if (winnerColor === myRole) {
         imgPath = "script/image/shori.PNG";
         audioPath = "script/audio/shori.mp3";
@@ -1039,9 +1018,39 @@ function playGameEndEffect(winnerColor) {
         void cutInImg.offsetWidth; 
         cutInImg.classList.add("cut-in-active");
         
-        // 3秒後に消す
         setTimeout(() => { 
             cutInImg.classList.remove("cut-in-active"); 
         }, 3000);
     }
 }
+
+// ★★★ 追加した重要関数 3: 必殺技カットイン演出 ★★★
+function playSkillCutIn(playerColor) {
+    const charId = (playerColor === 'black') 
+        ? sessionStorage.getItem('online_black_char') 
+        : sessionStorage.getItem('online_white_char');
+
+    // 画像URLの取得
+    const src = getImageUrlById(charId) ? getImageUrlById(charId).replace('url("', '').replace('")', '') : "";
+    
+    // スキル用効果音（なければmoveSoundなどで代用も可）
+    const audio = new Audio("script/audio/move.mp3"); 
+    audio.play().catch(()=>{});
+
+    const cutInImg = document.getElementById("skillCutIn");
+    if(cutInImg && src) {
+        cutInImg.src = src;
+        cutInImg.classList.remove("cut-in-active");
+        void cutInImg.offsetWidth;
+        cutInImg.classList.add("cut-in-active");
+        setTimeout(() => cutInImg.classList.remove("cut-in-active"), 2000);
+    }
+}
+
+const INITIAL_BOARD_CONST = [
+    ["l", "n", "s", "g", "k", "g", "s", "n", "l"], ["", "r", "", "", "", "", "", "b", ""],
+    ["p", "p", "p", "p", "p", "p", "p", "p", "p"], ["", "", "", "", "", "", "", "", ""],
+    ["", "", "", "", "", "", "", "", ""], ["", "", "", "", "", "", "", "", ""],
+    ["P", "P", "P", "P", "P", "P", "P", "P", "P"], ["", "B", "", "", "", "", "", "R", ""],
+    ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
+];
