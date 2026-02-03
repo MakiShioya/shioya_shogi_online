@@ -53,6 +53,7 @@ window.addEventListener("load", () => {
   if (charId === 'default' && typeof CharItsumono !== 'undefined') currentSkill = CharItsumono.skill;
   else if (charId === 'char_a' && typeof CharNekketsu !== 'undefined') currentSkill = CharNekketsu.skill;
   else if (charId === 'char_b' && typeof CharReisei !== 'undefined') currentSkill = CharReisei.skill;
+  else if (charId === 'char_d' && typeof CharMachida !== 'undefined') currentSkill = CharMachida.skill;
   else currentSkill = null;
 
   updateSkillButton();
@@ -370,6 +371,37 @@ function onCellClick(x, y) {
   // 必殺技ターゲット選択中
   if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
+
+// ★★★ 追加：システム介入型（待った等）の分岐 ★★★
+      if (currentSkill.isSystemAction) {
+        
+        // 1. 先にターゲットモードを確実に解除する（変数を直接操作）
+        isSkillTargeting = false;
+        legalMoves = [];
+        selected = null;
+        
+        // 2. 盤面の光る演出を消す
+        const boardTable = document.getElementById("board");
+        if (boardTable) boardTable.classList.remove("skill-targeting-mode");
+
+        // 3. ここで「待った」を実行！
+        // モードが解除されているので、今度はちゃんと盤面が戻ります。
+        if (typeof undoMove === "function") {
+             undoMove();
+        }
+
+        // 4. 重要：「待った」で過去の状態に戻ると「スキル使用回数」も
+        // 戻ってしまう可能性があるため、ここで再度「使用済み」を強制します。
+        window.skillUsed = true;
+        skillUseCount = 1;
+        
+        updateSkillButton();
+        render(); // 再描画
+        statusDiv.textContent = "必殺技発動！ 時を戻しました。";
+        return; 
+      }
+      // ★★★ 修正箇所：ここまで ★★★
+
       const result = currentSkill.execute(x, y);
       if (result === null) {
           legalMoves = currentSkill.getValidTargets();
@@ -551,6 +583,7 @@ function applyPlayerImage() {
   if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
   else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
   else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
+  else if (charId === 'char_d') imageUrl = "url('script/image/char_d.png')";
   
   if (imageUrl) myBox.style.backgroundImage = imageUrl;
 }
