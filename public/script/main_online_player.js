@@ -92,6 +92,9 @@ let myRole = null;
 let endReason = null;
 let isGameStarted = false;
 let hasShownEndEffect = false;
+// 変数定義
+let remainingTime = { black: 1200, white: 1200 }; // 20分 = 1200秒
+let lastReceivedTime = Date.now(); // 同期用
 window.skillUsed = false;
 window.isCaptureRestricted = false;
 
