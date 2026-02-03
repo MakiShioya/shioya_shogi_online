@@ -968,14 +968,59 @@ const INITIAL_BOARD_CONST = [
     ["L", "N", "S", "G", "K", "G", "S", "N", "L"]
 ];
 
-// ↓↓↓ main_online_player.js の一番下にこれを追加してください ↓↓↓
+// ↓↓↓ script/main_online_player.js の一番下に追加してください ↓↓↓
 
+// ★これが抜けていたため、技を使うとエラーになっていました
+function processSkillAfterEffect(skillObj, result, playerColor) {
+    // 履歴保存
+    history.push(deepCopyState());
+    
+    const boardTable = document.getElementById("board");
+    if (boardTable) boardTable.classList.remove("skill-targeting-mode");
+
+    // "SYSTEM"（TimeWarpなど）以外なら手番を進める処理
+    if (result !== "SYSTEM") {
+        const endsTurn = (skillObj.endsTurn !== false);
+        if (endsTurn) {
+            kifu.push(""); 
+            kifu[kifu.length - 1] = result;
+            moveCount++; 
+            
+            // スキル回数加算
+            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
+            
+            // 手番交代
+            turn = (turn === "black" ? "white" : "black");
+        } else {
+            // 手番が終わらないスキル用
+            const movePart = result.split("：")[1] || result;
+            lastSkillKifu = movePart; 
+            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
+        }
+    }
+    
+    // 状態リセット
+    lastMoveTo = null;
+    if (moveSound) { moveSound.currentTime = 0; moveSound.play().catch(() => {}); }
+    if (skillObj.reset) skillObj.reset();
+    
+    isSkillTargeting = false;
+    legalMoves = [];
+    selected = null;
+    
+    // UI更新
+    syncGlobalSkillState();
+    render();
+    if (typeof showKifu === "function") showKifu();
+    startTimer();
+}
+
+// ★これが抜けていたため、投了や決着時にエラーになっていました
 function playGameEndEffect(winnerColor) {
     const cutInImg = document.getElementById("skillCutIn");
     let imgPath, audioPath;
 
     // 自分が勝ったかどうか
-    // (自分が観戦者の場合は、先手が勝ったら勝利演出とする、などの調整も可)
     if (winnerColor === myRole) {
         imgPath = "script/image/shori.PNG";
         audioPath = "script/audio/shori.mp3";
