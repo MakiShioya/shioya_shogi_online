@@ -1,4 +1,4 @@
-// script/main_online_player.js (Skill Fixed Version)
+// script/main_online_player.js (Final Corrected Version)
 
 // ★★★ 1. Socket初期化 ★★★
 const socket = io({ autoConnect: false });
@@ -91,7 +91,6 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
             const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
             localStorage.setItem('shogi_username', displayName);
 
-            // 接続開始
             socket.io.opts.query = { userId: user.uid };
             socket.connect();
 
@@ -171,7 +170,6 @@ function setupSocketListeners(myUserId) {
         initGameSequence(); 
     });
 
-    // 復元処理（修正：スタイルとフラグも復元）
     socket.on('restore game', (savedState) => {
         console.log("Restore:", savedState);
         boardState = savedState.boardState;
@@ -185,7 +183,6 @@ function setupSocketListeners(myUserId) {
         p1SkillCount = savedState.p1SkillCount || 0;
         p2SkillCount = savedState.p2SkillCount || 0;
 
-        // ★追加修正：スタイルと制限フラグを復元
         if (savedState.pieceStyles) pieceStyles = savedState.pieceStyles;
         else pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
         
@@ -235,7 +232,6 @@ function setupSocketListeners(myUserId) {
             p1SkillCount = state.p1SkillCount;
             p2SkillCount = state.p2SkillCount;
             
-            // ★追加修正：TimeWarp時もスタイル等を同期
             if(state.pieceStyles) pieceStyles = state.pieceStyles;
             if(state.isCaptureRestricted !== undefined) window.isCaptureRestricted = state.isCaptureRestricted;
 
@@ -243,17 +239,13 @@ function setupSocketListeners(myUserId) {
             startTimer();
             statusDiv.textContent = "相手が時を戻しました！";
         } else {
-            // ★追加修正：通常移動時も送られてきたgameStateを正とする（スタイルのため）
-            // data.promote は executeMove で使うが、緑色などのスタイル情報は
-            // executeMove 内では再現できない（Move自体は単純移動だから）。
-            // なので、gameState からスタイルだけ安全にコピーする。
+            // スタイル情報の同期
             if (data.gameState && data.gameState.pieceStyles) {
                 pieceStyles = data.gameState.pieceStyles;
             }
             if (data.gameState && data.gameState.isCaptureRestricted !== undefined) {
                 window.isCaptureRestricted = data.gameState.isCaptureRestricted;
             }
-
             executeMove(data.sel, data.x, data.y, data.promote, true);
         }
     });
@@ -262,25 +254,28 @@ function setupSocketListeners(myUserId) {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
 
-        playSkillCutIn(data.turn);
+        // ★削除: playSkillCutIn (これが悪さをしていました)
+        // 演出は execute() 内の playSkillEffect で行われます
 
         currentSkill = skillToUse; 
         legalMoves = [{ x: data.x, y: data.y }];
         isSkillTargeting = true;
 
         if (data.isFinished) {
+            // システム系（TimeWarpなど）の場合、ここで演出を呼ぶ必要がある
+            if (skillToUse.isSystemAction) {
+                 playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3"], "gold");
+            }
             processSkillAfterEffect(skillToUse, "SYSTEM", data.turn);
         } else {
+            // 通常スキル
             const result = skillToUse.execute(data.x, data.y);
             
-            // ★★★ 重要修正：SilverArmor対策 ★★★
-            // executeの結果がnull（＝ステップ1：駒選択中）の場合は、
-            // 処理を完了せず、画面更新（オレンジ表示）だけして終わる。
-            if (result !== null) {
-                processSkillAfterEffect(skillToUse, result, data.turn);
-            } else {
-                // まだ技の途中なので、描画だけ更新して待機
+            // ステップ1（駒選択中）なら処理を中断して描画のみ更新
+            if (result === null) {
                 render();
+            } else {
+                processSkillAfterEffect(skillToUse, result, data.turn);
             }
         }
     });
@@ -508,10 +503,11 @@ function onCellClick(x, y) {
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
             
-            playSkillCutIn(turn);
-
             // TimeWarp
             if (currentSkill && currentSkill.isSystemAction) {
+                // TimeWarpの演出
+                playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3"], "gold");
+
                 isSkillTargeting = false; legalMoves = []; selected = null;
                 document.getElementById("board").classList.remove("skill-targeting-mode");
                 undoMove(); 
@@ -520,14 +516,13 @@ function onCellClick(x, y) {
 
                 if (socket) {
                     socket.emit('skill activate', { x: 0, y: 0, turn: turn, isFinished: true });
-                    // 送信データ作成（スタイル情報も含む）
                     const newState = deepCopyState(); 
                     const sendState = {
                         boardState: newState.boardState, hands: newState.hands, turn: newState.turn,
                         moveCount: newState.moveCount, kifu: newState.kifu,
                         p1SkillCount: newState.p1SkillCount, p2SkillCount: newState.p2SkillCount,
-                        pieceStyles: newState.pieceStyles, // ★重要
-                        isCaptureRestricted: newState.isCaptureRestricted, // ★重要
+                        pieceStyles: newState.pieceStyles,
+                        isCaptureRestricted: newState.isCaptureRestricted,
                         blackCharId: sessionStorage.getItem('online_black_char'),
                         whiteCharId: sessionStorage.getItem('online_white_char')
                     };
@@ -539,9 +534,11 @@ function onCellClick(x, y) {
                 statusDiv.textContent = "必殺技発動！ 時を戻しました。";
                 return;
             }
-            // Normal Skill
+            
+            // 通常スキル
             const result = currentSkill.execute(x, y);
             if (socket) socket.emit('skill activate', { x: x, y: y, turn: turn, isFinished: (result !== null) });
+            
             if (result === null) {
                 legalMoves = currentSkill.getValidTargets();
                 render();
@@ -781,15 +778,15 @@ function render() {
                 const name = pieceName[key];
                 textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
                 
-                // ★修正：pieceStylesの適用
+                // ★修正：pieceStylesの適用（オレンジ色を追加）
                 if (pieceStyles[y][x] === "green") {
                     textSpan.style.color = "#32CD32";
                     textSpan.style.fontWeight = "bold";
                     textSpan.style.textShadow = "1px 1px 0px #000";
                 } else if (pieceStyles[y][x] === "orange") {
-                    // 必殺技用：オレンジ色（選択中）
                     textSpan.style.color = "orange";
                     textSpan.style.fontWeight = "bold";
+                    textSpan.style.textShadow = "1px 1px 0px #000";
                 }
 
                 container.appendChild(textSpan);
@@ -818,30 +815,34 @@ function render() {
     updateSkillButton();
 }
 
-function playSkillCutIn(playerColor) {
-    const charId = (playerColor === 'black') 
-        ? sessionStorage.getItem('online_black_char') 
-        : sessionStorage.getItem('online_white_char');
-
-    let rawString = getImageUrlById(charId);
-    let src = "";
-    if (rawString) {
-        src = rawString.replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
-    }
-    
-    const audio = new Audio("script/audio/move.mp3"); 
-    audio.play().catch(()=>{});
-
+// ★★★ 必殺技演出関数（正しい実装） ★★★
+function playSkillEffect(imageName, soundNames, colorTheme) {
+    // 1. 画像表示
     const cutInImg = document.getElementById("skillCutIn");
-    if(cutInImg && src) {
-        cutInImg.src = src;
+    if (cutInImg && imageName) {
+        // スキルファイルが指定した画像ファイル名をそのまま使う
+        cutInImg.src = "script/image/" + imageName; 
+        
         cutInImg.classList.remove("cut-in-active");
         void cutInImg.offsetWidth;
         cutInImg.classList.add("cut-in-active");
-        setTimeout(() => cutInImg.classList.remove("cut-in-active"), 2000);
+        
+        // 3秒後に消す
+        setTimeout(() => {
+            cutInImg.classList.remove("cut-in-active");
+        }, 3000);
+    }
+    
+    // 2. 音声再生
+    if (soundNames && soundNames.length > 0) {
+        const audioPath = "script/audio/" + soundNames[0];
+        const audio = new Audio(audioPath);
+        audio.volume = 1.0;
+        audio.play().catch(e => {});
     }
 }
 
+// ★★★ 勝敗演出 ★★★
 function playGameEndEffect(winnerColor) {
     const cutInImg = document.getElementById("skillCutIn");
     let imgPath, audioPath;
@@ -867,6 +868,7 @@ function playGameEndEffect(winnerColor) {
     }
 }
 
+// ★★★ 技の後処理 ★★★
 function processSkillAfterEffect(skillObj, result, playerColor) {
     history.push(deepCopyState());
     const boardTable = document.getElementById("board");
@@ -904,7 +906,7 @@ function deepCopyState() {
         hands: JSON.parse(JSON.stringify(hands)),
         turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)),
         p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
-        // ★修正：スタイル情報と攻撃禁止フラグも保存対象に追加
+        // ★スタイル情報と攻撃禁止フラグも保存
         pieceStyles: JSON.parse(JSON.stringify(pieceStyles)),
         isCaptureRestricted: window.isCaptureRestricted,
         lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
@@ -922,7 +924,7 @@ function undoMove() {
     kifu = JSON.parse(JSON.stringify(prev.kifu));
     if (prev.p1SkillCount !== undefined) p1SkillCount = prev.p1SkillCount;
     if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
-    // ★修正：スタイルとフラグも履歴から戻す
+    // ★スタイルとフラグも履歴から戻す
     if (prev.pieceStyles) pieceStyles = JSON.parse(JSON.stringify(prev.pieceStyles));
     else pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
     if (prev.isCaptureRestricted !== undefined) window.isCaptureRestricted = prev.isCaptureRestricted;
