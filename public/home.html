@@ -537,12 +537,6 @@
 
   <script src="script/auth.js"></script>
   <script>
-
-    window.addEventListener('load', () => {
-     autoRotateTitle();
-     // 右クリックメニューを禁止
-     window.addEventListener('contextmenu', (e) => e.preventDefault());
- });
     
     // --- ★★★ 修正点：Socket.ioをここで一括初期化 ★★★ ---
     let socket = null;
@@ -944,10 +938,19 @@
     window.addEventListener('load', autoRotateTitle);
     window.addEventListener('resize', autoRotateTitle);
     setTimeout(autoRotateTitle, 100);
+
+
+       window.addEventListener('load', () => {
+     autoRotateTitle();
+     // 右クリックメニューを禁止
+     window.addEventListener('contextmenu', (e) => e.preventDefault());
+ });
+    
   </script>
 
 </body>
 </html>
+
 
 
 
