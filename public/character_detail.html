@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>キャラクター詳細</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <link rel="icon" href="script/image/komiya_icon.png"> 
     <link rel="manifest" href="manifest.json">
     <style>
@@ -10,6 +12,7 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            /* ダブルタップ判定などを抑制 */
             touch-action: manipulation;
         }
 
@@ -29,7 +32,7 @@
             font-family: "MS Mincho", serif;
             overflow: hidden; 
 
-            /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+            /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -74,7 +77,7 @@
             border-radius: 10px;
             flex-shrink: 1; /* 画面が狭いときは画像が縮むようにする */
 
-            /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
+            /* 画像の長押し・保存を無効化 */
             pointer-events: none;
         }
 
@@ -181,13 +184,30 @@
 </script>
 
 <script>
+  // 右クリック禁止
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
   }, { passive: false });
 
+  // ドラッグ禁止
   document.addEventListener('dragstart', function(e) {
     e.preventDefault();
   }, { passive: false });
+
+  // ▼▼▼ 追加：iOS（iPhone/iPad）でのピンチイン・ピンチアウト拡大を禁止 ▼▼▼
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
 </script>
 
 </body>
