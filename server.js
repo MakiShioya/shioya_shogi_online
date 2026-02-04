@@ -273,10 +273,44 @@ io.on('connection', (socket) => {
         const roomId = socket.roomId;
         if (!roomId || !games[roomId]) return;
         
+        const serverGame = games[roomId];
+
+        // ★★★ 【重要】時間計算ロジック（ここを書き換え） ★★★
+        // クライアントから送られてきた remainingTime は信用せず、サーバー側で計算する
+        
+        const now = Date.now();
+        // 前回の指し手（または対局開始）からの経過秒数
+        const elapsed = Math.floor((now - serverGame.lastMoveTime) / 1000);
+        
+        // 現在の手番プレイヤー（指した人）の時間を減らす
+        // ※ serverGame.turn はまだ「指した人」のまま（この後の処理で切り替わるため）
+        if (serverGame.remainingTime[serverGame.turn] !== undefined) {
+            serverGame.remainingTime[serverGame.turn] -= elapsed;
+            
+            // マイナスにならないように補正
+            if (serverGame.remainingTime[serverGame.turn] < 0) {
+                serverGame.remainingTime[serverGame.turn] = 0;
+            }
+        }
+
+        // 次の手番のために基準時刻を更新
+        serverGame.lastMoveTime = now;
+        
+        // ★★★ 計算した正式な時間を送信データに上書きする ★★★
+        if (data.gameState) {
+            data.gameState.remainingTime = serverGame.remainingTime;
+        }
+        // ★★★ 修正ここまで ★★★
+
+
+        // 相手に転送
         socket.to(roomId).emit('shogi move', data);
 
+        // 指した本人にも正しい時間を通知して、表示ズレを直させる（推奨）
+        socket.emit('sync time', serverGame.remainingTime);
+
+        // --- 以下のデータ同期処理はそのまま ---
         if (data.gameState) {
-            const serverGame = games[roomId];
             const clientGame = data.gameState;
 
             serverGame.boardState = clientGame.boardState;
@@ -289,12 +323,8 @@ io.on('connection', (socket) => {
             if (clientGame.p1SkillCount !== undefined) serverGame.p1SkillCount = clientGame.p1SkillCount;
             if (clientGame.p2SkillCount !== undefined) serverGame.p2SkillCount = clientGame.p2SkillCount;
 
-            // ★★★ 【追加】残り時間を同期して保存 ★★★
-            if (clientGame.remainingTime) {
-                serverGame.remainingTime = clientGame.remainingTime;
-            }
-            // ★★★ 【追加】指し手を受け取った瞬間の時刻を記録 ★★★
-            serverGame.lastMoveTime = Date.now();
+            // remainingTimeのコピー処理は削除（上で計算済みのため）
+            // lastMoveTimeの更新も削除（上で更新済みのため）
 
             if (clientGame.isGameOver !== undefined) {
                 serverGame.isGameOver = clientGame.isGameOver;
