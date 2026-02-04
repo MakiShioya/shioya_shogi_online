@@ -22,6 +22,18 @@ const BluePrint = {
   canUse: function() {
     if (skillUseCount >= this.maxUses) return false;
 
+    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
+    
+    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    if (typeof myRole !== 'undefined') {
+        if (turn !== myRole) return false;
+    }
+    // 2. CPU対戦の場合 (cpuSide変数が存在する)
+    else if (typeof cpuSide !== 'undefined') {
+        if (turn === cpuSide) return false;
+    }
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    
     // 1. 履歴条件のチェック（10手目以内の振り飛車）
     if (!this.checkHistoryCondition()) return false;
     
