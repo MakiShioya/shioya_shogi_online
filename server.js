@@ -44,27 +44,46 @@ io.on('connection', (socket) => {
 
     // --- キャラクター変更要求 ---
     socket.on('declare character', (charId) => {
+        console.log(`キャラ登録要求: Socket[${socket.id}] -> ${charId}`);
         playerCharIds[socket.id] = charId;
+
         const roomId = socket.roomId;
         const userId = socket.userId;
         
         if (roomId && games[roomId]) {
             const game = games[roomId];
-            // 対局中(playing)なら変更不可
-            if (game.status === 'playing') return;
+            
+            // ★修正：対局中(playing)なら、キャラ変更は絶対に許可しない
+            if (game.status === 'playing') {
+                console.log(`対局中のためキャラ変更を拒否: Room[${roomId}]`);
+                return;
+            }
 
             let changed = false;
-            if (game.players.black === userId) { game.blackCharId = charId; changed = true; }
-            if (game.players.white === userId) { game.whiteCharId = charId; changed = true; }
 
-            if (changed) sendRoomUpdate(roomId);
+            if (game.players.black === userId) {
+                game.blackCharId = charId;
+                changed = true;
+            }
+            if (game.players.white === userId) {
+                game.whiteCharId = charId;
+                changed = true;
+            }
+
+            if (changed) {
+                console.log(`部屋[${roomId}]のキャラ情報を更新: ${charId}`);
+                sendRoomUpdate(roomId);
+            }
         }
     });
     
     // 再接続チェック
     socket.on('check reconnection', (roomId, callback) => {
-        if (games[roomId]) callback({ canReconnect: true, status: games[roomId].status });
-        else callback({ canReconnect: false });
+        if (games[roomId]) {
+            callback({ canReconnect: true, status: games[roomId].status });
+        } else {
+            callback({ canReconnect: false });
+        }
     });
 
     // --- ロビー: 部屋一覧 ---
@@ -75,8 +94,10 @@ io.on('connection', (socket) => {
             let count = 0;
             if (game.players.black) count++;
             if (game.players.white) count++;
+
             if (game.isGameOver) status = "終局";
             else if (game.status === 'playing') status = "対局中";
+
             roomList.push({ roomId, status, userCount: count });
         }
         socket.emit('room list', roomList);
@@ -92,6 +113,7 @@ io.on('connection', (socket) => {
             const p1 = waitingQueue.shift();
             const p2 = waitingQueue.shift();
             const autoRoomId = `rank_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            
             io.to(p1.socketId).emit('match found', autoRoomId);
             io.to(p2.socketId).emit('match found', autoRoomId);
         }
@@ -101,19 +123,26 @@ io.on('connection', (socket) => {
         waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
     });
 
-    // --- 入室処理 ---
+    // --- 入室処理 (ここでキャラ固定を行う) ---
     socket.on('enter game', (data) => {
         let roomId, userId, userCharId;
         if (typeof data === 'object') { 
-            roomId = data.roomId; userId = data.userId; userCharId = data.charId;
+            roomId = data.roomId; 
+            userId = data.userId; 
+            userCharId = data.charId;
         } else { 
-            roomId = data || "default"; userId = 'guest_' + socket.id; userCharId = 'default';
+            roomId = data || "default"; 
+            userId = 'guest_' + socket.id; 
+            userCharId = 'default';
         }
 
         socket.join(roomId);
         socket.roomId = roomId;
         socket.userId = userId;
-        if (userCharId) playerCharIds[socket.id] = userCharId;
+
+        if (userCharId) {
+            playerCharIds[socket.id] = userCharId;
+        }
 
         // 新規作成
         if (!games[roomId]) {
@@ -132,7 +161,8 @@ io.on('connection', (socket) => {
                 p1SkillCount: 0,
                 p2SkillCount: 0,
                 isGameOver: false,
-                remainingTime: { black: 1200, white: 1200 },
+                // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
+                remainingTime: { black: 1200, white: 1200 }, // ★ここにカンマが必要でした
                 lastMoveTime: Date.now()
             };
         }
@@ -145,33 +175,58 @@ io.on('connection', (socket) => {
         else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
         else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
 
-        // キャラクター情報の固定ロジック
+        // ★★★ キャラクター情報の固定ロジック ★★★
         const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
-        if (myRole === 'black' && game.blackCharId === 'default') game.blackCharId = incomingCharId;
-        if (myRole === 'white' && game.whiteCharId === 'default') game.whiteCharId = incomingCharId;
+
+        if (myRole === 'black') {
+            if (game.blackCharId === 'default') {
+                game.blackCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
+            } else {
+                console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
+            }
+        }
+        
+        if (myRole === 'white') {
+            if (game.whiteCharId === 'default') {
+                game.whiteCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
+            } else {
+                console.log(`部屋[${roomId}] 後手キャラ固定済み(${game.whiteCharId})。上書き拒否。`);
+            }
+        }
 
         socket.emit('role assigned', myRole); 
         
-        // 再接続時の時間計算と復帰
+        // ★★★ 【修正】ここから時間計算ロジックを追加 ★★★
         setTimeout(() => {
+            // 1. 送信用のデータをコピー作成（サーバーの元のデータを汚さないため）
             const gameToSend = JSON.parse(JSON.stringify(game));
 
+            // 2. 対局中(playing)であれば、経過時間を計算して減算する
             if (game.status === 'playing') {
                 const now = Date.now();
-                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); 
+                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); // 経過秒数
 
+                // 現在の手番プレイヤーから時間を引く
                 if (game.turn === 'black') {
                     gameToSend.remainingTime.black -= elapsedSeconds;
+                    // マイナスにならないように調整（0で止める）
                     if (gameToSend.remainingTime.black < 0) gameToSend.remainingTime.black = 0;
                 } else {
                     gameToSend.remainingTime.white -= elapsedSeconds;
                     if (gameToSend.remainingTime.white < 0) gameToSend.remainingTime.white = 0;
                 }
-                console.log(`時間補正: ${elapsedSeconds}秒経過`);
+                
+                console.log(`再接続補正: ${elapsedSeconds}秒経過。補正後の残り -> ▲${gameToSend.remainingTime.black} / △${gameToSend.remainingTime.white}`);
             }
+
+            // 3. 補正済みのデータを送信
             socket.emit('restore game', gameToSend); 
+            
             sendRoomUpdate(roomId);
         }, 50);
+        // ★★★ 修正ここまで ★★★
     });
 
     // --- 準備完了トグル ---
@@ -192,7 +247,7 @@ io.on('connection', (socket) => {
             if (game.players.black && game.players.white && game.ready.black && game.ready.white) {
                 console.log(`部屋[${roomId}] ゲーム開始！`);
                 game.status = 'playing';
-                game.lastMoveTime = Date.now(); 
+                game.lastMoveTime = Date.now(); // 対局開始時の時刻をセット
                 io.to(roomId).emit('all ready'); 
             }
         }
@@ -202,9 +257,12 @@ io.on('connection', (socket) => {
         if (!games[roomId]) return;
         const game = games[roomId];
         const roomInfo = {
-            blackId: game.players.black, whiteId: game.players.white,
-            blackReady: game.ready.black, whiteReady: game.ready.white,
-            blackChar: game.blackCharId, whiteChar: game.whiteCharId,
+            blackId: game.players.black,
+            whiteId: game.players.white,
+            blackReady: game.ready.black,
+            whiteReady: game.ready.white,
+            blackChar: game.blackCharId,
+            whiteChar: game.whiteCharId,
             status: game.status
         };
         io.to(roomId).emit('update room status', roomInfo);
@@ -227,14 +285,20 @@ io.on('connection', (socket) => {
             serverGame.moveCount = clientGame.moveCount;
             serverGame.kifu = clientGame.kifu;
             
+            // スキル回数も同期
             if (clientGame.p1SkillCount !== undefined) serverGame.p1SkillCount = clientGame.p1SkillCount;
             if (clientGame.p2SkillCount !== undefined) serverGame.p2SkillCount = clientGame.p2SkillCount;
 
-            // 残り時間と時刻を更新
-            if (clientGame.remainingTime) serverGame.remainingTime = clientGame.remainingTime;
+            // ★★★ 【追加】残り時間を同期して保存 ★★★
+            if (clientGame.remainingTime) {
+                serverGame.remainingTime = clientGame.remainingTime;
+            }
+            // ★★★ 【追加】指し手を受け取った瞬間の時刻を記録 ★★★
             serverGame.lastMoveTime = Date.now();
 
-            if (clientGame.isGameOver !== undefined) serverGame.isGameOver = clientGame.isGameOver;
+            if (clientGame.isGameOver !== undefined) {
+                serverGame.isGameOver = clientGame.isGameOver;
+            }
         }
     });
 
@@ -258,9 +322,6 @@ io.on('connection', (socket) => {
         games[roomId].p2SkillCount = 0;
         games[roomId].isGameOver = false;
         
-        games[roomId].remainingTime = { black: 1200, white: 1200 };
-        games[roomId].lastMoveTime = Date.now();
-
         io.to(roomId).emit('game reset');
         setTimeout(() => { io.to(roomId).emit('game start', games[roomId]); }, 500);
     });
@@ -300,33 +361,30 @@ io.on('connection', (socket) => {
         if (!roomId || !games[roomId]) return;
 
         const game = games[roomId];
+
         if (game.status === 'waiting') {
             if (game.players.black === userId) game.ready.black = false;
             if (game.players.white === userId) game.ready.white = false;
             sendRoomUpdate(roomId);
         }
 
+        // 即座の部屋削除判定（誰もいなくなった場合の掃除）
         const roomSockets = io.sockets.adapter.rooms.get(roomId);
         if (!roomSockets || roomSockets.size === 0) {
+            
             if (game.isGameOver) {
                  console.log(`部屋[${roomId}] 全員退出。0.5分後に削除予約。`);
                  setTimeout(() => {
-                     const check = io.sockets.adapter.rooms.get(roomId);
-                     if ((!check || check.size === 0) && games[roomId]) delete games[roomId];
-                 }, 30000); 
+                     const checkSockets = io.sockets.adapter.rooms.get(roomId);
+                     if ((!checkSockets || checkSockets.size === 0) && games[roomId]) {
+                         console.log(`部屋削除(遅延実行): ${roomId}`);
+                         delete games[roomId];
+                     }
+                 }, 30000); // 30秒
             } 
-            // 修正：Playingなら0手目でも削除しない。Playingでなければ削除。
-            else if (game.status !== 'playing') {
-                console.log(`部屋削除(未使用): ${roomId}`);
+            else if (game.moveCount === 0) {
+                console.log(`部屋削除: ${roomId}`);
                 delete games[roomId];
-            }
-            // Playingなら保持
-            else {
-                 console.log(`部屋[${roomId}] 対局中保持`);
-                 setTimeout(() => {
-                     const check = io.sockets.adapter.rooms.get(roomId);
-                     if ((!check || check.size === 0) && games[roomId]) delete games[roomId];
-                 }, 600000); // 10分放置で削除
             }
         }
     });
@@ -338,12 +396,18 @@ server.listen(PORT, () => {
 
 function scheduleRoomCleanup(roomId) {
     if (games[roomId] && games[roomId].cleanupTimer) return;
+
     console.log(`部屋[${roomId}] 終局。1時間後に強制解散します。`);
+
     const timer = setTimeout(() => {
         if (games[roomId]) {
+            console.log(`部屋[${roomId}] 時間切れのため強制削除`);
             io.to(roomId).emit('force room close');
             delete games[roomId];
         }
     }, 3600000); 
-    if (games[roomId]) games[roomId].cleanupTimer = timer;
+
+    if (games[roomId]) {
+        games[roomId].cleanupTimer = timer;
+    }
 }
