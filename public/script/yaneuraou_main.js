@@ -812,12 +812,20 @@ function resignGame() {
 // 必殺技ボタン
 function toggleSkillMode() {
   if (gameOver) return;
+  
+  // CPUの手番なら押せない
+  if (typeof cpuSide !== 'undefined' && turn === cpuSide) return;
+
   if (!currentSkill) return;
   if (isSkillTargeting) return;
-  if (skillUsed) {
+
+  // ★修正：回数上限チェックを優先
+  const max = currentSkill.maxUses || 1;
+  if (skillUseCount >= max) {
     alert("この対局では、必殺技はもう使えません。");
     return;
   }
+
   if (!currentSkill.canUse()) {
     alert("現在は必殺技の発動条件を満たしていません。");
     return;
@@ -866,15 +874,23 @@ function updateSkillButton() {
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
     skillBtn.textContent = currentSkill.name;
+    
     if (currentSkill.buttonStyle) Object.assign(skillBtn.style, currentSkill.buttonStyle);
     else {
       skillBtn.style.backgroundColor = "#ff4500";
       skillBtn.style.color = "white";
       skillBtn.style.border = "none";
     }
-    skillBtn.disabled = skillUsed; 
-    skillBtn.style.opacity = skillUsed ? 0.5 : 1.0;
-    if (skillUsed) {
+
+    // ★修正：回数上限 または 相手の手番なら無効化
+    const max = currentSkill.maxUses || 1;
+    const isMaxedOut = (skillUseCount >= max);
+    const isMyTurn = (typeof cpuSide === 'undefined') || (turn !== cpuSide);
+
+    skillBtn.disabled = isMaxedOut || !isMyTurn;
+    skillBtn.style.opacity = (isMaxedOut || !isMyTurn) ? 0.5 : 1.0;
+    
+    if (isMaxedOut) {
         skillBtn.style.backgroundColor = "#ccc";
         skillBtn.style.border = "1px solid #999";
     }
@@ -1467,4 +1483,16 @@ function updateHandLayout(playerRole) {
         leftSide.prepend(whiteBox);
         rightSide.appendChild(blackBox);
     }
+}
+function deepCopyState() {
+    return {
+        boardState: JSON.parse(JSON.stringify(boardState)),
+        hands: JSON.parse(JSON.stringify(hands)),
+        turn: turn,
+        moveCount: moveCount,
+        kifu: JSON.parse(JSON.stringify(kifu)),
+        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
+        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null,
+        // 必要に応じて skillUseCount も保存・復元対象に含めることができます
+    };
 }
