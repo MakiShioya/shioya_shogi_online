@@ -675,20 +675,30 @@ function closeSkillModal() {
 function updateSkillButton() {
   const skillBtn = document.getElementById("skillBtn");
   if (!skillBtn) return;
+
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
     skillBtn.textContent = currentSkill.name;
-    if (currentSkill.buttonStyle) Object.assign(skillBtn.style, currentSkill.buttonStyle);
-    else {
+
+    // デザイン適用
+    if (currentSkill.buttonStyle) {
+      Object.assign(skillBtn.style, currentSkill.buttonStyle);
+    } else {
       skillBtn.style.backgroundColor = "#ff4500";
       skillBtn.style.color = "white";
       skillBtn.style.border = "none";
     }
-    skillBtn.disabled = window.skillUsed; 
-    skillBtn.style.opacity = window.skillUsed ? 0.5 : 1.0;
-    if (window.skillUsed) {
-        skillBtn.style.backgroundColor = "#ccc";
-        skillBtn.style.border = "1px solid #999";
+
+    // ★★★ 修正箇所：単純な skillUsed フラグではなく、使用回数と上限を比較して判定する ★★★
+    const max = currentSkill.maxUses || 1;
+    const isMaxedOut = (skillUseCount >= max);
+
+    skillBtn.disabled = isMaxedOut;
+    skillBtn.style.opacity = isMaxedOut ? 0.5 : 1.0;
+
+    if (isMaxedOut) {
+      skillBtn.style.backgroundColor = "#ccc";
+      skillBtn.style.border = "1px solid #999";
     }
   } else {
     skillBtn.style.display = "none";
