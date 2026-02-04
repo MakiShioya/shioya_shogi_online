@@ -61,10 +61,6 @@ io.on('connection', (socket) => {
 
             let changed = false;
 
-            // 待機中なら変更を許可しても良いが、ここでもロックしたい場合は
-            // 下記のif文に `&& game.blackCharId === 'default'` を追加すれば完璧なロックになります。
-            // 今回は「対局中の変更禁止」を優先して実装しています。
-
             if (game.players.black === userId) {
                 game.blackCharId = charId;
                 changed = true;
@@ -144,7 +140,6 @@ io.on('connection', (socket) => {
         socket.roomId = roomId;
         socket.userId = userId;
 
-        // 一応メモリには入れておくが、ゲームへの適用は慎重に行う
         if (userCharId) {
             playerCharIds[socket.id] = userCharId;
         }
@@ -167,7 +162,7 @@ io.on('connection', (socket) => {
                 p2SkillCount: 0,
                 isGameOver: false,
                 // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
-                remainingTime: { black: 1200, white: 1200 } 
+                remainingTime: { black: 1200, white: 1200 }, // ★ここにカンマが必要でした
                 lastMoveTime: Date.now()
             };
         }
@@ -180,23 +175,19 @@ io.on('connection', (socket) => {
         else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
         else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
 
-        // ★★★ 修正ポイント：キャラクター情報の固定ロジック ★★★
-        // クライアントから送られてきたキャラID (incomingCharId)
+        // ★★★ キャラクター情報の固定ロジック ★★★
         const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
 
         if (myRole === 'black') {
-            // まだ誰も設定していない('default')なら、今回入ってきた情報で固定する
             if (game.blackCharId === 'default') {
                 game.blackCharId = incomingCharId;
                 console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
             } else {
-                // すでに設定されているなら、入ってきた情報は無視してサーバーの情報を優先
                 console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
             }
         }
         
         if (myRole === 'white') {
-            // 後手も同様
             if (game.whiteCharId === 'default') {
                 game.whiteCharId = incomingCharId;
                 console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
@@ -207,10 +198,8 @@ io.on('connection', (socket) => {
 
         socket.emit('role assigned', myRole); 
         
-        // クライアントへは「サーバーで確定しているキャラ情報」を送り返す
+        // ★★★ 【修正】ここから時間計算ロジックを追加 ★★★
         setTimeout(() => {
-            // ★★★ 【修正】ここから計算ロジック変更 ★★★
-            
             // 1. 送信用のデータをコピー作成（サーバーの元のデータを汚さないため）
             const gameToSend = JSON.parse(JSON.stringify(game));
 
@@ -234,10 +223,11 @@ io.on('connection', (socket) => {
 
             // 3. 補正済みのデータを送信
             socket.emit('restore game', gameToSend); 
-            // ★★★ 修正ここまで ★★★
-
+            
             sendRoomUpdate(roomId);
         }, 50);
+        // ★★★ 修正ここまで ★★★
+    });
 
     // --- 準備完了トグル ---
     socket.on('toggle ready', () => {
@@ -257,7 +247,7 @@ io.on('connection', (socket) => {
             if (game.players.black && game.players.white && game.ready.black && game.ready.white) {
                 console.log(`部屋[${roomId}] ゲーム開始！`);
                 game.status = 'playing';
-                game.lastMoveTime = Date.now();
+                game.lastMoveTime = Date.now(); // 対局開始時の時刻をセット
                 io.to(roomId).emit('all ready'); 
             }
         }
@@ -331,10 +321,6 @@ io.on('connection', (socket) => {
         games[roomId].p1SkillCount = 0;
         games[roomId].p2SkillCount = 0;
         games[roomId].isGameOver = false;
-        
-        // ★リセット時はキャラ固定を維持するか、解除するか？
-        // 今回は「部屋に居座る限りキャラはそのまま」とするため、
-        // blackCharId / whiteCharId は初期化しません。
         
         io.to(roomId).emit('game reset');
         setTimeout(() => { io.to(roomId).emit('game start', games[roomId]); }, 500);
@@ -425,4 +411,3 @@ function scheduleRoomCleanup(roomId) {
         games[roomId].cleanupTimer = timer;
     }
 }
-
