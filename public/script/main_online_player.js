@@ -220,6 +220,10 @@ function setupSocketListeners(myUserId) {
         if (data.isTimeWarp) {
             console.log("TimeWarp受信");
             const state = data.gameState;
+            if (state.remainingTime) {
+                remainingTime = state.remainingTime;
+                updateTimeDisplay();
+            }
             boardState = state.boardState;
             hands = state.hands;
             turn = state.turn;
