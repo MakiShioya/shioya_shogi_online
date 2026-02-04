@@ -18,29 +18,45 @@
       padding: 0;
       height: 100vh;
       width: 100vw;
-
+      background-color: #2c3e50;
       background-size: cover;
       background-position: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-family: sans-serif;
       overflow: hidden;
+      
+      /* ▼▼▼ コピー・長押し禁止設定（整理済み） ▼▼▼ */
+      -webkit-user-select: none; /* Safari / Chrome */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* IE / Edge */
+      user-select: none;         /* Standard */
+      
+      -webkit-touch-callout: none; /* iOS長押しメニュー無効化 */
+      -webkit-user-drag: none;     /* ドラッグ禁止 */
+      
+      /* 注意: touch-action: none はボタン操作に影響する可能性があるため削除しました */
     }
-/* 背景専用の設定 */
+
+    /* 入力フォームは操作できるようにする */
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default; 
+    }
+
+    /* 背景専用の設定 */
     #bg-image {
       position: fixed;
       top: 0;
       left: 0;
       width: 100vw;
       height: 100vh;
-      z-index: -1; /* 他の要素より背面に配置 */
+      z-index: -1; 
       background-image: url('script/image/shogi_title.PNG');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
+      pointer-events: none; /* 背景へのタッチ判定を無視 */
     }
+
     .title-logo {
       font-size: 4rem;
       color: #FFB347;
@@ -62,7 +78,6 @@
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-    /* 設定（アカウント）ボタンの洗練 */
     .settings-btn {
       position: absolute;
       top: 20px;
@@ -70,15 +85,12 @@
       font-size: 0.9rem;
       font-weight: bold;
       color: white;
-      
-      /* 背景に和風な濃い茶色と透け感を追加 */
       background: rgba(139, 69, 19, 0.8); 
       border: 2px solid #FFB347;
       border-radius: 8px;
       padding: 8px 16px;
-      
       cursor: pointer;
-      box-shadow: 0 4px 0 #5d2e0d; /* 立体感 */
+      box-shadow: 0 4px 0 #5d2e0d;
       transition: all 0.2s;
       z-index: 10;
       display: flex;
@@ -86,13 +98,11 @@
       gap: 5px;
     }
 
-    /* 押し込んだ時の動き */
     .settings-btn:active {
       transform: translateY(2px);
       box-shadow: 0 2px 0 #5d2e0d;
     }
 
-    /* ホバー（マウスを乗せた時）の光 */
     .settings-btn:hover {
       background: rgba(160, 82, 45, 0.9);
       border-color: #ffcc80;
@@ -100,7 +110,7 @@
   </style>
 </head>
 <body>
-<div id="bg-image"></div>
+  <div id="bg-image"></div>
   <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
   <div class="title-logo">しおや将棋</div>
@@ -113,7 +123,6 @@
       <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
       
       <div id="authInputs">
-
         <div style="text-align: left; margin: 15px 0;">
           <label>メールアドレス</label><br>
           <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
@@ -142,123 +151,49 @@
     function goToHome() {
       window.location.href = "home.html";
     }
-
-    // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
-    // これにより script/auth.js の「賢い方」の関数が使われます。
   </script>
 
+  <script>
+    function autoRotateTitle() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const isPortrait = h > w;
 
-<script>
-  function autoFitGame() {
-    // タイトル画面なのでIDが存在しない場合があります。
-    // その場合は body 全体を対象にします。
-    let wrapper = document.getElementById('game-wrapper');
+      if (isPortrait) {
+        // 縦持ちの場合：90度回転して全画面表示
+        document.body.style.position = "fixed";
+        document.body.style.top = "50%";
+        document.body.style.left = "50%";
+        document.body.style.transformOrigin = "center center";
+        document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
+        document.body.style.width = h + "px";
+        document.body.style.height = w + "px";
+        document.body.style.overflow = "hidden";
+      } else {
+        // 横持ちの場合：リセット
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.left = "";
+        document.body.style.transform = "";
+        document.body.style.width = "100vw";
+        document.body.style.height = "100vh";
+      }
+    }
+
+    window.addEventListener('load', autoRotateTitle);
+    window.addEventListener('resize', autoRotateTitle);
+    setTimeout(autoRotateTitle, 100);
+  </script>
+
+  <script>
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    }, { passive: false });
     
-    // index.html には game-wrapper がないので body に直接スタイルを当てます
-    if (!wrapper) {
-       document.body.style.transformOrigin = "center center";
-       wrapper = document.body; 
-    }
-
-    // 基準サイズ（タイトル画面用）
-    // index.htmlは背景画像がメインなので、少し広めでも大丈夫ですが
-    // 統一感を持たせるなら同じサイズが良いでしょう
-    const baseWidth = 780;
-    const baseHeight = 600;
-
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const isPortrait = h > w;
-
-    let scale;
-    let rotation = '';
-
-    if (isPortrait) {
-      // 縦持ち → 90度回転
-      const scaleX = h / baseWidth;
-      const scaleY = w / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = 'rotate(90deg)';
-      
-      // 回転させた場合、幅と高さを入れ替えて指定しないとスクロールが発生することがあるため調整
-      wrapper.style.width = baseHeight + "px"; 
-      wrapper.style.height = baseWidth + "px";
-
-    } else {
-      // 横持ち → そのまま
-      const scaleX = w / baseWidth;
-      const scaleY = h / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = '';
-      
-      wrapper.style.width = baseWidth + "px";
-      wrapper.style.height = baseHeight + "px";
-    }
-
-    if (scale > 1) scale = 1;
-
-    // タイトル画面は中央寄せ済みなので、translateは不要な場合もありますが
-    // 念のため固定配置にします
-    wrapper.style.position = "absolute";
-    wrapper.style.top = "50%";
-    wrapper.style.left = "50%";
-    wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
-  }
-
-  window.addEventListener('load', autoFitGame);
-  window.addEventListener('resize', autoFitGame);
-  setTimeout(autoFitGame, 500);
-</script>
-
-
-<script>
-  function autoRotateTitle() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
-    const isPortrait = h > w;
-
-    if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
-      document.body.style.position = "fixed";
-      document.body.style.top = "50%";
-      document.body.style.left = "50%";
-      document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
-      document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
-      document.body.style.width = h + "px";
-      document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
-      document.body.style.overflow = "hidden";
-
-    } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.transform = "";
-      document.body.style.width = "100vw";
-      document.body.style.height = "100vh";
-    }
-  }
-
-  // 読み込み時とリサイズ時に実行
-  window.addEventListener('load', autoRotateTitle);
-  window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
-  setTimeout(autoRotateTitle, 100);
-</script>
-
+    document.addEventListener('dragstart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
 
 </body>
 </html>
-
