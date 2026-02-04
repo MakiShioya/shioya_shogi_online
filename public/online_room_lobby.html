@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ルーム対局ロビー</title>
 <link rel="icon" href="script/image/komiya_icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -20,15 +20,18 @@
         margin: 0;
         padding: 20px;
 
-        /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+        /* コピー・長押し禁止設定 */
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-user-drag: none;
+
+        /* ▼▼▼ 追加：ダブルタップによる拡大などを抑制（補助的） ▼▼▼ */
+        touch-action: manipulation;
     }
-    h1 { margin-bottom: 20px; color: #28a745; } /* 緑色に変更 */
+    h1 { margin-bottom: 20px; color: #28a745; } 
     
     .container {
         max-width: 600px;
@@ -44,7 +47,7 @@
         padding: 10px;
         border-radius: 8px;
         margin-bottom: 20px;
-        border: 2px solid #28a745; /* 枠線を緑に */
+        border: 2px solid #28a745;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -56,9 +59,7 @@
         object-fit: contain;
         border-radius: 5px;
         background: #fff;
-
-        /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
-        pointer-events: none;
+        pointer-events: none; /* 画像の長押し防止 */
     }
     .char-change-btn {
         padding: 5px 10px;
@@ -84,7 +85,7 @@
         border: none;
         margin-bottom: 10px;
 
-        /* ▼▼▼ 追加：入力フォームだけは操作できるようにする（必須） ▼▼▼ */
+        /* 入力フォームは操作できるようにする */
         -webkit-user-select: text;
         user-select: text;
         -webkit-touch-callout: default; 
@@ -101,46 +102,39 @@
     }
     button.create-btn:hover { background-color: #cc3700; }
 
-    /* ※部屋リスト用のCSSは不要になったので削除しましたが、
-       念のため残しておいても害はありません */
-
-
-
-
-/* 右上ボタンのコンテナ */
-.back-button-container {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-}
-
-/* ボタンのデザイン */
-.back-btn {
-    display: inline-block;
-    padding: 8px 16px;
-    background-color: #555;
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    border: 1px solid #777;
-    transition: background 0.3s;
-}
-
-.back-btn:hover {
-    background-color: #777;
-    color: white;
-}
-
-/* モバイル対応：画面が狭い時にタイトルと重なるのを防ぐ */
-@media (max-width: 480px) {
+    /* 右上ボタンのコンテナ */
     .back-button-container {
-        position: static; /* 位置固定を解除 */
-        text-align: right;
-        margin-bottom: 10px;
+        position: absolute;
+        top: 20px;
+        right: 20px;
     }
-}
 
+    /* ボタンのデザイン */
+    .back-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        background-color: #555;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        font-size: 0.9rem;
+        border: 1px solid #777;
+        transition: background 0.3s;
+    }
+
+    .back-btn:hover {
+        background-color: #777;
+        color: white;
+    }
+
+    /* モバイル対応 */
+    @media (max-width: 480px) {
+        .back-button-container {
+            position: static;
+            text-align: right;
+            margin-bottom: 10px;
+        }
+    }
 </style>
 </head>
 <body>
@@ -148,7 +142,6 @@
 <div class="back-button-container">
     <a href="online_lobby.html" class="back-btn">戻る</a>
 </div>
-
 
 <div class="container">
     <h1>ルーム対戦</h1>
@@ -162,17 +155,14 @@
         <button class="char-change-btn" onclick="location.href='character.html?mode=online'">変更</button>
     </div>
 
-
+    <div class="create-area">
         <input type="text" id="newRoomName" placeholder="部屋名 (例: 道場1)">
         <br>
         <button class="create-btn" style="margin-top: 20px; margin-bottom: 37px; "onclick="createAndJoinRoom()">入室 / 作成</button>
     </div>
-
-
 </div>
 
 <script>
-    // キャラクター定義
     const charMap = {
         'default': { name: 'キャラA', img: 'script/image/karui_1p.PNG' },
         'char_a':  { name: 'キャラB', img: 'script/image/char_a.png' },
@@ -189,12 +179,6 @@
 
     const socket = io();
 
-    // ★★★ 変更：部屋リストの受信処理は不要なので削除（または無効化） ★★★
-    // socket.on('room list', ...) は削除しました
-
-    // ★★★ 変更：定期更新も不要なので削除 ★★★
-    // setInterval(refreshRooms, 5000);
-
     function createAndJoinRoom() {
         const nameInput = document.getElementById('newRoomName');
         const name = nameInput.value.trim();
@@ -206,39 +190,48 @@
     }
 
     function joinRoom(roomId) {
-        // room.html へ移動
         window.location.href = `room.html?room=${encodeURIComponent(roomId)}`;
     }
 
-    // ★★★ Firebaseのログイン状態を監視して、名前を同期する処理 ★★★
     if (typeof firebase !== 'undefined' && firebase.auth) {
         firebase.auth().onAuthStateChanged(function(user) {
             if (user) {
                 const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
                 localStorage.setItem('shogi_username', displayName);
-                console.log("ログイン確認: " + displayName + " として保存しました。");
-
+                
                 const nameDisplay = document.getElementById('myCharName');
-                if (nameDisplay && nameDisplay.textContent === "---") {
-                     // 必要ならここで処理
-                }
-            } else {
-                console.log("未ログインです。");
+                // 必要ならここで表示更新処理
             }
         });
     }
 </script>
 
 <script>
+  // 右クリック・長押しメニュー禁止
   document.addEventListener('contextmenu', function(e) {
-    // 入力欄だけはメニュー（ペーストなど）を許可
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT') return; // 入力欄は許可
     e.preventDefault();
   }, { passive: false });
 
+  // ドラッグ禁止
   document.addEventListener('dragstart', function(e) {
     e.preventDefault();
   }, { passive: false });
+
+  // ▼▼▼ 追加：iOS（iPhone/iPad）でのピンチイン・ピンチアウト拡大を禁止 ▼▼▼
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止（念のため）
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
 </script>
 
 </body>
