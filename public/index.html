@@ -18,7 +18,7 @@
       padding: 0;
       height: 100vh;
       width: 100vw;
-      background-image: url('script/image/shogi_title.PNG');
+
       background-size: cover;
       background-position: center;
       display: flex;
@@ -28,7 +28,19 @@
       font-family: sans-serif;
       overflow: hidden;
     }
-
+/* 背景専用の設定 */
+    #bg-image {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; /* 他の要素より背面に配置 */
+      background-image: url('script/image/shogi_title.PNG');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
     .title-logo {
       font-size: 4rem;
       color: #FFB347;
@@ -88,7 +100,7 @@
   </style>
 </head>
 <body>
-
+<div id="bg-image"></div>
   <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
   <div class="title-logo">しおや将棋</div>
