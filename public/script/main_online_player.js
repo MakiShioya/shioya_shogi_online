@@ -211,6 +211,7 @@ function setupSocketListeners(myUserId) {
     });
 
     socket.on('sync time', (times) => {
+        console.log("時間のズレを修正しました");
         remainingTime = times;
         updateTimeDisplay();
     });
@@ -231,6 +232,10 @@ function setupSocketListeners(myUserId) {
             startTimer();
             statusDiv.textContent = "相手が時を戻しました！";
         } else {
+            if (data.gameState && data.gameState.remainingTime) {
+                remainingTime = data.gameState.remainingTime;
+                updateTimeDisplay(); // 画面の数字を即座に更新
+            }
             executeMove(data.sel, data.x, data.y, data.promote, true);
         }
     });
