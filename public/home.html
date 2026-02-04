@@ -23,7 +23,7 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      overflow: hidden;
+
 
       background-color: #2c3e50;
       background-size: cover;
@@ -33,12 +33,14 @@
    -webkit-user-select: none; /* 追加 */
    -webkit-touch-callout: none; /* 追加 (iOS用) */
    user-select: none; /* 追加 */
+      touch-action: none; 
  }
 
  /* 入力欄だけは触れるようにしておく */
- input, textarea {
+input, textarea {
    user-select: text;
    -webkit-user-select: text;
+   touch-action: auto; /* ここも忘れずに！ */
  }
 /* 背景専用の設定 */
     #bg-image {
@@ -940,16 +942,23 @@
     setTimeout(autoRotateTitle, 100);
 
 
-       window.addEventListener('load', () => {
-     autoRotateTitle();
-     // 右クリックメニューを禁止
-     window.addEventListener('contextmenu', (e) => e.preventDefault());
- });
+     window.addEventListener('load', () => {
+    autoRotateTitle();
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // --- ここから追加：スワイプ戻り（履歴戻り）を防止 ---
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', (e) => {
+        history.pushState(null, null, location.href);
+    });
+    // --- ここまで追加 ---
+});
     
   </script>
 
 </body>
 </html>
+
 
 
 
