@@ -168,6 +168,7 @@ io.on('connection', (socket) => {
                 isGameOver: false,
                 // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
                 remainingTime: { black: 1200, white: 1200 } 
+                lastMoveTime: Date.now()
             };
         }
         const game = games[roomId];
@@ -207,12 +208,36 @@ io.on('connection', (socket) => {
         socket.emit('role assigned', myRole); 
         
         // クライアントへは「サーバーで確定しているキャラ情報」を送り返す
-        // これでクライアント側の表示がサーバーと同期される
         setTimeout(() => {
-            socket.emit('restore game', game); 
+            // ★★★ 【修正】ここから計算ロジック変更 ★★★
+            
+            // 1. 送信用のデータをコピー作成（サーバーの元のデータを汚さないため）
+            const gameToSend = JSON.parse(JSON.stringify(game));
+
+            // 2. 対局中(playing)であれば、経過時間を計算して減算する
+            if (game.status === 'playing') {
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); // 経過秒数
+
+                // 現在の手番プレイヤーから時間を引く
+                if (game.turn === 'black') {
+                    gameToSend.remainingTime.black -= elapsedSeconds;
+                    // マイナスにならないように調整（0で止める）
+                    if (gameToSend.remainingTime.black < 0) gameToSend.remainingTime.black = 0;
+                } else {
+                    gameToSend.remainingTime.white -= elapsedSeconds;
+                    if (gameToSend.remainingTime.white < 0) gameToSend.remainingTime.white = 0;
+                }
+                
+                console.log(`再接続補正: ${elapsedSeconds}秒経過。補正後の残り -> ▲${gameToSend.remainingTime.black} / △${gameToSend.remainingTime.white}`);
+            }
+
+            // 3. 補正済みのデータを送信
+            socket.emit('restore game', gameToSend); 
+            // ★★★ 修正ここまで ★★★
+
             sendRoomUpdate(roomId);
         }, 50);
-    });
 
     // --- 準備完了トグル ---
     socket.on('toggle ready', () => {
@@ -232,6 +257,7 @@ io.on('connection', (socket) => {
             if (game.players.black && game.players.white && game.ready.black && game.ready.white) {
                 console.log(`部屋[${roomId}] ゲーム開始！`);
                 game.status = 'playing';
+                game.lastMoveTime = Date.now();
                 io.to(roomId).emit('all ready'); 
             }
         }
@@ -277,6 +303,8 @@ io.on('connection', (socket) => {
             if (clientGame.remainingTime) {
                 serverGame.remainingTime = clientGame.remainingTime;
             }
+            // ★★★ 【追加】指し手を受け取った瞬間の時刻を記録 ★★★
+            serverGame.lastMoveTime = Date.now();
 
             if (clientGame.isGameOver !== undefined) {
                 serverGame.isGameOver = clientGame.isGameOver;
