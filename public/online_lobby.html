@@ -71,6 +71,14 @@
         position: relative;
         min-height: 100vh;
         box-sizing: border-box;
+
+        /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
     }
     h1 { margin-bottom: 20px; color: #FFB347; }
     
@@ -100,6 +108,9 @@
         object-fit: contain;
         border-radius: 5px;
         background: #fff;
+
+        /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
+        pointer-events: none;
     }
     .char-change-btn {
         padding: 5px 10px;
@@ -314,6 +325,16 @@
             }
         });
     }
+</script>
+
+<script>
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 </script>
 
 </body>
