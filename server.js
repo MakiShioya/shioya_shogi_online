@@ -161,14 +161,15 @@ io.on('connection', (socket) => {
                 players: { black: null, white: null },
                 ready: { black: false, white: false },
                 status: 'waiting',
-                blackCharId: 'default', // ★ここが「空」の状態
+                blackCharId: 'default',
                 whiteCharId: 'default',
                 p1SkillCount: 0,
                 p2SkillCount: 0,
-                isGameOver: false
+                isGameOver: false,
+                // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
+                remainingTime: { black: 1200, white: 1200 } 
             };
         }
-
         const game = games[roomId];
 
         // 席の割り当て
@@ -271,6 +272,11 @@ io.on('connection', (socket) => {
             // スキル回数も同期
             if (clientGame.p1SkillCount !== undefined) serverGame.p1SkillCount = clientGame.p1SkillCount;
             if (clientGame.p2SkillCount !== undefined) serverGame.p2SkillCount = clientGame.p2SkillCount;
+
+            // ★★★ 【追加】残り時間を同期して保存 ★★★
+            if (clientGame.remainingTime) {
+                serverGame.remainingTime = clientGame.remainingTime;
+            }
 
             if (clientGame.isGameOver !== undefined) {
                 serverGame.isGameOver = clientGame.isGameOver;
