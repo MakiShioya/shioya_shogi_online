@@ -637,10 +637,16 @@ function toggleSkillMode() {
   if (gameOver) return;
   if (!currentSkill) return;
   if (isSkillTargeting) return;
-  if (window.skillUsed) {
+
+  // ★★★ 修正箇所：単純なフラグではなく、回数上限に達しているかで判定する ★★★
+  const max = currentSkill.maxUses || 1;
+  
+  if (skillUseCount >= max) {
     alert("この対局では、必殺技はもう使えません。");
     return;
   }
+  // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
   if (!currentSkill.canUse()) {
     alert("現在は必殺技の発動条件を満たしていません。");
     return;
