@@ -19,6 +19,14 @@
         text-align: center;
         margin: 0;
         padding: 20px;
+
+        /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
     }
     h1 { margin-bottom: 20px; color: #28a745; } /* 緑色に変更 */
     
@@ -48,6 +56,9 @@
         object-fit: contain;
         border-radius: 5px;
         background: #fff;
+
+        /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
+        pointer-events: none;
     }
     .char-change-btn {
         padding: 5px 10px;
@@ -72,6 +83,11 @@
         border-radius: 5px;
         border: none;
         margin-bottom: 10px;
+
+        /* ▼▼▼ 追加：入力フォームだけは操作できるようにする（必須） ▼▼▼ */
+        -webkit-user-select: text;
+        user-select: text;
+        -webkit-touch-callout: default; 
     }
     button.create-btn {
         padding: 10px 20px;
@@ -211,6 +227,18 @@
             }
         });
     }
+</script>
+
+<script>
+  document.addEventListener('contextmenu', function(e) {
+    // 入力欄だけはメニュー（ペーストなど）を許可
+    if (e.target.tagName === 'INPUT') return;
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 </script>
 
 </body>
