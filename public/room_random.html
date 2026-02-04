@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ランダム対戦待機中</title>
 <link rel="icon" href="script/image/komiya_icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -12,12 +12,37 @@
 <script src="script/auth.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <style>
+    /* ▼▼▼ 追加：HTML全体でスクロールを禁止 ▼▼▼ */
+    html {
+        overflow: hidden;
+        height: 100%;
+        overscroll-behavior: none; /* バウンス効果（引っ張り）を無効化 */
+    }
+
     body {
         font-family: Arial, sans-serif;
         background-color: #1e3c72; /* ランダムマッチっぽい青背景 */
         color: white;
         text-align: center;
         padding: 20px;
+
+        /* 画面いっぱいに固定 */
+        height: 100%;
+        width: 100%;
+        margin: 0; /* マージンリセット */
+        overflow: hidden; 
+        box-sizing: border-box;
+
+        /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
+
+        /* ▼▼▼ 追加：タップ操作の最適化（スクロール禁止含む） ▼▼▼ */
+        touch-action: none;
     }
     .container {
         max-width: 700px;
@@ -133,8 +158,13 @@
             console.log("役割決定。自動で準備完了を送信します。");
             socket.emit('toggle ready');
         } else {
-            document.getElementById('msgArea').textContent = "観戦モード";
-            document.getElementById('loadingSpinner').style.display = 'none';
+            // ここに msgArea がある前提のコードがありましたが、HTMLには存在しなかったので追加するか、
+            // コンソールログにするなどの対応が必要です。今回はエラーにならないようチェックを入れる形にします。
+            const msgArea = document.getElementById('msgArea');
+            if(msgArea) msgArea.textContent = "観戦モード";
+            
+            const spinner = document.getElementById('loadingSpinner');
+            if(spinner) spinner.style.display = 'none';
         }
     });
 
@@ -172,7 +202,14 @@
 
     // 全員完了時のスタート命令
     socket.on('all ready', () => {
-        document.getElementById('msgArea').textContent = "対局を開始します！";
+        // メッセージ表示エリアがない場合の対策
+        let msgArea = document.getElementById('msgArea');
+        if(!msgArea) {
+             // 簡易的にタイトルを変える
+             document.querySelector('h1').textContent = "対局を開始します！";
+        } else {
+             msgArea.textContent = "対局を開始します！";
+        }
         setTimeout(goToGame, 5000); 
     });
 
@@ -185,20 +222,16 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
     firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
             // ログインしている場合
-            // 表示名(displayName)がなければメールアドレスの前半を使うなどの予備処理
             const displayName = user.displayName || (user.email ? user.email.split('@')[0] : "名無し");
             
-            // LocalStorageに保存（これで次回から自動的に名前が使われる）
+            // LocalStorageに保存
             localStorage.setItem('shogi_username', displayName);
             
             console.log("ログイン確認: " + displayName + " として保存しました。");
 
-            // もし画面上に名前を表示する要素があれば更新する
-            // (ロビー画面など用)
-            const nameDisplay = document.getElementById('myCharName'); // ロビーのID
+            const nameDisplay = document.getElementById('myCharName'); 
             if (nameDisplay && nameDisplay.textContent === "---") {
-                 // ロビーの場合はキャラ名が表示されるので、
-                 // 必要であればここで "ようこそ 〇〇さん" のように書き換える処理を入れる
+                 // 必要なら処理
             }
             
         } else {
@@ -207,7 +240,39 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
         }
     });
 }
+</script>
 
+<script>
+  // 右クリック・長押しメニュー禁止
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // 画像などのドラッグ禁止
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // iOSでのピンチイン・ピンチアウト拡大を禁止
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+
+  // ▼▼▼ 追加：スクロール（指でのスライド）を禁止 ▼▼▼
+  document.addEventListener('touchmove', function(e) {
+    // ページ全体のスクロールを完全に無効化
+    e.preventDefault();
+  }, { passive: false });
 </script>
 
 </body>
