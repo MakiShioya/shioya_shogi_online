@@ -21,6 +21,18 @@ const TimeWarp = {
     // 1. 回数制限チェック
     if (skillUseCount >= this.maxUses) return false;
 
+    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
+    
+    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    if (typeof myRole !== 'undefined') {
+        if (turn !== myRole) return false;
+    }
+    // 2. CPU対戦の場合 (cpuSide変数が存在する)
+    else if (typeof cpuSide !== 'undefined') {
+        if (turn === cpuSide) return false;
+    }
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
     // 2. 履歴チェック（2手以上進んでいないと戻れない）
     if (typeof history === 'undefined' || history.length < 2) return false;
 
@@ -67,3 +79,4 @@ const TimeWarp = {
     return "時を戻しました";
   }
 };
+
