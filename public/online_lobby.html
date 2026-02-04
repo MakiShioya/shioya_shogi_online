@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>しおや将棋 オンライン対局</title>
 <link rel="icon" href="script/image/komiya_icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -72,13 +72,16 @@
         min-height: 100vh;
         box-sizing: border-box;
 
-        /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+        /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
         -webkit-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
         -webkit-touch-callout: none;
         -webkit-user-drag: none;
+
+        /* ▼▼▼ 追加：タップ操作の最適化（ダブルタップ拡大防止など） ▼▼▼ */
+        touch-action: manipulation;
     }
     h1 { margin-bottom: 20px; color: #FFB347; }
     
@@ -109,7 +112,7 @@
         border-radius: 5px;
         background: #fff;
 
-        /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
+        /* 画像の長押し・保存を無効化 */
         pointer-events: none;
     }
     .char-change-btn {
@@ -328,13 +331,30 @@
 </script>
 
 <script>
+  // 右クリック・長押しメニュー禁止
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
   }, { passive: false });
 
+  // 画像などのドラッグ禁止
   document.addEventListener('dragstart', function(e) {
     e.preventDefault();
   }, { passive: false });
+
+  // ▼▼▼ 追加：iOS（iPhone/iPad）でのピンチイン・ピンチアウト拡大を禁止 ▼▼▼
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
 </script>
 
 </body>
