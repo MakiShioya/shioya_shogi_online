@@ -67,10 +67,13 @@ window.addEventListener("load", () => {
     currentSkill = CharNekketsu.skill;
   } else if (charId === 'char_b' && typeof CharReisei !== 'undefined') {
     currentSkill = CharReisei.skill;
-  } else if (charId === 'char_d' && typeof CharMachida !== 'undefined') {
-    currentSkill = CharMachida.skill;
-  } else {
-    currentSkill = null;
+  } else if (charId === 'char_d') {
+    // ★ここを特に注意深く修正
+    if (typeof CharMachida !== 'undefined') {
+        currentSkill = CharMachida.skill;
+    } else {
+        console.warn("CharMachida is not defined. Skipping skill assignment.");
+    }
   }
 
   updateSkillButton();
