@@ -215,7 +215,9 @@
     }
     function renderKifu() {
         const listContainer = document.getElementById("fullKifuList");
-        const filtered = allKifuData.filter(item => currentMode === 'all' || item.mode === currentMode);
+        const filtered = [...allKifuData]
+            .filter(item => currentMode === 'all' || item.mode === currentMode)
+            .reverse();
         listContainer.innerHTML = "";
         let wins = 0; let loses = 0;
         if (filtered.length === 0) {
@@ -251,3 +253,4 @@
   </script>
 </body>
 </html>
+
