@@ -643,11 +643,20 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
 
     if (!fromNetwork) {
         const newState = {
-            boardState: boardState, hands: hands, turn: turn, moveCount: moveCount, kifu: kifu,
-            p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
+            boardState: boardState,
+            hands: hands,
+            turn: turn,
+            moveCount: moveCount,
+            kifu: kifu,
+            p1SkillCount: p1SkillCount,
+            p2SkillCount: p2SkillCount,
+            // ★★★ 【追加】現在の残り時間をパケットに含める ★★★
+            remainingTime: remainingTime, 
+            
             blackCharId: sessionStorage.getItem('online_black_char'),
             whiteCharId: sessionStorage.getItem('online_white_char')
         };
+        // 変更なし
         socket.emit('shogi move', { sel: sel, x: x, y: y, promote: doPromote, gameState: newState });
     }
 
