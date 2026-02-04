@@ -25,6 +25,15 @@
       background-position: center;
       height: 100vh; width: 100vw;
       display: flex; flex-direction: column;
+
+      /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+      -webkit-user-select: none; /* Safari / Chrome */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* IE / Edge */
+      user-select: none;         /* Standard */
+      
+      -webkit-touch-callout: none; /* iOS長押しメニュー無効化 */
+      -webkit-user-drag: none;     /* ドラッグ禁止 */
     }
 
     /* ユーザーバー（サイズを固定） */
@@ -251,6 +260,15 @@
     }
     window.updateKifuDisplay = function(data) { allKifuData = data || []; renderKifu(); };
   </script>
+
+  <script>
+    document.addEventListener('contextmenu', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('dragstart', function(e) {
+      e.preventDefault();
+    }, { passive: false });
+  </script>
 </body>
 </html>
-
