@@ -425,3 +425,4 @@ function scheduleRoomCleanup(roomId) {
         games[roomId].cleanupTimer = timer;
     }
 }
+
