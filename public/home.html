@@ -913,106 +913,98 @@ input, textarea {
         }
     });
 
-    function autoRotateTitle() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const isPortrait = h > w;
-
-        if (isPortrait) {
-          document.body.style.position = "fixed";
-          document.body.style.top = "50%";
-          document.body.style.left = "50%";
-          document.body.style.transformOrigin = "center center";
-          document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-          document.body.style.width = h + "px";
-          document.body.style.height = w + "px";
-          document.body.style.overflow = "hidden";
-        } else {
-          document.body.style.position = "";
-          document.body.style.top = "";
-          document.body.style.left = "";
-          document.body.style.transform = "";
-          document.body.style.width = "100vw";
-          document.body.style.height = "100vh";
-        }
-    }
-
-    window.addEventListener('load', autoRotateTitle);
-    window.addEventListener('resize', autoRotateTitle);
-    setTimeout(autoRotateTitle, 100);
-
-
-     window.addEventListener('load', () => {
-    autoRotateTitle();
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    // --- ここから追加：スワイプ戻り（履歴戻り）を防止 ---
     // --- 画面回転の自動調整 ---
     function autoRotateTitle() {
+        // ... (この中身は変更なしでOKですが、念のため下で全コードをまとめます) ...
         const w = window.innerWidth;
         const h = window.innerHeight;
         const isPortrait = h > w;
 
         if (isPortrait) {
+             // 回転時はタッチ制御が複雑になるため、CSSだけでなくJSで強制配置
+            document.body.style.width = h + "px";
+            document.body.style.height = w + "px";
+            document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
             document.body.style.position = "fixed";
             document.body.style.top = "50%";
             document.body.style.left = "50%";
-            document.body.style.transformOrigin = "center center";
-            document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-            document.body.style.width = h + "px";
-            document.body.style.height = w + "px";
-            document.body.style.overflow = "hidden";
         } else {
-            document.body.style.position = "";
-            document.body.style.top = "";
-            document.body.style.left = "";
+            document.body.style.width = "100%";
+            document.body.style.height = "100%";
             document.body.style.transform = "";
-            document.body.style.width = "100vw";
-            document.body.style.height = "100vh";
+            document.body.style.top = "0";
+            document.body.style.left = "0";
         }
     }
 
-    // --- ページ読み込み完了時の処理まとめ ---
+    // --- 起動時の処理まとめ ---
     window.addEventListener('load', () => {
-        // 1. 画面回転調整
         autoRotateTitle();
         window.addEventListener('resize', autoRotateTitle);
-
-        // 2. 右クリック長押し禁止
         window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        // 3. ★★★ 強力なスワイプ戻り防止処理 ★★★
-        
-        // 【履歴トラップ】
-        // 現在の履歴をスタックに積み、戻るボタンが押された瞬間に再度履歴を積むことで「戻れない」ようにする
+        // 1. 履歴操作によるブロック（念のため残す）
         history.pushState(null, null, location.href);
         window.addEventListener('popstate', (e) => {
             history.pushState(null, null, location.href);
-            // ※ここで alert("戻る操作は禁止されています") などを出すことも可能です
         });
 
-        // 【エッジスワイプ無効化】(iOS対策)
-        // 画面の左端・右端からのタッチ開始を検知して無効化する
-        // これにより、ブラウザが「戻るジェスチャー」として認識するのを防ぎます
+        // 2. ★★★ スワイプ戻り防止の完全版 ★★★
+        
+        // タッチ開始位置を記録する変数
+        let startX = 0;
+        let startY = 0;
+
         document.addEventListener('touchstart', (e) => {
-            if (e.touches.length > 1) return; // マルチタッチは許可（ピンチインなどが必要な場合）
+            // 2本指以上は許可（拡大縮小などが必要な場合があるため。不要ならブロック）
+            if (e.touches.length > 1) return;
+            
+            startX = e.touches[0].pageX;
+            startY = e.touches[0].pageY;
 
-            const touch = e.touches[0];
-            const edgeThreshold = 30; // 画面端から何pxの操作を無効にするか
-
-            // 左端 または 右端 からのタッチ開始なら
-            if (touch.pageX < edgeThreshold || touch.pageX > window.innerWidth - edgeThreshold) {
-                e.preventDefault(); // デフォルトのブラウザ挙動（スワイプ戻る）をキャンセル
+            // 画面の左端(30px以内)または右端(30px以内)からのタッチ開始は即ブロック
+            // これが「戻る」ジェスチャーの起点になるため
+            if (startX < 30 || startX > window.innerWidth - 30) {
+                e.preventDefault();
             }
-        }, { passive: false }); // passive: false にしないと preventDefault が効かない
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) return;
+
+            const x = e.touches[0].pageX;
+            const y = e.touches[0].pageY;
+            const deltaX = Math.abs(x - startX);
+            const deltaY = Math.abs(y - startY);
+
+            // ★スクロール許可エリア（チャットや戦績など）かどうかの判定
+            // タッチされた要素が .modal-box や #lobbyChatHistory の中にあるか確認
+            const isScrollable = e.target.closest('#lobbyChatHistory, .modal-box, #statsHistory, .help-content');
+
+            if (isScrollable) {
+                // スクロール可能なエリア内の操作は許可する
+                // ただし、端っこでさらに引っ張ろうとした時はブロックする必要があるが、
+                // いったん「中身のスクロール」はブラウザに任せる
+                e.stopPropagation(); 
+            } else {
+                // それ以外の場所（背景など）での指の移動はすべて禁止
+                e.preventDefault();
+            }
+
+            // ★ダメ押し：横移動の量が縦移動より大きい場合（明らかにスワイプ操作）、
+            // かつ、それがスクロールエリア内であっても、ブラウザの戻る挙動を誘発しそうな場合はブロック
+            if (deltaX > deltaY && deltaX > 10) {
+                e.preventDefault();
+            }
+            
+        }, { passive: false });
     });
-    // --- ここまで追加 ---
-});
     
   </script>
 
 </body>
 </html>
+
 
 
 
