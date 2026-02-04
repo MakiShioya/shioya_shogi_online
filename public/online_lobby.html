@@ -59,7 +59,12 @@
     .match-options p { font-size: 0.7rem; }
 }
 
-
+    /* ▼▼▼ 追加：HTML全体でスクロールを禁止 ▼▼▼ */
+    html {
+        overflow: hidden;
+        height: 100%;
+        overscroll-behavior: none; /* バウンス効果（引っ張り）を無効化 */
+    }
 
     body {
         font-family: 'Helvetica Neue', Arial, sans-serif;
@@ -69,7 +74,11 @@
         margin: 0;
         padding: 20px;
         position: relative;
-        min-height: 100vh;
+        
+        /* 画面いっぱいに固定 */
+        height: 100%;
+        width: 100%;
+        overflow: hidden; 
         box-sizing: border-box;
 
         /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
@@ -80,8 +89,8 @@
         -webkit-touch-callout: none;
         -webkit-user-drag: none;
 
-        /* ▼▼▼ 追加：タップ操作の最適化（ダブルタップ拡大防止など） ▼▼▼ */
-        touch-action: manipulation;
+        /* ▼▼▼ タップ操作の最適化 ▼▼▼ */
+        touch-action: none; /* スクロールやズームなどのブラウザ標準動作を無効化 */
     }
     h1 { margin-bottom: 20px; color: #FFB347; }
     
@@ -341,7 +350,7 @@
     e.preventDefault();
   }, { passive: false });
 
-  // ▼▼▼ 追加：iOS（iPhone/iPad）でのピンチイン・ピンチアウト拡大を禁止 ▼▼▼
+  // iOSでのピンチイン・ピンチアウト拡大を禁止
   document.addEventListener('gesturestart', function(e) {
     e.preventDefault();
   });
@@ -355,6 +364,12 @@
     }
     lastTouchEnd = now;
   }, false);
+
+  // ▼▼▼ 追加：スクロール（指でのスライド）を禁止 ▼▼▼
+  document.addEventListener('touchmove', function(e) {
+    // ページ全体のスクロールを完全に無効化
+    e.preventDefault();
+  }, { passive: false });
 </script>
 
 </body>
