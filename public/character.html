@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
 
-<script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <style>
     body {
       background-image: url('script/image/haikei.PNG');
@@ -26,6 +26,14 @@
       display: flex;
       flex-direction: column;
       overflow: hidden; /* スクロール禁止 */
+
+      /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-user-drag: none;
     }
 
     h1 {
@@ -59,22 +67,21 @@
 
     /* カード単体 */
     .char-card {
-  background: white;
-  border: 3px solid #ccc;
-  border-radius: 12px;
-  padding: 10px;
-  cursor: pointer;
-  flex: 1;
-  max-width: 180px;
-  aspect-ratio: 3 / 5; /* ← 縦長カードにする決定打 */
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-  box-sizing: border-box;
-}
-
+      background: white;
+      border: 3px solid #ccc;
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      flex: 1;
+      max-width: 180px;
+      aspect-ratio: 3 / 5; /* ← 縦長カードにする決定打 */
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      box-sizing: border-box;
+    }
 
     /* 画像を表示するエリア */
     .img-wrapper {
@@ -94,6 +101,9 @@
       height: auto;
       object-fit: contain; /* 比率維持の絶対条件 */
       border-radius: 5px;
+
+      /* ▼▼▼ 追加：画像自体の長押し・保存を無効化（クリックは親のdivが受け取るのでOK） ▼▼▼ */
+      pointer-events: none; 
     }
 
     /* 名前：常にカードの最下部に配置 */
@@ -106,7 +116,7 @@
       flex-shrink: 0; /* 名前エリアが潰れないようにする */
       border-top: 1px solid #eee; /* 境界線を入れるとより綺麗です */
     }
-    
+     
     .back-btn-container {
       padding: 15px 0;
     }
@@ -122,22 +132,18 @@
       cursor: pointer;
     }
 
-/* 準備中のカード用のスタイル */
-.disabled-card {
-  filter: grayscale(100%); /* 白黒にする */
-  opacity: 0.7;             /* 少し透けさせる */
-  cursor: not-allowed;      /* カーソルを禁止マークに */
-  pointer-events: none;     /* クリックイベントを無効化 */
-  border-color: #888 !important; /* 枠線をグレーに */
-}
+    /* 準備中のカード用のスタイル */
+    .disabled-card {
+      filter: grayscale(100%); /* 白黒にする */
+      opacity: 0.7;             /* 少し透けさせる */
+      cursor: not-allowed;      /* カーソルを禁止マークに */
+      pointer-events: none;     /* クリックイベントを無効化 */
+      border-color: #888 !important; /* 枠線をグレーに */
+    }
 
-.disabled-card .char-name {
-  color: #888;              /* 文字色もグレーに */
-}
-
-
-
-
+    .disabled-card .char-name {
+      color: #888;              /* 文字色もグレーに */
+    }
   </style>
 </head>
 <body>
@@ -167,30 +173,28 @@
       <div class="char-name">キャラC</div>
     </div>
 
-  <div class="char-card" onclick="onCharSelected('char_d')">
-  <div class="img-wrapper">
-    <img src="script/image/char_d.png" alt="キャラD画像">
-  </div>
-  <div class="char-name">キャラD</div>
-</div>
+    <div class="char-card" onclick="onCharSelected('char_d')">
+      <div class="img-wrapper">
+        <img src="script/image/char_d.png" alt="キャラD画像">
+      </div>
+      <div class="char-name">キャラD</div>
+    </div>
 
-<div class="char-card disabled-card" onclick="onCharSelected('char_e')">
-  <div class="img-wrapper">
-    <img src="script/image/char_b.png" alt="キャラE画像">
-  </div>
-  <div class="char-name">準備中</div>
-</div>
+    <div class="char-card disabled-card" onclick="onCharSelected('char_e')">
+      <div class="img-wrapper">
+        <img src="script/image/char_b.png" alt="キャラE画像">
+      </div>
+      <div class="char-name">準備中</div>
+    </div>
 
     <div class="char-card disabled-card" onclick="onCharSelected('char_f')">
-  <div class="img-wrapper">
-    <img src="script/image/char_b.png" alt="キャラF画像">
-  </div>
-  <div class="char-name">準備中</div>
-</div>
+      <div class="img-wrapper">
+        <img src="script/image/char_b.png" alt="キャラF画像">
+      </div>
+      <div class="char-name">準備中</div>
+    </div>
 
   </div>
-
-
 
   <div class="back-btn-container">
     <button class="back-btn" onclick="goBack()">キャンセル</button>
@@ -200,34 +204,30 @@
 document.addEventListener("DOMContentLoaded", () => {
     // 1. 保存されているルームIDがあるか確認
     const savedRoomId = localStorage.getItem('current_shogi_room');
-    
+     
     if (savedRoomId) {
         // 2. ソケット接続してサーバーに確認
         const socket = io();
-        
+         
         socket.on('connect', () => {
             // サーバーに「この部屋、まだやってる？」と聞く
             socket.emit('check reconnection', savedRoomId, (response) => {
-                
+                 
                 if (response.canReconnect) {
                     // 3. まだ対局中（または待機中）の場合
-                    // いきなり飛ばすか、確認するかは選択できますが、今回は確認を出します
                     const shouldRejoin = confirm(
                         "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
                     );
 
                     if (shouldRejoin) {
                         // ★対局画面へ直行！
-                        // ユーザーが説明した画面遷移によると、対局画面は player_vs_player_online.html
                         window.location.href = `player_vs_player_online.html?room=${savedRoomId}`;
                     } else {
                         // 破棄する場合
                         localStorage.removeItem('current_shogi_room');
-                        // 必要ならサーバーに投了を送信する処理などをここに追加してもよい
                     }
                 } else {
                     // 4. すでに終了している部屋の場合
-                    // ゴミデータを消去
                     console.log("古い対局データが見つかりましたが、すでに終了しています。");
                     localStorage.removeItem('current_shogi_room');
                 }
@@ -281,33 +281,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function autoRotateTitle() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
     const isPortrait = h > w;
 
     if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
       document.body.style.position = "fixed";
       document.body.style.top = "50%";
       document.body.style.left = "50%";
       document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
       document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
       document.body.style.width = h + "px";
       document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
       document.body.style.overflow = "hidden";
-
     } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.left = "";
@@ -317,13 +302,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 読み込み時とリサイズ時に実行
   window.addEventListener('load', autoRotateTitle);
   window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
   setTimeout(autoRotateTitle, 100);
 </script>
 
+<script>
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+</script>
 
 </body>
 </html>
