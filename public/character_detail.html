@@ -1,123 +1,132 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    
     <title>キャラクター詳細</title>
     <link rel="icon" href="script/image/komiya_icon.png"> 
     <link rel="manifest" href="manifest.json">
     <style>
         body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    touch-action: manipulation;
-}
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            touch-action: manipulation;
+        }
 
-body {
-    background-image: url('script/image/haikei.PNG'); 
-    background-color: #f0e68c; 
-    background-size: cover;
-    background-position: center;
-    /* 2. 確実に画面いっぱいの高さを確保する */
-    min-height: 100vh; /* または 100dvh */
-    
-    /* 3. Flexbox で上下左右中央に配置 */
-    display: flex;
-    align-items: center;      /* 上下中央 */
-    justify-content: center;   /* 左右中央 */
-    
-    font-family: "MS Mincho", serif;
-    overflow: hidden; 
-}
+        body {
+            background-image: url('script/image/haikei.PNG'); 
+            background-color: #f0e68c; 
+            background-size: cover;
+            background-position: center;
+            /* 2. 確実に画面いっぱいの高さを確保する */
+            min-height: 100vh; /* または 100dvh */
+            
+            /* 3. Flexbox で上下左右中央に配置 */
+            display: flex;
+            align-items: center;       /* 上下中央 */
+            justify-content: center;   /* 左右中央 */
+            
+            font-family: "MS Mincho", serif;
+            overflow: hidden; 
 
-.container {
-    /* コンテナ自体の位置調整（margin: auto も加えるとより安定します） */
-    margin: auto;
-    
-    width: 90%;
-    max-height: 90dvh; 
-    max-width: 450px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 15px;
-    border: 4px solid #8b4513;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    display: flex;
-    flex-direction: column;
-    box-sizing: border-box;
-    overflow-y: auto; /* 中身が多い時にスクロールできるように */
-}
+            /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-user-drag: none;
+        }
 
-h1 { 
-    color: #8b4513; 
-    margin: 0 0 10px 0; 
-    font-size: 1.5em; /* タイトルを少し小さく */
-}
+        .container {
+            /* コンテナ自体の位置調整（margin: auto も加えるとより安定します） */
+            margin: auto;
+            
+            width: 90%;
+            max-height: 90dvh; 
+            max-width: 450px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border: 4px solid #8b4513;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+            overflow-y: auto; /* 中身が多い時にスクロールできるように */
+        }
 
-.char-img {
-    /* 固定値ではなく、コンテナに合わせて伸縮させる */
-    width: auto;
-    height: auto;
-    max-height: 30dvh; /* 画像が画面の3割を超えないように */
-    object-fit: contain;
-    border: 2px solid #ccc;
-    background-color: #eee;
-    margin: 0 auto 10px auto;
-    border-radius: 10px;
-    flex-shrink: 1; /* 画面が狭いときは画像が縮むようにする */
-}
+        h1 { 
+            color: #8b4513; 
+            margin: 0 0 10px 0; 
+            font-size: 1.5em; /* タイトルを少し小さく */
+        }
 
-.skill-box {
-    background-color: #fff8dc;
-    border: 2px dashed #d2691e;
-    padding: 10px;
-    margin: 10px 0;
-    text-align: left;
-    border-radius: 5px;
-    font-size: 0.9em; /* 文字を少し小さく */
-}
+        .char-img {
+            /* 固定値ではなく、コンテナに合わせて伸縮させる */
+            width: auto;
+            height: auto;
+            max-height: 30dvh; /* 画像が画面の3割を超えないように */
+            object-fit: contain;
+            border: 2px solid #ccc;
+            background-color: #eee;
+            margin: 0 auto 10px auto;
+            border-radius: 10px;
+            flex-shrink: 1; /* 画面が狭いときは画像が縮むようにする */
 
-.skill-name {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: #d2691e;
-}
+            /* ▼▼▼ 追加：画像の長押し・保存を無効化 ▼▼▼ */
+            pointer-events: none;
+        }
 
-#skillDesc {
-    margin: 5px 0 0 0;
-    line-height: 1.4;
-}
+        .skill-box {
+            background-color: #fff8dc;
+            border: 2px dashed #d2691e;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: left;
+            border-radius: 5px;
+            font-size: 0.9em; /* 文字を少し小さく */
+        }
 
-.btn-group {
-    margin-top: auto; /* 下端に配置 */
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-}
+        .skill-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #d2691e;
+        }
 
-button {
-    font-size: 1em;
-    padding: 12px 10px;
-    cursor: pointer;
-    border-radius: 5px;
-}
+        #skillDesc {
+            margin: 5px 0 0 0;
+            line-height: 1.4;
+        }
 
-.btn-decide {
-    background-color: #ff4500;
-    color: white;
-    border: 2px solid #800000;
-    font-weight: bold;
-    flex: 2; /* 決定ボタンを優先的に大きく */
-}
+        .btn-group {
+            margin-top: auto; /* 下端に配置 */
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
 
-.btn-back {
-    background-color: #ccc;
-    border: 1px solid #999;
-    color: #333;
-    flex: 1;
-}
+        button {
+            font-size: 1em;
+            padding: 12px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .btn-decide {
+            background-color: #ff4500;
+            color: white;
+            border: 2px solid #800000;
+            font-weight: bold;
+            flex: 2; /* 決定ボタンを優先的に大きく */
+        }
+
+        .btn-back {
+            background-color: #ccc;
+            border: 1px solid #999;
+            color: #333;
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -145,33 +154,18 @@ button {
   function autoRotateTitle() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
     const isPortrait = h > w;
 
     if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
       document.body.style.position = "fixed";
       document.body.style.top = "50%";
       document.body.style.left = "50%";
       document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
       document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
       document.body.style.width = h + "px";
       document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
       document.body.style.overflow = "hidden";
-
     } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.left = "";
@@ -181,14 +175,20 @@ button {
     }
   }
 
-  // 読み込み時とリサイズ時に実行
   window.addEventListener('load', autoRotateTitle);
   window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
   setTimeout(autoRotateTitle, 100);
 </script>
 
+<script>
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+</script>
 
 </body>
 </html>
