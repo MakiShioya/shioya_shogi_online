@@ -21,6 +21,20 @@ const PassionateSupport = {
   // 発動条件
   canUse: function() {
     if (skillUseCount >= this.maxUses) return false;
+
+    
+    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
+    
+    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    if (typeof myRole !== 'undefined') {
+        if (turn !== myRole) return false;
+    }
+    // 2. CPU対戦の場合 (cpuSide変数が存在する)
+    else if (typeof cpuSide !== 'undefined') {
+        if (turn === cpuSide) return false;
+    }
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    
     const targets = this.getValidTargets();
     return targets.length > 0;
   },
