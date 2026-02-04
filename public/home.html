@@ -24,12 +24,24 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
-      background-image: url('script/image/shogi_title.PNG');
+
       background-color: #2c3e50;
       background-size: cover;
       background-position: center;
     }
-
+/* 背景専用の設定 */
+    #bg-image {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1; /* 他の要素より背面に配置 */
+      background-image: url('script/image/shogi_title.PNG');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
     /* 吹き出しの設定 */
     .speech-bubble {
       display: none;
@@ -261,6 +273,7 @@
 
 </head>
 <body>
+  <div id="bg-image"></div>
 
   <div class="user-info-bar">
     <div>
@@ -903,3 +916,4 @@
 
 </body>
 </html>
+
