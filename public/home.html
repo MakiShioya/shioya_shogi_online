@@ -947,9 +947,64 @@ input, textarea {
     window.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // --- ここから追加：スワイプ戻り（履歴戻り）を防止 ---
-    history.pushState(null, null, location.href);
-    window.addEventListener('popstate', (e) => {
+    // --- 画面回転の自動調整 ---
+    function autoRotateTitle() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const isPortrait = h > w;
+
+        if (isPortrait) {
+            document.body.style.position = "fixed";
+            document.body.style.top = "50%";
+            document.body.style.left = "50%";
+            document.body.style.transformOrigin = "center center";
+            document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
+            document.body.style.width = h + "px";
+            document.body.style.height = w + "px";
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.position = "";
+            document.body.style.top = "";
+            document.body.style.left = "";
+            document.body.style.transform = "";
+            document.body.style.width = "100vw";
+            document.body.style.height = "100vh";
+        }
+    }
+
+    // --- ページ読み込み完了時の処理まとめ ---
+    window.addEventListener('load', () => {
+        // 1. 画面回転調整
+        autoRotateTitle();
+        window.addEventListener('resize', autoRotateTitle);
+
+        // 2. 右クリック長押し禁止
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // 3. ★★★ 強力なスワイプ戻り防止処理 ★★★
+        
+        // 【履歴トラップ】
+        // 現在の履歴をスタックに積み、戻るボタンが押された瞬間に再度履歴を積むことで「戻れない」ようにする
         history.pushState(null, null, location.href);
+        window.addEventListener('popstate', (e) => {
+            history.pushState(null, null, location.href);
+            // ※ここで alert("戻る操作は禁止されています") などを出すことも可能です
+        });
+
+        // 【エッジスワイプ無効化】(iOS対策)
+        // 画面の左端・右端からのタッチ開始を検知して無効化する
+        // これにより、ブラウザが「戻るジェスチャー」として認識するのを防ぎます
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return; // マルチタッチは許可（ピンチインなどが必要な場合）
+
+            const touch = e.touches[0];
+            const edgeThreshold = 30; // 画面端から何pxの操作を無効にするか
+
+            // 左端 または 右端 からのタッチ開始なら
+            if (touch.pageX < edgeThreshold || touch.pageX > window.innerWidth - edgeThreshold) {
+                e.preventDefault(); // デフォルトのブラウザ挙動（スワイプ戻る）をキャンセル
+            }
+        }, { passive: false }); // passive: false にしないと preventDefault が効かない
     });
     // --- ここまで追加 ---
 });
@@ -958,6 +1013,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
