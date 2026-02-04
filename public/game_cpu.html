@@ -9,7 +9,7 @@
   <link rel="icon" href="script/image/komiya_icon.png"> 
   
   <style>
-    /* 基本設定：スクロール禁止 */
+    /* 基本設定：スクロール禁止・コピー禁止・長押し禁止 */
     html, body {
       width: 100%;
       height: 100%;
@@ -17,6 +17,21 @@
       padding: 0;
       overflow: hidden; /* 絶対にスクロールさせない */
       background-color: #222; /* 背景色（隙間ができた時用） */
+
+      /* ▼▼▼ 追加：コピー・長押し・ドラッグ禁止設定 ▼▼▼ */
+      -webkit-user-select: none; /* Safari / Chrome */
+      -moz-user-select: none;    /* Firefox */
+      -ms-user-select: none;     /* IE / Edge */
+      user-select: none;         /* Standard */
+      
+      -webkit-touch-callout: none; /* iOS長押しメニュー無効化 */
+      -webkit-user-drag: none;     /* 画像などのドラッグ禁止 */
+      
+      /* タップ時のハイライト（青い背景）を消す */
+      -webkit-tap-highlight-color: transparent;
+
+      /* ブラウザ標準のタッチ操作（スクロールやズーム）を無効化 */
+      touch-action: none;
     }
 
     /* ゲーム画面全体を包むコンテナ */
@@ -26,10 +41,9 @@
       left: 50%;
       transform-origin: center center;
       
-      /* ▼▼▼ 修正箇所：幅を狭めてコンパクトにしました ▼▼▼ */
-      width: 850px;  /* 1000px -> 820px */
-      height: 600px; /* 650px -> 600px */
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      /* 幅を狭めてコンパクトに */
+      width: 850px; 
+      height: 600px;
       
       transform: translate(-50%, -50%); 
       
@@ -38,30 +52,28 @@
       align-items: center;
     }
 
-    /* ゲームの中身（既存のID） */
+    /* ゲームの中身 */
     #game {
       width: 100%;
       height: 100%;
       display: flex;
       
-      /* ▼▼▼ 修正箇所：中央寄せにして要素をくっつけました ▼▼▼ */
-      justify-content: center; /* space-between から変更 */
-      gap: 10px;               /* 要素間の隙間を少しだけ空ける */
+      /* 中央寄せにして要素をくっつける */
+      justify-content: center; 
+      gap: 10px;               
       align-items: center;
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
     }
 
     /* 盤や駒台のレイアウト調整 */
     .side {
-      width: 140px; /* 少しスリムに */
+      width: 140px; 
       height: 100%;
       display: flex;
       flex-direction: column;
       
-      /* ▼▼▼ 修正箇所：縦方向も中央に寄せました ▼▼▼ */
-      justify-content: center; /* space-around から変更 */
-      gap: 15px;               /* 縦の要素間の隙間 */
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      /* 縦方向も中央に */
+      justify-content: center; 
+      gap: 15px;               
       
       padding: 5px;
       box-sizing: border-box;
@@ -83,11 +95,7 @@
       align-items: center;
     }
 
-
-
-
-
-/* メニューボタンの微調整 */
+    /* メニューボタンの微調整 */
     .menu-item {
       display: block;
       width: 100%;
@@ -103,24 +111,21 @@
     }
     .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
 
-
-/* ▼▼▼ ここから追加・修正 ▼▼▼ */
-
-    /* 必殺技カットイン画像の配置設定（強力版） */
+    /* 必殺技カットイン画像の配置設定 */
     #skillCutIn {
-      position: absolute !important; /* 強制的に絶対配置にする */
+      position: absolute !important;
       top: 0;
       left: 0;
-      width: 100%;   /* 親要素（盤面）と同じ幅 */
-      height: 100%;  /* 親要素（盤面）と同じ高さ */
+      width: 100%;   
+      height: 100%;  
       
-      object-fit: contain; /* 枠の中に画像を綺麗に収める（比率維持） */
-      margin: auto;        /* 中央寄せの補強 */
+      object-fit: contain; 
+      margin: auto;        
       
-      z-index: 100;        /* 盤面や駒よりも手前に表示 */
+      z-index: 100;        
       pointer-events: none; /* 画像の下にある駒をクリックできるようにする */
       
-      opacity: 0;           /* 普段は透明にして隠す */
+      opacity: 0;           
       transition: opacity 0.2s;
     }
 
@@ -132,19 +137,12 @@
 
     /* アニメーション設定 */
     @keyframes popIn {
-      /* 開始：目標より少し小さいサイズから */
       0%   { opacity: 0; transform: scale(0.6); }
-      /* 出現時のバウンド：目標(0.8)より少し大きく */
       10%  { opacity: 1; transform: scale(0.9); }
-      /* 静止時のサイズ：ここで「0.8倍」を指定します */
       20%  { opacity: 1; transform: scale(0.8); }
       80%  { opacity: 1; transform: scale(0.8); }
-      /* 終了：少し大きくなって消える */
       100% { opacity: 0; transform: scale(1.0); }
     }
-    
-    /* ▲▲▲ ここまで ▲▲▲ */
-
   </style>
 
 </head>
@@ -297,7 +295,7 @@
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    // ゲームの設計上の基本サイズ（このサイズなら綺麗に見えるという値）
+    // ゲームの設計上の基本サイズ
     const baseWidth = 1000;
     const baseHeight = 650;
 
@@ -305,14 +303,13 @@
     const scaleX = windowWidth / baseWidth;
     const scaleY = windowHeight / baseHeight;
     
-    // 小さい方の倍率に合わせて全体を縮める（はみ出さないようにする）
-    // ※ 0.95を掛けて少し余白を持たせる
+    // 小さい方の倍率に合わせて全体を縮める
     let scale = Math.min(scaleX, scaleY) * 0.95;
 
-    // 拡大しすぎないように最大は1倍にする（PCなどはそのまま）
+    // 拡大しすぎないように最大は1倍にする
     if (scale > 1) scale = 1;
 
-    // 適用（transform: scale を使うので、CSSのzoomより確実です）
+    // 適用
     wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
@@ -320,7 +317,6 @@
   window.addEventListener('load', autoFitGame);
   window.addEventListener('resize', autoFitGame);
   
-  // 念のため少し遅らせて実行（画像の読み込み待ち対策）
   setTimeout(autoFitGame, 500);
 </script>
 <script>
@@ -364,17 +360,16 @@
   // 以前の同名関数を上書きして動作します
   function autoFitGame() {
     const wrapper = document.getElementById('game-wrapper');
-    if (!wrapper) return; // エラー防止
+    if (!wrapper) return; 
 
-    // ゲーム画面の基準サイズ（コンパクト設定）
-    // ※ここを変えれば全てのファイルに適用されます
+    // ゲーム画面の基準サイズ
     const baseWidth = 850;
     const baseHeight = 600;
 
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    // 縦持ち判定（高さ > 幅 なら縦持ちとみなす）
+    // 縦持ち判定
     const isPortrait = h > w;
 
     let scale;
@@ -385,40 +380,67 @@
     wrapper.style.height = baseHeight + "px";
 
     if (isPortrait) {
-      // ■ 縦持ちの場合：90度回転させる計算
-      // 画面の「高さ(h)」を「横幅」として扱い、画面の「幅(w)」を「高さ」として扱います
+      // 縦持ちの場合：90度回転
       const scaleX = h / baseWidth;
       const scaleY = w / baseHeight;
       
-      // 小さい方の倍率に合わせる
-      scale = Math.min(scaleX, scaleY) * 0.95; // 0.95は余白
-      rotation = 'rotate(90deg)'; // 90度回転を追加
+      scale = Math.min(scaleX, scaleY) * 0.95;
+      rotation = 'rotate(90deg)'; 
 
     } else {
-      // ■ 横持ち（PC含む）の場合：通常計算
+      // 横持ちの場合：通常計算
       const scaleX = w / baseWidth;
       const scaleY = h / baseHeight;
       
       scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = ''; // 回転なし
+      rotation = ''; 
     }
 
-    // 拡大しすぎ防止（PCでボヤけないように最大1倍）
     if (scale > 1) scale = 1;
 
-    // 変形（中央配置 + 回転 + 拡大縮小）を適用
     wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
   }
 
-  // 読み込み時とリサイズ時に実行
-  // ※既存のイベントリスナーがあっても、関数の中身が置き換わっているので問題ありません
   window.addEventListener('load', autoFitGame);
   window.addEventListener('resize', autoFitGame);
-  
-  // 画像読み込み遅延対策
   setTimeout(autoFitGame, 500);
 </script>
 
+<script>
+  // 右クリック禁止
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // 画像や要素のドラッグ禁止
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // iOSでのピンチイン・ピンチアウト拡大を禁止
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+
+  // 画面スクロール（指でのスライド）を禁止
+  document.addEventListener('touchmove', function(e) {
+    // 棋譜やルールなどのスクロール可能なエリアだけは許可する
+    const scrollable = e.target.closest('#kifu, #rulesModal .modal-content div, #menuPanel');
+    if (scrollable) return; // スクロール可能エリアなら何もしない（許可）
+
+    e.preventDefault();
+  }, { passive: false });
+</script>
 
 </body>
 </html>
