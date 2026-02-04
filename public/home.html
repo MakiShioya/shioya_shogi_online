@@ -624,14 +624,14 @@ input, textarea {
     }
     // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-    window.location.href = "character.html?mode=" + mode; 
+    window.location.replace("character.html?mode=" + mode);
 }
 
     function startGame(difficulty) {
       if (difficulty === 'ex_hard3') {
-          window.location.href = "cpu_yaneuraou.html";
+          window.location.replace("cpu_yaneuraou.html");
       } else {
-          window.location.href = "game_cpu.html?opponent=" + difficulty;
+          window.location.replace("game_cpu.html?opponent=" + difficulty);
       }
     }
 
@@ -1016,6 +1016,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
