@@ -296,9 +296,9 @@
 
   <div class="bottom-menu">
     <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
-    <button onclick="location.href='character.html?mode=online'" class="menu-btn online-color">
-    	オンライン
-    </button>
+    <button onclick="goToCharacterSelect('online')" class="menu-btn online-color">
+  オンライン
+</button>
     <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button> <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
   </div>
@@ -585,7 +585,21 @@
     }
 
     // --- 画面遷移 ---
-    function goToCharacterSelect(mode) { window.location.href = "character.html?mode=" + mode; }
+    function goToCharacterSelect(mode) { 
+    // ★★★ 追加：オンラインモード時のログインチェック ★★★
+    if (mode === 'online') {
+        const user = firebase.auth().currentUser;
+        if (!user) {
+            alert("オンライン対戦をするにはログインが必要です。\n画面上の「ログイン / 新規登録」からログインしてください。");
+            // 必要であれば、ログインモーダルを自動で開くことも可能です
+            showAuthModal(); 
+            return;
+        }
+    }
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+    window.location.href = "character.html?mode=" + mode; 
+}
 
     function startGame(difficulty) {
       if (difficulty === 'ex_hard3') {
@@ -916,4 +930,5 @@
 
 </body>
 </html>
+
 
