@@ -67,6 +67,8 @@ window.addEventListener("load", () => {
     currentSkill = CharNekketsu.skill;
   } else if (charId === 'char_b' && typeof CharReisei !== 'undefined') {
     currentSkill = CharReisei.skill;
+  } else if (charId === 'char_d' && typeof CharMachida !== 'undefined') {
+    currentSkill = CharMachida.skill;
   } else {
     currentSkill = null;
   }
@@ -217,6 +219,7 @@ function applyPlayerImage() {
   if (charId === 'default') imageUrl = "url('script/image/karui_1p.PNG')";
   else if (charId === 'char_a') imageUrl = "url('script/image/char_a.png')";
   else if (charId === 'char_b') imageUrl = "url('script/image/char_b.png')";
+  else if (charId === 'char_d') imageUrl = "url('script/image/char_d.png')";
   
   if (imageUrl) myBox.style.backgroundImage = imageUrl;
 }
@@ -686,7 +689,7 @@ function executeMove(sel, x, y, doPromote) {
       }
       const boardTable = document.getElementById("board");
       if (boardTable) {
-        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue");
+        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
         void boardTable.offsetWidth;
         if (base === "R") {
             boardTable.classList.add("flash-green");
