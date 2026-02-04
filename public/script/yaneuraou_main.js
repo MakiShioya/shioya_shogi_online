@@ -241,23 +241,39 @@ function undoMove() {
   }
   if (history.length < 2 || gameOver) return;
   
+  // 2手前の状態を取得
   const prev = history[history.length - 2];
   history.length -= 2; 
 
-  // 評価値履歴も戻す
+  // 評価値履歴を戻す
   if (evalHistory.length > 2) {
       evalHistory.length -= 2;
-      updateChart(); // グラフ反映
+      updateChart();
   }
 
+  // USI履歴を戻す
   if (usiHistory.length >= 2) {
       usiHistory.length -= 2;
   }
 
-  restoreState(prev);
-  lastMoveFrom = null;
-  // Undoしたら制限もリセット
+  // ★復元処理（restoreState関数がない場合も想定して直書き）
+  boardState = JSON.parse(JSON.stringify(prev.boardState));
+  hands = JSON.parse(JSON.stringify(prev.hands));
+  turn = prev.turn;
+  moveCount = prev.moveCount;
+  
+  // kifu配列も戻す（これが抜けていると「19手目」などと表示がズレてバグります）
+  kifu = JSON.parse(JSON.stringify(prev.kifu));
+
+  lastMoveTo = prev.lastMoveTo ? { ...prev.lastMoveTo } : null;
+  lastMoveFrom = prev.lastMoveFrom ? { ...prev.lastMoveFrom } : null;
+
   window.isCaptureRestricted = false;
+  
+  // TimeWarpはskillUsedをfalseに戻すべき
+  // (ただし、もし戻った先が既に必殺技使用後の状態ならtrueにする必要があるが、
+  //  今回は「TimeWarp自体はskillUsedを消費しない」運用にする)
+  // window.skillUsed = false; 
 
   gameOver = false;
   winner = null;
@@ -459,16 +475,15 @@ function onCellClick(x, y) {
   if (isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
       
-      // ★★★ ここから追加：時戻し用の特別処理 ★★★
+      // ★★★ ここから：時戻し（TimeWarp）用の特別処理 ★★★
       if (currentSkill && currentSkill.isSystemAction) {
         
-        // 1. エンジンの思考中なら停止させる
         if (typeof stopPondering === "function") stopPondering();
 
-        // 2. 演出のために execute を実行（これで光と音が出る）
+        // 1. 演出を実行
         currentSkill.execute(x, y);
 
-        // 3. ターゲットモードを解除
+        // 2. ターゲットモードを解除
         isSkillTargeting = false;
         legalMoves = [];
         selected = null;
@@ -478,21 +493,26 @@ function onCellClick(x, y) {
             boardTable.classList.remove("skill-targeting-mode");
         }
 
-        // 4. 実際に「待った」を実行
+        // 3. 実際に「待った」を実行
         if (typeof undoMove === "function") {
              undoMove();
         }
 
-        // 5. 必殺技を使ったことにする
-        window.skillUsed = true;
-        skillUseCount = 1;
+        // 4. ★重要★ TimeWarpは「必殺技フラグ(skillUsed)」を立ててはいけない！
+        // フラグを立てると履歴記録が止まり、エンジンがおかしくなります。
+        // window.skillUsed = true;  <-- これは削除！
+        
+        // 代わりに回数カウントだけ増やす（ボタン制御用）
+        skillUseCount++; 
         
         updateSkillButton();
         render();
         statusDiv.textContent = "必殺技発動！ 時を戻しました。";
-        return; // ここで終了
+        return; 
       }
-      
+      // ★★★ ここまで ★★★
+
+      // --- 以下、通常の必殺技（BluePrintなど）の処理 ---
       if (typeof stopPondering === "function") stopPondering();
 
       const result = currentSkill.execute(x, y);
@@ -507,36 +527,26 @@ function onCellClick(x, y) {
       history.push(deepCopyState());
 
       const boardTable = document.getElementById("board");
-      if (boardTable) {
-          boardTable.classList.remove("skill-targeting-mode");
-      }
+      if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
       const endsTurn = (currentSkill.endsTurn !== false);
 
-      // ★★★ 修正ポイント1：フラグを確実に立てる ★★★
+      // 通常の必殺技はフラグを立てる
       window.skillUsed = true; 
       skillUseCount++;
 
-      // ★★★ 修正ポイント2：必殺技を使ったら、手番消費の有無にかかわらず「履歴」を消す ★★★
-      // これをここ（分岐の前）で行うことで、確実にSFENモードへ移行させます。
+      // 履歴をリセットしてSFENモードへ
       usiHistory = [];
 
       if (endsTurn) {
           const kifuStr = result; 
           kifu.push(""); 
-          kifu[kifu.length - 1] = kifuStr;
-          
+          kifu[kifu.length - 1] = kifuStr; 
           moveCount++;
-          
-          // 手番交代
           turn = (turn === "black" ? "white" : "black");
-      } 
-      else {
-          // 手番消費なしの場合
+      } else {
           const movePart = result.split("：")[1] || result;
           lastSkillKifu = movePart;
-          
-          // 手番は交代しないので turn の変更はなし
       }
       
       lastMoveTo = null;
@@ -545,8 +555,7 @@ function onCellClick(x, y) {
         moveSound.play().catch(() => {});
       }
 
-      // ★★★ 修正ポイント3：SFEN送信処理 ★★★
-      // 履歴を消したので、必ず盤面図（SFEN）をエンジンに送って今の局面を理解させる
+      // SFEN送信
       const sfen = generateSfen();
       console.log("必殺技発動！SFEN送信:", sfen);
       sendToEngine("position sfen " + sfen);
@@ -558,7 +567,6 @@ function onCellClick(x, y) {
       render();
       if (typeof showKifu === "function") showKifu();
 
-      // 手番が相手（CPU）に移る技だった場合のみ思考開始
       if (endsTurn && cpuEnabled && turn === cpuSide && !gameOver) {
         setTimeout(() => cpuMove(), 1000);
       }
@@ -578,7 +586,6 @@ function onCellClick(x, y) {
     selected = { x, y, fromHand: false };
     legalMoves = getLegalMoves(x, y);
 
-    // ★★★ 攻撃禁止（応援などの効果）の適用 ★★★
     if (window.isCaptureRestricted) {
         legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
     }
@@ -595,7 +602,6 @@ function onCellClick(x, y) {
   legalMoves = [];
   render();
 }
-
 function selectFromHand(player, index) {
   if (gameOver) return;
   if (turn !== player) return;
