@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>待機室</title>
 <link rel="icon" href="script/image/komiya_icon.png">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -12,13 +12,37 @@
 <script src="script/auth.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <style>
+    /* ▼▼▼ 追加：HTML全体でスクロールを禁止 ▼▼▼ */
+    html {
+        overflow: hidden;
+        height: 100%;
+        overscroll-behavior: none; /* バウンス効果（引っ張り）を無効化 */
+    }
+
     body {
         font-family: Arial, sans-serif;
         background-color: #333;
         color: white;
         text-align: center;
-        margin: 0;
         padding: 20px;
+
+        /* 画面いっぱいに固定 */
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        overflow: hidden; 
+        box-sizing: border-box;
+
+        /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
+
+        /* ▼▼▼ 追加：タップ操作の最適化（スクロール禁止含む） ▼▼▼ */
+        touch-action: none;
     }
     .container {
         max-width: 700px;
@@ -279,7 +303,39 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
         }
     });
 }
+</script>
 
+<script>
+  // 右クリック・長押しメニュー禁止
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // 画像などのドラッグ禁止
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // iOSでのピンチイン・ピンチアウト拡大を禁止
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+
+  // ▼▼▼ 追加：スクロール（指でのスライド）を禁止 ▼▼▼
+  document.addEventListener('touchmove', function(e) {
+    // ページ全体のスクロールを完全に無効化
+    e.preventDefault();
+  }, { passive: false });
 </script>
 
 </body>
