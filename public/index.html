@@ -265,6 +265,16 @@
   setTimeout(autoRotateTitle, 100);
 </script>
 
+<script>
+  // 右クリック（長押しメニュー）を禁止
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+  }, { passive: false });
 
+  // 画像やリンクのドラッグ開始を禁止（念のため）
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+</script>
 </body>
 </html>
