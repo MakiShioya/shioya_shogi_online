@@ -14,7 +14,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-    /* --- 基本設定：スクロール禁止 --- */
+    /* --- 基本設定：スクロール禁止・コピー禁止・長押し禁止 --- */
     html, body {
       width: 100%;
       height: 100%;
@@ -22,6 +22,30 @@
       padding: 0;
       overflow: hidden; /* 絶対にスクロールさせない */
       background-color: #333; /* 背景色 */
+
+      /* ▼▼▼ 追加：コピー・長押し・ドラッグ禁止設定 ▼▼▼ */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      
+      -webkit-touch-callout: none; /* iOS長押しメニュー無効化 */
+      -webkit-user-drag: none;     /* 画像などのドラッグ禁止 */
+      
+      /* タップ時のハイライトを消す */
+      -webkit-tap-highlight-color: transparent;
+
+      /* ブラウザ標準のタッチ操作（スクロールやズーム）を無効化 */
+      touch-action: none;
+    }
+
+    /* ▼▼▼ 重要：入力フォーム（チャットなど）だけは操作を許可 ▼▼▼ */
+    input, textarea {
+      -webkit-user-select: text;
+      user-select: text;
+      -webkit-touch-callout: default;
+      /* 入力欄でのタッチ操作（カーソル移動など）を有効化 */
+      touch-action: manipulation; 
     }
 
     /* --- 待機画面（オーバーレイ） --- */
@@ -66,10 +90,9 @@
       left: 50%;
       transform-origin: center center;
       
-      /* ▼▼▼ 修正箇所：幅を狭めてコンパクトにしました ▼▼▼ */
-      width: 850px;  /* 1000px -> 820px */
-      height: 600px; /* 650px -> 600px */
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      /* コンパクト化 */
+      width: 850px; 
+      height: 600px;
       
       transform: translate(-50%, -50%); 
       
@@ -78,30 +101,27 @@
       align-items: center;
     }
 
-    /* ゲームの中身（既存のID） */
+    /* ゲームの中身 */
     #game {
       width: 100%;
       height: 100%;
       display: flex;
       
-      /* ▼▼▼ 修正箇所：中央寄せにして要素をくっつけました ▼▼▼ */
-      justify-content: center; /* space-between から変更 */
-      gap: 10px;               /* 要素間の隙間を少しだけ空ける */
+      /* 中央寄せ */
+      justify-content: center;
+      gap: 10px;
       align-items: center;
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
     }
 
     /* 盤や駒台のレイアウト調整 */
     .side {
-      width: 140px; /* 少しスリムに */
+      width: 140px; 
       height: 100%;
       display: flex;
       flex-direction: column;
       
-      /* ▼▼▼ 修正箇所：縦方向も中央に寄せました ▼▼▼ */
-      justify-content: center; /* space-around から変更 */
-      gap: 15px;               /* 縦の要素間の隙間 */
-      /* ▲▲▲ 修正ここまで ▲▲▲ */
+      justify-content: center; 
+      gap: 15px;
       
       padding: 5px;
       box-sizing: border-box;
@@ -140,23 +160,21 @@
     }
     .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
 
-/* ▼▼▼ ここから追加・修正 ▼▼▼ */
-
-    /* 必殺技カットイン画像の配置設定（強力版） */
+/* ▼▼▼ 必殺技カットイン画像の配置設定 ▼▼▼ */
     #skillCutIn {
-      position: absolute !important; /* 強制的に絶対配置にする */
+      position: absolute !important;
       top: 0;
       left: 0;
-      width: 100%;   /* 親要素（盤面）と同じ幅 */
-      height: 100%;  /* 親要素（盤面）と同じ高さ */
+      width: 100%;   
+      height: 100%;  
       
-      object-fit: contain; /* 枠の中に画像を綺麗に収める（比率維持） */
-      margin: auto;        /* 中央寄せの補強 */
+      object-fit: contain; 
+      margin: auto;        
       
-      z-index: 100;        /* 盤面や駒よりも手前に表示 */
+      z-index: 100;        
       pointer-events: none; /* 画像の下にある駒をクリックできるようにする */
       
-      opacity: 0;           /* 普段は透明にして隠す */
+      opacity: 0;           
       transition: opacity 0.2s;
     }
 
@@ -168,35 +186,27 @@
 
     /* アニメーション設定 */
     @keyframes popIn {
-      /* 開始：目標より少し小さいサイズから */
       0%   { opacity: 0; transform: scale(0.6); }
-      /* 出現時のバウンド：目標(0.8)より少し大きく */
       10%  { opacity: 1; transform: scale(0.9); }
-      /* 静止時のサイズ：ここで「0.8倍」を指定します */
       20%  { opacity: 1; transform: scale(0.8); }
       80%  { opacity: 1; transform: scale(0.8); }
-      /* 終了：少し大きくなって消える */
       100% { opacity: 0; transform: scale(1.0); }
     }
     
-    /* ▲▲▲ ここまで ▲▲▲ */
-
-
-
 /* チャット全体の幅と位置の調整 */
 #chatContainer {
-  width: 150px !important; /* 横幅をスリムに（元が広すぎる場合） */
+  width: 150px !important; /* 横幅をスリムに */
 }
 
-/* 「チャット」と書かれたヘッダー部分を小さくする */
+/* 「チャット」と書かれたヘッダー部分 */
 #chatHeader {
-  padding: 5px 10px !important; /* 上下の余白を狭く */
-  font-size: 0.75rem !important;  /* 文字を小さく */
-  border-radius: 5px 5px 0 0 !important; /* 角丸を控えめに */
-  line-height: 1.2 !important;   /* 行間を詰める */
+  padding: 5px 10px !important; 
+  font-size: 0.75rem !important;  
+  border-radius: 5px 5px 0 0 !important; 
+  line-height: 1.2 !important;   
 }
 
-/* チャットの中身の文字も小さくする場合（任意） */
+/* チャットの中身 */
 #chatBody {
   font-size: 0.7rem !important;
 }
@@ -211,34 +221,34 @@
   display: flex !important;
   align-items: center !important;
   padding: 4px !important;
-  box-sizing: border-box !important; /* 幅の計算を正確にする */
+  box-sizing: border-box !important; 
   width: 100% !important;
 }
 
-/* 入力欄：残りの幅をすべて使う設定 */
+/* 入力欄 */
 #chatInput {
-  flex: 1 !important;        /* これでボタンのスペースを確保します */
-  width: 0 !important;       /* flexを優先させるための指定 */
+  flex: 1 !important;        
+  width: 0 !important;       
   height: 24px !important;
   font-size: 0.75rem !important;
   padding: 2px 5px !important;
-  margin-right: 4px !important; /* ボタンとの間に少し隙間を作る */
+  margin-right: 4px !important; 
   border: 1px solid #ccc !important;
   border-radius: 3px !important;
 }
 
-/* ボタン：幅を固定して消えないようにする */
+/* ボタン */
 #chatInputArea button {
-  white-space: nowrap !important; /* 文字を折り返さない */
+  white-space: nowrap !important; 
   width: auto !important;
-  min-width: 45px !important;    /* 最低限の幅を確保 */
+  min-width: 45px !important;    
   height: 28px !important;
   padding: 0 5px !important;
   font-size: 0.7rem !important;
-  flex-shrink: 0 !important;     /* ボタンが圧縮されるのを防ぐ */
+  flex-shrink: 0 !important;     
 }
 
-/* 入力中の枠線を少しスリムに */
+/* 入力中の枠線 */
 #chatInput:focus {
   outline: none !important;
   border-color: #8b4513 !important;
@@ -399,10 +409,6 @@
 <audio id="moveSound" src="script/audio/move.mp3"></audio>
 <audio id="promoteSound" src="script/audio/promote.mp3"></audio>
 
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
 <script src="/socket.io/socket.io.js"></script>
 
 <script src="script/globals.js"></script>
@@ -439,23 +445,23 @@
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
     
-    // 基準サイズ（このサイズでレイアウトされています）
+    // 基準サイズ
     const baseWidth = 1000;
     const baseHeight = 650;
 
     const scaleX = windowWidth / baseWidth;
     const scaleY = windowHeight / baseHeight;
     
-    // 画面に収まる倍率を計算 (少し余裕を持たせて0.95倍)
+    // 画面に収まる倍率 (0.95倍)
     let scale = Math.min(scaleX, scaleY) * 0.95;
-    if (scale > 1) scale = 1; // 拡大はしない
+    if (scale > 1) scale = 1; 
 
     wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
   }
 
   window.addEventListener('load', autoFitGame);
   window.addEventListener('resize', autoFitGame);
-  setTimeout(autoFitGame, 500); // 遅延ロード対策
+  setTimeout(autoFitGame, 500); 
 </script>
 
 
@@ -466,14 +472,13 @@
     if (!wrapper) return; // エラー防止
 
     // ゲーム画面の基準サイズ（コンパクト設定）
-    // ※ここを変えれば全てのファイルに適用されます
     const baseWidth = 850;
     const baseHeight = 600;
 
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    // 縦持ち判定（高さ > 幅 なら縦持ちとみなす）
+    // 縦持ち判定
     const isPortrait = h > w;
 
     let scale;
@@ -484,40 +489,70 @@
     wrapper.style.height = baseHeight + "px";
 
     if (isPortrait) {
-      // ■ 縦持ちの場合：90度回転させる計算
-      // 画面の「高さ(h)」を「横幅」として扱い、画面の「幅(w)」を「高さ」として扱います
+      // 縦持ちの場合：90度回転
       const scaleX = h / baseWidth;
       const scaleY = w / baseHeight;
       
-      // 小さい方の倍率に合わせる
-      scale = Math.min(scaleX, scaleY) * 0.95; // 0.95は余白
-      rotation = 'rotate(90deg)'; // 90度回転を追加
+      scale = Math.min(scaleX, scaleY) * 0.95; 
+      rotation = 'rotate(90deg)'; 
 
     } else {
-      // ■ 横持ち（PC含む）の場合：通常計算
+      // 横持ちの場合
       const scaleX = w / baseWidth;
       const scaleY = h / baseHeight;
       
       scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = ''; // 回転なし
+      rotation = ''; 
     }
 
-    // 拡大しすぎ防止（PCでボヤけないように最大1倍）
     if (scale > 1) scale = 1;
 
-    // 変形（中央配置 + 回転 + 拡大縮小）を適用
     wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
   }
 
-  // 読み込み時とリサイズ時に実行
-  // ※既存のイベントリスナーがあっても、関数の中身が置き換わっているので問題ありません
   window.addEventListener('load', autoFitGame);
   window.addEventListener('resize', autoFitGame);
-  
-  // 画像読み込み遅延対策
   setTimeout(autoFitGame, 500);
 </script>
 
+<script>
+  // 右クリック・長押しメニュー禁止
+  document.addEventListener('contextmenu', function(e) {
+    // 入力欄だけはメニュー（ペーストなど）を許可
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    e.preventDefault();
+  }, { passive: false });
+
+  // 画像などのドラッグ禁止
+  document.addEventListener('dragstart', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+
+  // iOSでのピンチイン・ピンチアウト拡大を禁止
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+  });
+  
+  // ダブルタップによる拡大を禁止
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function (event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+
+  // 画面スクロール（指でのスライド）を禁止
+  document.addEventListener('touchmove', function(e) {
+    // 棋譜、ルール、メニュー、チャット履歴などのスクロール可能なエリアだけは許可する
+    const scrollable = e.target.closest('#kifu, #rulesModal .modal-content div, #menuPanel, #chatBody, #chatHistory');
+    if (scrollable) return; // スクロール可能エリアなら何もしない（許可）
+
+    e.preventDefault();
+  }, { passive: false });
+</script>
 
 </body>
 </html>
