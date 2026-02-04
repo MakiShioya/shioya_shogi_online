@@ -1,33 +1,33 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>しおや将棋 - タイトル</title>
-  <link rel="icon" href="script/image/komiya_icon.png"> 
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
-  
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>しおや将棋 - タイトル</title>
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      width: 100vw;
-
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-family: sans-serif;
-      overflow: hidden;
-    -webkit-user-select: none; /* Safari / Chrome */
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      background-image: url('script/image/shogi_title.PNG');
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: sans-serif;
+      overflow: hidden;
+      -webkit-user-select: none; /* Safari / Chrome */
       -moz-user-select: none;    /* Firefox */
       -ms-user-select: none;     /* IE / Edge */
       user-select: none;         /* Standard */
@@ -47,234 +47,222 @@
       user-select: text;
       -webkit-touch-callout: default; /* 必要に応じて */
     }
-/* 背景専用の設定 */
-    #bg-image {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: -1; /* 他の要素より背面に配置 */
-      background-image: url('script/image/shogi_title.PNG');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
-    .title-logo {
-      font-size: 4rem;
-      color: #FFB347;
-      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8), -2px -2px 5px rgba(0, 0, 0, 0.8);
-      font-weight: bold;
-      margin-bottom: 20vh;
-      text-align: center;
-    }
 
-    .tap-start {
-      font-size: 1.5rem;
-      color: white;
-      animation: blink 1.5s infinite;
-      cursor: pointer;
-      text-shadow: 0 0 5px black;
-      background: rgba(0,0,0,0.3);
-      padding: 10px 40px;
-      border-radius: 30px;
-    }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .title-logo {
+      font-size: 4rem;
+      color: #FFB347;
+      text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8), -2px -2px 5px rgba(0, 0, 0, 0.8);
+      font-weight: bold;
+      margin-bottom: 20vh;
+      text-align: center;
+    }
 
-    /* 設定（アカウント）ボタンの洗練 */
-    .settings-btn {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      font-size: 0.9rem;
-      font-weight: bold;
-      color: white;
-      
-      /* 背景に和風な濃い茶色と透け感を追加 */
-      background: rgba(139, 69, 19, 0.8); 
-      border: 2px solid #FFB347;
-      border-radius: 8px;
-      padding: 8px 16px;
-      
-      cursor: pointer;
-      box-shadow: 0 4px 0 #5d2e0d; /* 立体感 */
-      transition: all 0.2s;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
+    .tap-start {
+      font-size: 1.5rem;
+      color: white;
+      animation: blink 1.5s infinite;
+      cursor: pointer;
+      text-shadow: 0 0 5px black;
+      background: rgba(0,0,0,0.3);
+      padding: 10px 40px;
+      border-radius: 30px;
+    }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-    /* 押し込んだ時の動き */
-    .settings-btn:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 0 #5d2e0d;
-    }
+    /* 設定（アカウント）ボタンの洗練 */
+    .settings-btn {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: white;
+      
+      /* 背景に和風な濃い茶色と透け感を追加 */
+      background: rgba(139, 69, 19, 0.8); 
+      border: 2px solid #FFB347;
+      border-radius: 8px;
+      padding: 8px 16px;
+      
+      cursor: pointer;
+      box-shadow: 0 4px 0 #5d2e0d; /* 立体感 */
+      transition: all 0.2s;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
 
-    /* ホバー（マウスを乗せた時）の光 */
-    .settings-btn:hover {
-      background: rgba(160, 82, 45, 0.9);
-      border-color: #ffcc80;
-    }
-  </style>
+    /* 押し込んだ時の動き */
+    .settings-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #5d2e0d;
+    }
+
+    /* ホバー（マウスを乗せた時）の光 */
+    .settings-btn:hover {
+      background: rgba(160, 82, 45, 0.9);
+      border-color: #ffcc80;
+    }
+  </style>
 </head>
 <body>
-<div id="bg-image"></div>
-  <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
-  <div class="title-logo">しおや将棋</div>
+  <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
-  <div class="tap-start" onclick="goToHome()">TAP TO START</div>
+  <div class="title-logo">しおや将棋</div>
 
-  <div id="authModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
-    <div style="background: #fff8dc; padding: 30px; border: 4px solid #8b4513; border-radius: 10px; text-align: center; width: 300px;">
-      
-      <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
-      
-      <div id="authInputs">
+  <div class="tap-start" onclick="goToHome()">TAP TO START</div>
 
-        <div style="text-align: left; margin: 15px 0;">
-          <label>メールアドレス</label><br>
-          <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
-        </div>
-        <div style="text-align: left; margin: 15px 0;">
-          <label>パスワード（6文字以上）</label><br>
-          <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
-        </div>
-        
-        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
-          <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">ログイン</button>
-          <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">新規登録</button>
-        </div>
-      </div>
+  <div id="authModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: #fff8dc; padding: 30px; border: 4px solid #8b4513; border-radius: 10px; text-align: center; width: 300px;">
+      
+      <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
+      
+      <div id="authInputs">
 
-      <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
-         <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-size: 16px; cursor:pointer;">ログアウト</button>
-      </div>
+        <div style="text-align: left; margin: 15px 0;">
+          <label>メールアドレス</label><br>
+          <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        <div style="text-align: left; margin: 15px 0;">
+          <label>パスワード（6文字以上）</label><br>
+          <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+          <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">ログイン</button>
+          <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 40px; font-size: 16px; border:none; border-radius:5px; cursor:pointer;">新規登録</button>
+        </div>
+      </div>
 
-      <button onclick="closeAuthModal()" style="margin-top: 15px; background: #ccc; border: none; color: black; width: 100px; height: 30px; font-size: 14px; cursor:pointer;">閉じる</button>
-    </div>
-  </div>
+      <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+         <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-size: 16px; cursor:pointer;">ログアウト</button>
+      </div>
 
-  <script src="script/auth.js"></script>
-  <script>
-    function goToHome() {
-      window.location.href = "home.html";
-    }
+      <button onclick="closeAuthModal()" style="margin-top: 15px; background: #ccc; border: none; color: black; width: 100px; height: 30px; font-size: 14px; cursor:pointer;">閉じる</button>
+    </div>
+  </div>
 
-    // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
-    // これにより script/auth.js の「賢い方」の関数が使われます。
-  </script>
+  <script src="script/auth.js"></script>
+  <script>
+    function goToHome() {
+      window.location.href = "home.html";
+    }
+
+    // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
+    // これにより script/auth.js の「賢い方」の関数が使われます。
+  </script>
 
 
 <script>
-  function autoFitGame() {
-    // タイトル画面なのでIDが存在しない場合があります。
-    // その場合は body 全体を対象にします。
-    let wrapper = document.getElementById('game-wrapper');
-    
-    // index.html には game-wrapper がないので body に直接スタイルを当てます
-    if (!wrapper) {
-       document.body.style.transformOrigin = "center center";
-       wrapper = document.body; 
-    }
+  function autoFitGame() {
+    // タイトル画面なのでIDが存在しない場合があります。
+    // その場合は body 全体を対象にします。
+    let wrapper = document.getElementById('game-wrapper');
+    
+    // index.html には game-wrapper がないので body に直接スタイルを当てます
+    if (!wrapper) {
+       document.body.style.transformOrigin = "center center";
+       wrapper = document.body; 
+    }
 
-    // 基準サイズ（タイトル画面用）
-    // index.htmlは背景画像がメインなので、少し広めでも大丈夫ですが
-    // 統一感を持たせるなら同じサイズが良いでしょう
-    const baseWidth = 780;
-    const baseHeight = 600;
+    // 基準サイズ（タイトル画面用）
+    // index.htmlは背景画像がメインなので、少し広めでも大丈夫ですが
+    // 統一感を持たせるなら同じサイズが良いでしょう
+    const baseWidth = 780;
+    const baseHeight = 600;
 
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const isPortrait = h > w;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const isPortrait = h > w;
 
-    let scale;
-    let rotation = '';
+    let scale;
+    let rotation = '';
 
-    if (isPortrait) {
-      // 縦持ち → 90度回転
-      const scaleX = h / baseWidth;
-      const scaleY = w / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = 'rotate(90deg)';
-      
-      // 回転させた場合、幅と高さを入れ替えて指定しないとスクロールが発生することがあるため調整
-      wrapper.style.width = baseHeight + "px"; 
-      wrapper.style.height = baseWidth + "px";
+    if (isPortrait) {
+      // 縦持ち → 90度回転
+      const scaleX = h / baseWidth;
+      const scaleY = w / baseHeight;
+      scale = Math.min(scaleX, scaleY) * 0.95;
+      rotation = 'rotate(90deg)';
+      
+      // 回転させた場合、幅と高さを入れ替えて指定しないとスクロールが発生することがあるため調整
+      wrapper.style.width = baseHeight + "px"; 
+      wrapper.style.height = baseWidth + "px";
 
-    } else {
-      // 横持ち → そのまま
-      const scaleX = w / baseWidth;
-      const scaleY = h / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = '';
-      
-      wrapper.style.width = baseWidth + "px";
-      wrapper.style.height = baseHeight + "px";
-    }
+    } else {
+      // 横持ち → そのまま
+      const scaleX = w / baseWidth;
+      const scaleY = h / baseHeight;
+      scale = Math.min(scaleX, scaleY) * 0.95;
+      rotation = '';
+      
+      wrapper.style.width = baseWidth + "px";
+      wrapper.style.height = baseHeight + "px";
+    }
 
-    if (scale > 1) scale = 1;
+    if (scale > 1) scale = 1;
 
-    // タイトル画面は中央寄せ済みなので、translateは不要な場合もありますが
-    // 念のため固定配置にします
-    wrapper.style.position = "absolute";
-    wrapper.style.top = "50%";
-    wrapper.style.left = "50%";
-    wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
-  }
+    // タイトル画面は中央寄せ済みなので、translateは不要な場合もありますが
+    // 念のため固定配置にします
+    wrapper.style.position = "absolute";
+    wrapper.style.top = "50%";
+    wrapper.style.left = "50%";
+    wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
+  }
 
-  window.addEventListener('load', autoFitGame);
-  window.addEventListener('resize', autoFitGame);
-  setTimeout(autoFitGame, 500);
+  window.addEventListener('load', autoFitGame);
+  window.addEventListener('resize', autoFitGame);
+  setTimeout(autoFitGame, 500);
 </script>
 
 
 <script>
-  function autoRotateTitle() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
-    const isPortrait = h > w;
+  function autoRotateTitle() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    // 高さが幅より大きければ「縦持ち」と判定
+    const isPortrait = h > w;
 
-    if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
-      document.body.style.position = "fixed";
-      document.body.style.top = "50%";
-      document.body.style.left = "50%";
-      document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
-      document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
-      document.body.style.width = h + "px";
-      document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
-      document.body.style.overflow = "hidden";
+    if (isPortrait) {
+      // ■ 縦持ちの場合
+      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
+      
+      // 1. 画面中央を基準に回転させるための配置設定
+      document.body.style.position = "fixed";
+      document.body.style.top = "50%";
+      document.body.style.left = "50%";
+      document.body.style.transformOrigin = "center center";
+      
+      // 2. 90度回転させる
+      document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
+      
+      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
+      // これにより、縮小されずに画面いっぱいに表示されます
+      document.body.style.width = h + "px";
+      document.body.style.height = w + "px";
+      
+      // スクロールバーが出ないように念のため
+      document.body.style.overflow = "hidden";
 
-    } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.transform = "";
-      document.body.style.width = "100vw";
-      document.body.style.height = "100vh";
-    }
-  }
+    } else {
+      // ■ 横持ち（PC含む）の場合
+      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.transform = "";
+      document.body.style.width = "100vw";
+      document.body.style.height = "100vh";
+    }
+  }
 
-  // 読み込み時とリサイズ時に実行
-  window.addEventListener('load', autoRotateTitle);
-  window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
-  setTimeout(autoRotateTitle, 100);
+  // 読み込み時とリサイズ時に実行
+  window.addEventListener('load', autoRotateTitle);
+  window.addEventListener('resize', autoRotateTitle);
+  // 画像読み込みのタイミング対策
+  setTimeout(autoRotateTitle, 100);
 </script>
 
 
