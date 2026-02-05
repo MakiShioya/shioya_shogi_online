@@ -190,19 +190,31 @@ input, textarea {
 
     /* モーダルボックスの基本スタイル */
     .modal-box {
-      position: relative;
-      background: #fff8dc;
-      padding: 15px;
-      border-radius: 10px;
-      border: 4px solid #8b4513;
-      text-align: center;
-      width: 80%;
-      max-width: 800px;
-      max-height: 90vh; 
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-    }
+    position: relative;
+    background: #fff8dc;
+    padding: 15px;
+    border-radius: 10px;
+    border: 4px solid #8b4513;
+    text-align: center;
+    width: 80%;
+    max-width: 800px;
+    
+    /* ★★★ ここが重要：画面からはみ出さない設定 ★★★ */
+    max-height: 85vh; /* 画面の高さの85%までに制限 */
+    display: flex;    /* 中身を縦並びのFlexボックスにする */
+    flex-direction: column; /* 縦方向に並べる */
+    box-sizing: border-box;
+}
+
+    .modal-body {
+    flex: 1;            /* 余ったスペースを全部使う */
+    overflow-y: auto;   /* 中身が溢れたら縦スクロールバーを出す */
+    margin: 10px 0;     /* 上下の余白 */
+    padding: 5px;       /* 内側の余白（スクロールバーと文字が被らないように） */
+    
+    /* スクロールの操作性を良くする設定 */
+    -webkit-overflow-scrolling: touch; 
+}
     
     /* ボタンを2列に並べるためのグリッド設定 */
     .modal-grid {
@@ -379,28 +391,37 @@ input, textarea {
   <div class="modal-box">
     <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
     
-    <div id="authInputs">
-      <div style="text-align: left; margin: 15px 0;">
-        <label>メールアドレス</label><br>
-        <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
-      </div>
-      <div style="text-align: left; margin: 15px 0;">
-        <label>パスワード（6文字以上）</label><br>
-        <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+    <div id="authModal" class="overlay">
+  <div class="modal-box">
+    
+    <h2 id="authTitle" style="margin-top: 0; color: #8b4513; flex-shrink: 0;">ログイン / 新規登録</h2>
+    
+    <div class="modal-body">
+      
+      <div id="authInputs">
+        <div style="text-align: left; margin: 15px 0;">
+          <label>メールアドレス</label><br>
+          <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+        <div style="text-align: left; margin: 15px 0;">
+          <label>パスワード（6文字以上）</label><br>
+          <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+        </div>
+
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+          <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">ログイン</button>
+          <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">新規登録</button>
+        </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
-        <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">ログイン</button>
-        <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">新規登録</button>
+      <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
+         <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-weight:bold;">ログアウト</button>
       </div>
+
+    </div> <div style="margin-top: 0; border-top: 1px solid #ccc; padding-top: 15px; flex-shrink: 0;">
+      <button onclick="closeAuthModal()" style="background: #ccc; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-weight:bold;">もどる</button>
     </div>
 
-    <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
-       <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-weight:bold;">ログアウト</button>
-    </div>
-    <div style="margin-top: 15px;">
-      <button onclick="closeAuthModal()" style="background: #ccc; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">もどる</button>
-    </div>
   </div>
 </div>
 
@@ -1017,6 +1038,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
