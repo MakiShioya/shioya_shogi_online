@@ -6,7 +6,7 @@ window.CHARACTERS['b'] = {
     name: 'キャラC',
     image: 'script/image/b_touka.png',
     base: [
-        "B。\nよろしく",
+        "C。\nよろしく",
         "気分転換に\n散歩に出かけてくるよ",
         "今日は忙しいよ",
         "何か飲む？",
@@ -28,5 +28,6 @@ window.CHARACTERS['b'] = {
     }
 
 };
+
 
 
