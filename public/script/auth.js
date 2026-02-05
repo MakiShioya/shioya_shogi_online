@@ -154,18 +154,17 @@ function registerUser() {
     const email = document.getElementById("authEmail").value;
     const pass = document.getElementById("authPass").value;
 
-    // ★変更: 名前入力欄の取得をやめ、一旦「ゲスト」等の仮の名前で進める
     const tempName = "新加入選手"; 
 
     if (!email || !pass) { 
-        alert("メールとパスワードを入力してください"); 
+        // ★修正
+        showSystemAlert("メールとパスワードを入力してください"); 
         return; 
     }
 
     auth.createUserWithEmailAndPassword(email, pass).then((cred) => {
         const user = cred.user;
         
-        // プロフィールとFirestoreに一旦仮の名前で保存
         user.updateProfile({ displayName: tempName }).then(() => {
             return db.collection("users").doc(user.uid).set({
                 name: tempName, 
@@ -174,44 +173,52 @@ function registerUser() {
                 win: 0, lose: 0, history: []
             });
         }).then(() => {
-            // ★ここが新しい動き: 登録完了のアラートを出し、名前入力へ誘導
-            alert("登録ありがとうございます！\nあなたのお名前を教えてください！");
+            // ★修正
+            showSystemAlert("登録ありがとうございます！\nあなたのお名前を教えてください！", () => {
+                // OKボタンを押した後の処理
+                closeAuthModal();
 
-            // 1. ログイン/新規登録の画面を閉じる
-            closeAuthModal();
+                const nameInput = document.getElementById("newNameInput");
+                if(nameInput) nameInput.value = ""; 
 
-            // 2. 名前変更画面をきれいに表示するための準備
-            const nameInput = document.getElementById("newNameInput");
-            if(nameInput) nameInput.value = ""; // 空欄にしておく（好きな名前を入れてもらうため）
-
-            // 3. 名前変更画面を開く
-            // （画面の切り替わりを少し待つとスムーズです）
-            setTimeout(() => {
-                document.getElementById("nameEditModal").style.display = "flex";
-            }, 300);
+                setTimeout(() => {
+                    document.getElementById("nameEditModal").style.display = "flex";
+                }, 300);
+            });
         });
     }).catch((error) => { 
         let msg = "登録失敗: " + error.message;
         if (error.code === "auth/email-already-in-use") msg = "そのメールアドレスは既に使用されています。";
         if (error.code === "auth/weak-password") msg = "パスワードは6文字以上にしてください。";
-        alert(msg); 
+        // ★修正
+        showSystemAlert(msg); 
     });
 }
 
 function loginUser() {
     const email = document.getElementById("authEmail").value;
     const pass = document.getElementById("authPass").value;
-    if (!email || !pass) { alert("メールとパスワードを入力してください"); return; }
+    // ★修正
+    if (!email || !pass) { showSystemAlert("メールとパスワードを入力してください"); return; }
+    
     auth.signInWithEmailAndPassword(email, pass).then(() => {
-        alert("ログインしました！");
-        closeAuthModal();
-        if (!document.getElementById("userNameDisplay")) window.location.href = "home.html";
-    }).catch((error) => { alert("ログイン失敗"); });
+        // ★修正
+        showSystemAlert("ログインしました！", () => {
+            closeAuthModal();
+            if (!document.getElementById("userNameDisplay")) window.location.href = "home.html";
+        });
+    }).catch((error) => { 
+        // ★修正
+        showSystemAlert("ログインに失敗しました。\nメールアドレスかパスワードが間違っています。"); 
+    });
 }
 
 function logoutUser() {
-    if(!confirm("ログアウトしますか？")) return;
-    auth.signOut().then(() => { location.reload(); });
+    // ★修正（Confirmの使用）
+    showSystemConfirm("ログアウトしますか？", () => {
+        // 「はい」の処理
+        auth.signOut().then(() => { location.reload(); });
+    });
 }
 
 function showNameEditModal() {
@@ -228,31 +235,34 @@ function saveNewName() {
     const newName = document.getElementById("newNameInput").value;
     
     if (!newName) {
-        alert("名前を入力してください"); // ★空入力を防ぐ
+        // ★修正
+        showSystemAlert("名前を入力してください"); 
         return;
     }
 
     user.updateProfile({ displayName: newName }).then(() => {
         return db.collection("users").doc(user.uid).set({ name: newName }, { merge: true });
     }).then(() => {
-        // 画面表示更新
         const nameDisplay = document.getElementById("userNameDisplay");
         if(nameDisplay) nameDisplay.textContent = newName;
         
-        // LocalStorageも更新
         localStorage.setItem('shogi_username', newName);
         
-        // モーダルを閉じる
         closeNameEditModal();
         
-        // ★追加: 完了メッセージ
-        alert("「" + newName + "」さん、\nよろしくお願いいたします！");
+        // ★修正
+        showSystemAlert("「" + newName + "」さん、\nよろしくお願いいたします！");
     });
 }
 
 function showMyStats() {
-    if (!auth.currentUser) { alert("ログインしていません"); showAuthModal(); return; }
+    if (!auth.currentUser) { 
+        // ★修正
+        showSystemAlert("ログインしていません", () => {
+            showAuthModal(); 
+        });
+        return; 
+    }
     document.getElementById("statsModal").style.display = "flex";
 }
 function closeStatsModal() { document.getElementById("statsModal").style.display = "none"; }
-
