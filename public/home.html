@@ -686,7 +686,7 @@ input, textarea {
         const user = firebase.auth().currentUser;
         if (!user) {
             // alert ではなく showSystemAlert を使用
-            showSystemAlert("オンライン対戦をするにはログインが必要です。\n画面上の「ログイン / 新規登録」からログインしてください。", () => {
+            showSystemAlert("オンライン機能を利用するにはログインが必要です。", () => {
                 showAuthModal(); 
             });
             return;
@@ -1090,6 +1090,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
