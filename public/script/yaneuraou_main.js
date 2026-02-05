@@ -453,9 +453,8 @@ function renderHands() {
       
       container.onclick = () => selectFromHand(player, i);
 
-      // 後手（AI）の持ち駒は反転
-      // ★修正：単純に "white" かどうかではなく、「相手(CPU)の駒」かどうかで判定する
-      // こうすることで、自分が後手(White)の時は、相手(Black)の駒だけが回るようになります。
+      // 持ち駒反転
+
       if (player === cpuSide) {
           container.style.transform = "rotate(180deg)";
       }
