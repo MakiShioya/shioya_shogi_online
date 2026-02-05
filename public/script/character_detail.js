@@ -7,7 +7,7 @@ const charData = {
     name: "キャラA",
     image: "script/image/karui_1p.PNG",
     skillName: "シルバーアーマー",
-    skillDesc: "自身の「銀」「成銀」「成桂」「成香」のうち一つを選び、自分の玉の周囲８マスから１マスを選択し、移動させる。手番が終わる。<br>発動条件：30手以降 / 1局に1回のみ"
+    skillDesc: "自身の「銀」「成銀」「成桂」「成香」のうち一つを選び、自分の玉の周囲８マスから１マスを選択し、移動させる。手番が終わる。<br>発動条件：なし<br>発動可能：1回"
   },
   
   // ■熱血（char_a）
@@ -15,7 +15,7 @@ const charData = {
     name: "キャラB",
     image: "script/image/char_a.png",
     skillName: "熱烈な応援",
-    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。<br>発動条件：なし / 1局に2回のみ"
+    skillDesc: "自分の「銀」「桂」「香」を１枚選択し、その場で成る。<br>発動条件：なし<br>発動可能：2回"
   },
 
   // ■冷静（char_b）
@@ -23,7 +23,7 @@ const charData = {
     name: "キャラC",
     image: "script/image/char_b.png",
     skillName: "ブループリント",
-    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。<br>発動条件：振り飛車 / 1局に1回のみ"
+    skillDesc: "振り飛車限定の必殺技。自分の飛車か角を１枚選択し、その場で成る。<br>発動条件：10手目以内に振り飛車にしていること。<br>発動可能：1回"
   },
 
   // ■町田（char_d）
@@ -31,7 +31,7 @@ const charData = {
     name: "キャラD",
     image: "script/image/char_d.png",
     skillName: "タイムワープ",
-    skillDesc: "ひとつ前の自分の番に戻る。<br>発動条件：なし（ただし直前の手番に相手が必殺技を使っていたら、巻き戻すことはできない。） / 1局に1回のみ"
+    skillDesc: "ひとつ前の自分の番に戻る。相手の必殺技を巻き込んで戻ることはできない。<br>発動条件：直前の手番に相手が必殺技を使っていないこと。<br>発動可能：1回"
   }
 
 };
