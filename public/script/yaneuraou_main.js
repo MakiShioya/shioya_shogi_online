@@ -1385,11 +1385,12 @@ function executeResign() {
     gameOver = true;
     stopTimer();
     
-    // 自分が投了するので、勝者は「後手(white)」
-    winner = "white"; 
+    // ★修正：自分が投了したので、勝者は「相手（cpuSide）」になる
+    winner = cpuSide; 
     
     // Firebaseに結果を保存
     saveGameResult(winner);
+    // ...
     
     // 演出と「ホームに戻る」ボタンを表示
     render();
@@ -1418,7 +1419,9 @@ function saveGameResult(res) {
     const opponentDisplayName = window.opponentName || "試験実装AI (最強)"; 
     
     // あなた（先手/black）が勝ったかどうか
-    const isWin = (res === "black"); 
+    // ★修正：AIの手番(cpuSide)が "white" なら、プレイヤーは "black"
+    const playerColor = (cpuSide === "white" ? "black" : "white");
+    const isWin = (res === playerColor);
     
     // 保存するデータのカタマリを作成
     const gameRecord = {
