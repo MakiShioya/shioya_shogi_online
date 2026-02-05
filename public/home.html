@@ -368,27 +368,27 @@ input, textarea {
   </div>
 </div>
 
-  <div id="volumeMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">音量設定</h3>
-      <div style="margin: 20px 0;">
-        <p>BGM</p><input type="range" style="width:80%;">
-        <p>効果音</p><input type="range" style="width:80%;">
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+<div id="volumeMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">音量設定</h3>
+    <div style="margin: 20px 0;">
+      <p>BGM</p><input type="range" style="width:80%;">
+      <p>効果音</p><input type="range" style="width:80%;">
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="switchModal('volumeMenu', 'settingsMainMenu')">もどる</button>
   </div>
+</div>
 
-  <div id="languageMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
-      <div class="modal-grid">
-        <button class="sub-btn">日本語</button>
-        <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+<div id="languageMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
+    <div class="modal-grid">
+      <button class="sub-btn">日本語</button>
+      <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
     </div>
+    <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
   </div>
+</div>
 
  
 <div id="authModal" class="overlay">
@@ -548,18 +548,18 @@ input, textarea {
   </div>
 
   <div id="helpContact" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513;">不具合・ご要望</h3>
-      <div style="margin: 20px 0; line-height: 1.6;">
-        <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
-        <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
-          onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
-          回答フォームを開く ↗
-        </button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513;">不具合・ご要望</h3>
+    <div style="margin: 20px 0; line-height: 1.6;">
+      <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
+      <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
+        onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
+        回答フォームを開く ↗
+      </button>
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('helpContact')">閉じる</button>
   </div>
+</div>
 
   <div id="offlineMenu" class="overlay">
     <div class="modal-box">
@@ -602,7 +602,7 @@ input, textarea {
       <button class="sub-btn" onclick="changeCharacter('d')">キャラD</button>
     </div>
     
-    <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('characterSettingsMenu')">閉じる</button>
   </div>
 </div>
   
@@ -981,6 +981,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
