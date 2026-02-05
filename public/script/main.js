@@ -803,7 +803,13 @@ function saveGameResult(res) {
   const user = auth.currentUser;
   if (!user) return; 
   const opponentDisplayName = window.opponentName || "CPU対局"; 
-  const isWin = (res === "black"); 
+  
+  // ★修正：プレイヤーの色（cpuSideの逆）と勝者（res）が一致しているかで判定する
+  // cpuSide が "white" ならプレイヤーは "black"(先手)
+  // cpuSide が "black" ならプレイヤーは "white"(後手)
+  const playerColor = (cpuSide === "white" ? "black" : "white");
+  const isWin = (res === playerColor);
+
   const gameRecord = {
       date: new Date(), 
       opponent: opponentDisplayName,
