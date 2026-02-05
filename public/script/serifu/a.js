@@ -6,7 +6,7 @@ window.CHARACTERS['a'] = {
     name: 'キャラB',
     image: 'script/image/a_touka.png',
     base: [
-        "Bです！\nk今日も頑張ります！",
+        "Bです！\n今日も頑張ります！",
         "将棋ですか！\nお供します！",
         "相手が強いヤツほど燃えますね！",
         "もっと骨のあるヤツはいませんかね！",
@@ -26,6 +26,7 @@ window.CHARACTERS['a'] = {
     }
 
 };
+
 
 
 
