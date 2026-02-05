@@ -354,16 +354,18 @@ input, textarea {
   </div>
 
   <div id="settingsMainMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">設定</h3>
-      <div class="modal-grid">
-        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
-        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
-        <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">設定</h3>
+    <div class="modal-grid">
+      <button class="sub-btn" style="background: #e91e63;" onclick="switchModal('settingsMainMenu', 'characterSettingsMenu')">キャラ設定</button>
+      
+      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
+      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
+      <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
   </div>
+</div>
 
   <div id="volumeMenu" class="overlay">
     <div class="modal-box">
@@ -586,11 +588,30 @@ input, textarea {
       </div>
     </div>
   </div>
+
+  <div id="characterSettingsMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">キャラクター選択</h3>
+    <p style="font-size:0.9rem;">ホーム画面のパートナーを選べます</p>
+    
+    <div class="modal-grid">
+      <button class="sub-btn" onclick="changeCharacter('komiya')">キャラA<br><span style="font-size:0.7rem">(いつもの)</span></button>
+      <button class="sub-btn" onclick="changeCharacter('a')">キャラB<br><span style="font-size:0.7rem">(別ver)</span></button>
+      <button class="sub-btn" onclick="changeCharacter('b')">キャラC<br><span style="font-size:0.7rem">(別ver)</span></button>
+      <button class="sub-btn" onclick="changeCharacter('d')">キャラD<br><span style="font-size:0.7rem">(別ver)</span></button>
+    </div>
+    
+    <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('characterSettingsMenu', 'settingsMainMenu')">もどる</button>
+  </div>
+</div>
   
+  <script src="script/data/komiya.js"></script>
+<script src="script/data/a.js"></script>
+<script src="script/data/b.js"></script>
+<script src="script/data/d.js"></script>
   <script src="script/auth.js"></script>
   <script>
-    
-    // --- ★★★ 修正点：Socket.ioをここで一括初期化 ★★★ ---
+    // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
     let globalChatHistory = [];
     try {
@@ -599,12 +620,11 @@ input, textarea {
         console.log("チャットサーバーに接続できませんでした");
     }
 
-    // --- ★★★ 追加：システムモーダル呼び出し用関数 ★★★ ---
+    // --- システムモーダル関数 ---
     function showSystemAlert(msg, callback) {
         document.getElementById("sysAlertMsg").textContent = msg;
         const modal = document.getElementById("systemAlertModal");
         modal.style.display = "flex";
-        
         const btn = document.getElementById("sysAlertBtn");
         btn.onclick = function() {
             modal.style.display = "none";
@@ -616,7 +636,6 @@ input, textarea {
         document.getElementById("sysConfirmMsg").textContent = msg;
         const modal = document.getElementById("systemConfirmModal");
         modal.style.display = "flex";
-
         document.getElementById("sysConfirmYesBtn").onclick = function() {
             modal.style.display = "none";
             if (yesCallback) yesCallback();
@@ -627,15 +646,10 @@ input, textarea {
         };
     }
     
-    // --- ★★★ 復帰機能（統合済み） ★★★ ---
+    // --- 復帰機能 ---
     document.addEventListener("DOMContentLoaded", () => {
-        // 1. 保存されているルームIDがあるか確認
         const savedRoomId = localStorage.getItem('current_shogi_room');
-        
         if (savedRoomId && socket) {
-            // 2. サーバーに「この部屋、まだやってる？」と聞く
-            // socket.connected が false でも emit すると自動でバッファリングされますが、
-            // 念のため接続確認イベント内で実行します
             if (socket.connected) {
                 checkReconnection(savedRoomId);
             } else {
@@ -644,26 +658,27 @@ input, textarea {
                 });
             }
         }
+        
+        // ★★★ 追加：保存されたキャラクターを読み込んで画像を更新する処理 ★★★
+        const savedCharId = localStorage.getItem('selected_character_id');
+        if (savedCharId && window.CHARACTERS && window.CHARACTERS[savedCharId]) {
+            currentCharacterId = savedCharId; // IDを更新
+            const imgEl = document.querySelector('.character-stand');
+            if (imgEl) {
+                imgEl.src = window.CHARACTERS[savedCharId].image;
+            }
+        }
     });
 
     function checkReconnection(roomId) {
         socket.emit('check reconnection', roomId, (response) => {
             if (response.canReconnect) {
-                // ★修正箇所：confirm ではなく showSystemConfirm を使用
                 showSystemConfirm(
                     "中断された対局があります。\n復帰しますか？\n（「いいえ」を選ぶと対局を破棄します）",
-                    // 「はい」が押された時の処理
-                    () => {
-                        window.location.href = `player_vs_player_online.html?room=${roomId}`;
-                    },
-                    // 「いいえ」が押された時の処理
-                    () => {
-                        localStorage.removeItem('current_shogi_room');
-                    }
+                    () => { window.location.href = `player_vs_player_online.html?room=${roomId}`; },
+                    () => { localStorage.removeItem('current_shogi_room'); }
                 );
             } else {
-                // 終了済み
-                console.log("古い対局データが見つかりましたが、すでに終了しています。");
                 localStorage.removeItem('current_shogi_room');
             }
         });
@@ -681,21 +696,17 @@ input, textarea {
 
     // --- 画面遷移 ---
     function goToCharacterSelect(mode) { 
-    // ★★★ オンラインモード時のログインチェック（修正版） ★★★
-    if (mode === 'online') {
-        const user = firebase.auth().currentUser;
-        if (!user) {
-            // alert ではなく showSystemAlert を使用
-            showSystemAlert("オンライン機能を利用するにはログインが必要です。", () => {
-                showAuthModal(); 
-            });
-            return;
+        if (mode === 'online') {
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                showSystemAlert("オンライン機能を利用するにはログインが必要です。", () => {
+                    showAuthModal(); 
+                });
+                return;
+            }
         }
+        window.location.replace("character.html?mode=" + mode);
     }
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
-
-    window.location.replace("character.html?mode=" + mode);
-}
 
     function startGame(difficulty) {
       if (difficulty === 'ex_hard3') {
@@ -705,173 +716,92 @@ input, textarea {
       }
     }
 
-    // --- キャラクターの喋り機能 ---
+    // --- ★★★ キャラクター切り替え機能 ★★★ ---
+    // 現在選択中のキャラID（デフォルトは komiya）
+    let currentCharacterId = localStorage.getItem('selected_character_id') || 'komiya';
+
+    function changeCharacter(charId) {
+        // 外部ファイルから読み込まれた CHARACTERS があるか確認
+        if (!window.CHARACTERS || !window.CHARACTERS[charId]) {
+            console.error("指定されたキャラクターデータが見つかりません:", charId);
+            return;
+        }
+
+        // 1. IDを更新・保存
+        currentCharacterId = charId;
+        localStorage.setItem('selected_character_id', charId);
+
+        // 2. 画像を更新
+        const imgEl = document.querySelector('.character-stand');
+        if (imgEl) {
+            imgEl.src = window.CHARACTERS[charId].image;
+        }
+
+        // 3. 設定メニューに戻る
+        switchModal('characterSettingsMenu', 'settingsMainMenu');
+
+        // 4. 切り替え直後に挨拶させる（お好みで）
+        setTimeout(talkCharacter, 500);
+    }
+
+    // --- ★★★ キャラクターの喋り機能（{name}置換対応版） ★★★ ---
     let bubbleTimer = null;
+    
     function talkCharacter() {
+        // データが存在するかチェック
+        if (!window.CHARACTERS || !window.CHARACTERS[currentCharacterId]) return;
+
         const bubble = document.getElementById("characterBubble");
+        // ユーザー名を取得
         const userName = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        
         const now = new Date();
         const hour = now.getHours();
 
-        const baseMessages = [
-            `お手合わせ、\nよろしくお願いします！\n${userName}さん！`,
-            `${userName}さん、こんにちは！\n今日も将棋ですか？`,
-            `次の一手、\nじっくり考えましょう…`,
-            `将棋は楽しむことが一番ですよね！\n${userName}さん！`,
-            `さあ、対局を始めましょう！\n${userName}さん！`,
-            `ここはどこでしょうか…？`,
-            `対局が終わったら、\nカレーを食べましょう…`,
-            `一歩千金…\n歩も大切にしましょうね、\n${userName}さん。`,
-            `${userName}さんの得意戦法は\nなんですか？`,
-            `詰将棋が解けると、\n頭がスッキリしますよね！`,
-            `負けても腐らず、\n次の一手を見据えましょう。`,
-            `攻める時は大胆に、\n守る時は慎重に、ですよ。`,
-            `二歩にだけは気をつけてくださいね！`,
-            `${userName}さんと指す時間は、\n私にとって宝物です。`,
-            `王手！といきたいところですが、\nまずは落ち着きましょう。`,
-            `${userName}さん、\n少し休憩しませんか？\nお茶を淹れますね。`,
-            `外の空気は、\n今どんな感じですか？`,
-            `${userName}さん！\n会いに来てくれて嬉しいです！`,
-            `なんだか今日は、\n良いことがありそうな予感です！`,
-            `画面の向こう側って、\nどんな景色なんですか？`,
-            `わたしのこの服、\n実は動きやすいんですよ。`,
-            `次はどんな棋譜を\n見せてくれるんですか？`,
-            `将棋の駒なら、\nわたしは銀が好きですよ。`,
-            `わたしは銀なので、\n横には動きませんよ。`,
-            `くすぐったいですよ。`,
-            `銀は桂馬を捕まえるのが上手なんですよ！`,
-            `銀って、成れるのに成らないこと多くないですか？`,
-            `わたし思うんです。\n将棋は銀の使い方がうまい人が勝ちます。`,
-            `将棋の前に\nちょっとお水飲んできます。`,
-            `銀の動きって、可愛いですよね。`,
-            `対局の後のカレーは、\n格別の味がします。`,
-            `駒の音って、\n心が落ち着きませんか？`,
-            `集中しすぎて、\n瞬きを忘れてませんか？目が乾いちゃいますよ～`,
-            `背筋を伸ばすと、\n良い手が浮かびますよ。`,
-            `今日はどんな名局が\n生まれるんでしょうか。`,
-            `無理な攻めより、\n粘り強い受けが勝機を呼びます。`,
-            `持ち時間を使い切るくらい、\nじっくり考えちゃいましょう！`,
-            `たまには「投了」も大事な勇気、\nですよね…？`,
-            `攻めている時こそ、\n自玉の安全を確認、ですよ。`,
-            `将棋の駒って、\nずっと触っていたいくらい\n手触りがいいですよね。`,
-            `実は私、\n扇子を広げるのが\nちょっと苦手なんです…。`,
-            `たまには空でも眺めて、\n頭を空っぽにするのも\n大切ですよ。`,
-            `将棋を好きになってくれて、\n本当にありがとうございます。`,
-            `苦しい時こそ、相手の視点になって盤面を眺めてみましょう。`,
-            `将棋もカレーも、一晩寝かせると深みが出るんですよ。`,
-            `無理して強くなろうとしなくても、楽しく指すのが一番の近道ですよ。`,
-            `気分転換に麻雀でも…\nあ、麻雀機能はないんでした。`,
-            `どんな機能が欲しいですか？おしえてください！`,
-            `バグを見つけたらおしえてくださいね！`,
-            `このゲームに関する要望や改善案があったらいつでもおしえてください！`,
-            `将棋って、ずっと同じ姿勢でやると疲れちゃいます。`,
-            `集中すると、おなかがすいているのも忘れちゃいますね。`,
-            `新国立競技場の近くに、将棋盤みたいな建物ありません？`,
-            `${userName}さんは、好きな駒ってありますか？`,
-            `将棋の夢ってレアじゃないですか？`,
-            `読み込みが遅い時は、私が裏で駒を並べている最中かもしれません。`,
-            `充電、大丈夫ですか？熱くなったら少し休憩ですよ。`,
-            `このゲーム、${userName}さんの使いやすいように進化していきたいです。`,
-            `スマホの電池、大丈夫ですか？熱くなったら少し休憩ですよ。`,
-            `長考した末に、結局直感で指しちゃうことありますよね。`,
-            `「桂馬の高跳び歩の餌食」…それでも跳ねたくなるのが桂馬なんですよね。`,
-            `桂馬をはねるときが一番気持ちいいといっても過言じゃないです。`,
-            `対局が終わっても、もう少しだけこうしてお話ししててもいいですか？`,
-            `首が凝っていませんか？ぐるっと回してストレッチしましょう。`,
-            `目が疲れたら、遠くの緑を見るといいらしいですよ。…あ、わたしの服緑色ですね、遠くにいきます！`,
-            `「王の早逃げ八手の得」って言いますし、嫌な予感がしたらすぐ休憩ですよ！`,
-            `「遠見の角に好手あり」…少し離れた視点から自分を見つめるのも大切です。`,
-            `テストプレイに付き合ってくれてありがとうございます。助かります！`,
-            `端歩を突くか突かぬか、それが問題です。`,
-            `銀を成るか成らぬか、それが問題です。`,
-            `穴熊って、なんだか暖かそうですよね。`,
-            `勝った時の喜びを、${userName}さんと分かち合いたいです！`,
-            `もし私が駒になるとしたら、やっぱり銀になりたいです。`,
-            `昨日、詰将棋の夢を\n見ちゃいました。`
-        ];
+        // 現在のキャラデータを取得
+        const charData = window.CHARACTERS[currentCharacterId];
 
+        // 時間帯別のセリフリストを取得
         let timeMessages = [];
         if (hour >= 5 && hour < 11) {
-            timeMessages = [
-                `おはようございます！\n朝の将棋は頭が冴えますね。`,
-                `おはようございます！\n${userName}さん！`,
-                `今日もたくさん将棋しましょう！\n${userName}さん！`,
-                `${userName}さん、\n朝ごはんは食べましたか？\n私はカレーでした！`,
-                `今日も一日、\n清々しく指しましょう！`,
-                `朝ごはんは、\nもう食べましたか？`,
-                `朝はパンですか？お米ですか？\nあ、麺ですか？`,
-                `おはようございます！\n眠そうですね？`,
-                `早起きは三文の徳…\nいえ、三手の得、ですね！\n玉の早逃げのほうがお得です。`,
-                `まだ眠いですか？\n将棋を指せば目が覚めますよ！`,
-                `朝の空気は澄んでいて、\n盤面がよく見渡せる気がします。`,
-                `どちらか一つ許されるとしたら、\n二度寝ですか？二歩ですか？`,
-                `朝の光を浴びながらの\n対局…贅沢ですね。`
-            ];
+            timeMessages = charData.time.morning || [];
         } else if (hour >= 11 && hour < 17) {
-            timeMessages = [
-                `お昼休みですか？\n対局してから戻りますか？`,
-                `午後も頑張りましょう！\n応援していますね。`,
-                `あ、お昼ごはんの匂い…`,
-                `お昼寝したくなる時間ですね。長考中にこっそり寝てませんよね？`,
-                `午後の眠気覚ましに、激しい攻め合いをしましょうか！`,
-                `お昼はまったり将棋をします。`,
-                `この時間が一番眠くなりますよね？`,
-                `こんにちは、\n${userName}さん。`,
-                `一番眠くなる時間ですね。\n少し深呼吸しましょう！`
-            ];
+            timeMessages = charData.time.noon || [];
         } else if (hour >= 17 && hour < 22) {
-            timeMessages = [
-                `今日もお疲れ様です！\n一局指してリラックスしましょう。`,
-                `夜の静かな対局、\n私は大好きですよ。`,
-                `こんばんは。\n今日も将棋しますか？`,
-                `少し眠くなってきたような\n気がします。`,
-                `一日の締めくくりに、良い手を指してスッキリしましょう！`,
-                `お風呂に入ってサッパリしてから指しますか？`,
-                `夜に向けて、わたしの集中力も上がってきましたよ！`,
-                `街の明かりが灯り始めましたね。\n盤上の明かりも灯しましょう。`,
-                `晩ごはんは、\nもう食べましたか？`
-            ];
+            timeMessages = charData.time.evening || [];
         } else {
-            timeMessages = [
-                `${userName}さん、\n夜更かしは禁物ですよ？`,
-                `こんな時間まで熱心ですね。\n…無理はしないでくださいね。`,
-                `羊を数えるより、\n詰将棋を解く方が\n眠れるかもしれませんよ？`,
-                `深夜の対局は、負けると悔しくて眠れなくなっちゃいますよ？`,
-                `今日は徹夜で将棋ですか？`,
-                `夜食なに食べます？`,
-                `明日も早いんじゃないですか？大丈夫ですか？`,
-                `草木も眠る丑三つ時…将棋の駒たちが動き出す時間ですよ。`,
-                `外は真っ暗ですね。でも、盤上だけは輝いて見えます。`,
-                `充電残量は大丈夫ですか？わたしの体力は${userName}さん次第です。`,
-                `美濃囲いってお布団みたいです。\nおやすみなさい。`,
-                `こんばんは、\n${userName}さん。`,
-                `静かな真夜中…\n駒の音が響いて心地いいですね。`
-            ];
+            timeMessages = charData.time.night || [];
         }
 
-        const charMessages = baseMessages.concat(timeMessages);
-        const randomMsg = charMessages[Math.floor(Math.random() * charMessages.length)];
+        // 基本セリフと結合
+        const allMessages = (charData.base || []).concat(timeMessages);
         
-        bubble.textContent = randomMsg;
+        // セリフが1つもない場合は終了
+        if (allMessages.length === 0) return;
+
+        // ランダムに選択
+        let rawMsg = allMessages[Math.floor(Math.random() * allMessages.length)];
+        
+        // ★ {name} を 実際のユーザー名に置き換える処理
+        let finalMsg = rawMsg.split('{name}').join(userName);
+        
+        // 表示
+        bubble.textContent = finalMsg;
         bubble.style.display = "block";
 
         clearTimeout(bubbleTimer);
         bubbleTimer = setTimeout(() => {
             bubble.style.display = "none";
-        }, 2000);
+        }, 3000); // 少し長めに表示(3秒)
     }
 
     // --- ロビーチャット機能 ---
     function openLobbyChat() {
         openModal('lobbyChatModal');
-        // チャットを開いたら入室メッセージを送る（任意）
-        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
-        // socket.emit('chat message', { name: "システム", text: `${myName}さんがロビーに来ました`, isSystem: true });
     }
 
     function sendLobbyMessage() {
         if (!socket) {
-            // alert ではなく showSystemAlert を使用
             showSystemAlert("チャットサーバーに接続されていません");
             return;
         }
@@ -892,28 +822,23 @@ input, textarea {
     if (socket) {
         socket.on('chat history', (history) => {
             globalChatHistory = history; 
-            renderLobbyChat();           
+            renderLobbyChat();            
         });
-
         socket.on('chat message', (data) => {
             globalChatHistory.push(data); 
             addMessageToLobbyChat(data); 
         });
     }
 
-    // 履歴全体を再描画する関数
     function renderLobbyChat() {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
-
         historyDiv.innerHTML = ""; 
-        
         globalChatHistory.forEach(data => {
             addMessageToLobbyChat(data);
         });
     }
 
-    // 画像アイコン付きメッセージ表示関数
     function addMessageToLobbyChat(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
@@ -933,16 +858,13 @@ input, textarea {
             rowDiv.className = "chat-row";
             if (isMe) rowDiv.classList.add("mine");
 
-            // 1. アイコンと名前の列
             const iconCol = document.createElement("div");
             iconCol.className = "icon-container";
 
-            // 名前
             const nameDiv = document.createElement("div");
             nameDiv.className = "chat-name-badge";
             nameDiv.textContent = data.name;
 
-            // アイコン画像
             const iconImg = document.createElement("img");
             iconImg.src = "script/image/test.icon.PNG"; 
             iconImg.className = "chat-icon-img";
@@ -951,21 +873,17 @@ input, textarea {
             iconCol.appendChild(nameDiv);
             iconCol.appendChild(iconImg);
 
-            // 2. 吹き出し
             const bubbleDiv = document.createElement("div");
             bubbleDiv.className = "chat-bubble";
             bubbleDiv.textContent = data.text;
 
             rowDiv.appendChild(iconCol);
             rowDiv.appendChild(bubbleDiv);
-
             historyDiv.appendChild(rowDiv);
         }
-
         historyDiv.scrollTop = historyDiv.scrollHeight;
     }
 
-    // Enterキー送信対応
     document.addEventListener("DOMContentLoaded", () => {
         const lobbyInput = document.getElementById("lobbyChatInput");
         if (lobbyInput) {
@@ -978,7 +896,6 @@ input, textarea {
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
       const openMenuId = urlParams.get('open');
-      
       if (openMenuId) {
         const menuEl = document.getElementById(openMenuId);
         if (menuEl) {
@@ -990,7 +907,6 @@ input, textarea {
       }
     };
 
-    // ログイン状態が確定したら、チャットの色を更新する
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
             setTimeout(() => {
@@ -999,15 +915,12 @@ input, textarea {
         }
     });
 
-    // --- 画面回転の自動調整 ---
+    // --- 画面回転・スクロール制御 ---
     function autoRotateTitle() {
-        // ... (この中身は変更なしでOKですが、念のため下で全コードをまとめます) ...
         const w = window.innerWidth;
         const h = window.innerHeight;
         const isPortrait = h > w;
-
         if (isPortrait) {
-             // 回転時はタッチ制御が複雑になるため、CSSだけでなくJSで強制配置
             document.body.style.width = h + "px";
             document.body.style.height = w + "px";
             document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
@@ -1023,33 +936,23 @@ input, textarea {
         }
     }
 
-    // --- 起動時の処理まとめ ---
     window.addEventListener('load', () => {
         autoRotateTitle();
         window.addEventListener('resize', autoRotateTitle);
         window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-        // 1. 履歴操作によるブロック（念のため残す）
         history.pushState(null, null, location.href);
         window.addEventListener('popstate', (e) => {
             history.pushState(null, null, location.href);
         });
 
-        // 2. ★★★ スワイプ戻り防止の完全版 ★★★
-        
-        // タッチ開始位置を記録する変数
         let startX = 0;
         let startY = 0;
 
         document.addEventListener('touchstart', (e) => {
-            // 2本指以上は許可（拡大縮小などが必要な場合があるため。不要ならブロック）
             if (e.touches.length > 1) return;
-            
             startX = e.touches[0].pageX;
             startY = e.touches[0].pageY;
-
-            // 画面の左端(30px以内)または右端(30px以内)からのタッチ開始は即ブロック
-            // これが「戻る」ジェスチャーの起点になるため
             if (startX < 30 || startX > window.innerWidth - 30) {
                 e.preventDefault();
             }
@@ -1057,53 +960,23 @@ input, textarea {
 
         document.addEventListener('touchmove', (e) => {
             if (e.touches.length > 1) return;
-
             const x = e.touches[0].pageX;
             const y = e.touches[0].pageY;
             const deltaX = Math.abs(x - startX);
             const deltaY = Math.abs(y - startY);
-
-            // ★スクロール許可エリア（チャットや戦績など）かどうかの判定
-            // タッチされた要素が .modal-box や #lobbyChatHistory の中にあるか確認
             const isScrollable = e.target.closest('#lobbyChatHistory, .modal-box, #statsHistory, .help-content');
 
             if (isScrollable) {
-                // スクロール可能なエリア内の操作は許可する
-                // ただし、端っこでさらに引っ張ろうとした時はブロックする必要があるが、
-                // いったん「中身のスクロール」はブラウザに任せる
                 e.stopPropagation(); 
             } else {
-                // それ以外の場所（背景など）での指の移動はすべて禁止
                 e.preventDefault();
             }
-
-            // ★ダメ押し：横移動の量が縦移動より大きい場合（明らかにスワイプ操作）、
-            // かつ、それがスクロールエリア内であっても、ブラウザの戻る挙動を誘発しそうな場合はブロック
             if (deltaX > deltaY && deltaX > 10) {
                 e.preventDefault();
             }
-            
         }, { passive: false });
     });
-    
-  </script>
+</script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
