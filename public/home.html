@@ -568,6 +568,25 @@ input, textarea {
     </div>
   </div>
 
+  <div id="systemAlertModal" class="overlay" style="z-index: 200;">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 style="color: #8b4513; margin-top: 0;">お知らせ</h3>
+      <p id="sysAlertMsg" style="margin: 20px 0; line-height: 1.5; white-space: pre-wrap;"></p>
+      <button id="sysAlertBtn" style="background: #28a745; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">OK</button>
+    </div>
+  </div>
+
+  <div id="systemConfirmModal" class="overlay" style="z-index: 200;">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 style="color: #8b4513; margin-top: 0;">確認</h3>
+      <p id="sysConfirmMsg" style="margin: 20px 0; line-height: 1.5; white-space: pre-wrap;"></p>
+      <div style="display: flex; justify-content: center; gap: 20px;">
+        <button id="sysConfirmYesBtn" style="background: #007bff; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">はい</button>
+        <button id="sysConfirmNoBtn" style="background: #6c757d; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">いいえ</button>
+      </div>
+    </div>
+  </div>
+  
   <script src="script/auth.js"></script>
   <script>
     
@@ -580,6 +599,34 @@ input, textarea {
         console.log("チャットサーバーに接続できませんでした");
     }
 
+    // --- ★★★ 追加：システムモーダル呼び出し用関数 ★★★ ---
+    function showSystemAlert(msg, callback) {
+        document.getElementById("sysAlertMsg").textContent = msg;
+        const modal = document.getElementById("systemAlertModal");
+        modal.style.display = "flex";
+        
+        const btn = document.getElementById("sysAlertBtn");
+        btn.onclick = function() {
+            modal.style.display = "none";
+            if (callback) callback();
+        };
+    }
+
+    function showSystemConfirm(msg, yesCallback, noCallback) {
+        document.getElementById("sysConfirmMsg").textContent = msg;
+        const modal = document.getElementById("systemConfirmModal");
+        modal.style.display = "flex";
+
+        document.getElementById("sysConfirmYesBtn").onclick = function() {
+            modal.style.display = "none";
+            if (yesCallback) yesCallback();
+        };
+        document.getElementById("sysConfirmNoBtn").onclick = function() {
+            modal.style.display = "none";
+            if (noCallback) noCallback();
+        };
+    }
+    
     // --- ★★★ 復帰機能（統合済み） ★★★ ---
     document.addEventListener("DOMContentLoaded", () => {
         // 1. 保存されているルームIDがあるか確認
@@ -602,15 +649,18 @@ input, textarea {
     function checkReconnection(roomId) {
         socket.emit('check reconnection', roomId, (response) => {
             if (response.canReconnect) {
-                // 対局中（または待機中）
-                const shouldRejoin = confirm(
-                    "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
+                // confirm ではなく showSystemConfirm を使用
+                showSystemConfirm(
+                    "中断された対局があります。\n復帰しますか？\n（「いいえ」を選ぶと対局を破棄します）",
+                    // 「はい」が押された時の処理
+                    () => {
+                        window.location.href = `player_vs_player_online.html?room=${roomId}`;
+                    },
+                    // 「いいえ」が押された時の処理
+                    () => {
+                        localStorage.removeItem('current_shogi_room');
+                    }
                 );
-                if (shouldRejoin) {
-                    window.location.href = `player_vs_player_online.html?room=${roomId}`;
-                } else {
-                    localStorage.removeItem('current_shogi_room');
-                }
             } else {
                 // 終了済み
                 console.log("古い対局データが見つかりましたが、すでに終了しています。");
@@ -631,13 +681,14 @@ input, textarea {
 
     // --- 画面遷移 ---
     function goToCharacterSelect(mode) { 
-    // ★★★ 追加：オンラインモード時のログインチェック ★★★
+    // ★★★ オンラインモード時のログインチェック（修正版） ★★★
     if (mode === 'online') {
         const user = firebase.auth().currentUser;
         if (!user) {
-            alert("オンライン対戦をするにはログインが必要です。\n画面上の「ログイン / 新規登録」からログインしてください。");
-            // 必要であれば、ログインモーダルを自動で開くことも可能です
-            showAuthModal(); 
+            // alert ではなく showSystemAlert を使用
+            showSystemAlert("オンライン対戦をするにはログインが必要です。\n画面上の「ログイン / 新規登録」からログインしてください。", () => {
+                showAuthModal(); 
+            });
             return;
         }
     }
@@ -819,7 +870,11 @@ input, textarea {
     }
 
     function sendLobbyMessage() {
-        if (!socket) return alert("チャットサーバーに接続されていません");
+        if (!socket) {
+            // alert ではなく showSystemAlert を使用
+            showSystemAlert("チャットサーバーに接続されていません");
+            return;
+        }
         const input = document.getElementById("lobbyChatInput");
         const text = input.value.trim();
         if (!text) return;
@@ -1035,6 +1090,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
