@@ -649,7 +649,7 @@ input, textarea {
     function checkReconnection(roomId) {
         socket.emit('check reconnection', roomId, (response) => {
             if (response.canReconnect) {
-                // confirm ではなく showSystemConfirm を使用
+                // ★修正箇所：confirm ではなく showSystemConfirm を使用
                 showSystemConfirm(
                     "中断された対局があります。\n復帰しますか？\n（「いいえ」を選ぶと対局を破棄します）",
                     // 「はい」が押された時の処理
@@ -736,8 +736,8 @@ input, textarea {
             `画面の向こう側って、\nどんな景色なんですか？`,
             `わたしのこの服、\n実は動きやすいんですよ。`,
             `次はどんな棋譜を\n見せてくれるんですか？`,
-            `将棋の駒なら、\わたしは銀が好きですよ。`,
-            `わたしは銀なので、\横には動きませんよ。`,
+            `将棋の駒なら、\nわたしは銀が好きですよ。`,
+            `わたしは銀なので、\n横には動きませんよ。`,
             `くすぐったいですよ。`,
             `銀は桂馬を捕まえるのが上手なんですよ！`,
             `銀って、成れるのに成らないこと多くないですか？`,
@@ -1090,6 +1090,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
