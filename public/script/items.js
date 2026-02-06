@@ -7,7 +7,7 @@ const GAME_ITEMS = [
   // --- 駒のデザイン ---
   {
     id: "piece_default",
-    name: "標準の駒",
+    name: "木製の駒",
     price: 0,
     type: "piece",
     image: "/script/image/koma.png",
@@ -18,16 +18,16 @@ const GAME_ITEMS = [
     name: "駒２",
     price: 99999,
     type: "piece",
-    image: "/script/image/dot_preview.png",
-    desc: "レトロゲーム風のドット絵駒です。"
+    placeholderText: "準備中",
+    desc: "準備中です。"
   },
   {
     id: "piece_gold_style",
     name: "駒３",
     price: 99999,
     type: "piece",
-    placeholderText: "金",
-    desc: "成金趣味全開の黄金に輝く駒です。"
+    placeholderText: "準備中",
+    desc: "準備中です。"
   },
 
   // --- 盤のデザイン ---
@@ -61,52 +61,52 @@ const GAME_ITEMS = [
     name: "将棋盤３",
     price: 99999,
     type: "board",
-    placeholderText: "黒木",
-    desc: "重厚感のある暗い色の木製盤です。"
+    placeholderText: "準備中",
+    desc: "準備中です。"
   },
 
   {
     id: "bgm_default",
-    name: "いつもの曲",
+    name: "Summer",
     price: 0,
     type: "bgm",
     src: "/script/audio/natsu2.mp3",
-    desc: "標準のBGMです。"
+    desc: "「夏がやってきた！」いつものBGMです。"
   },
   {
     id: "Tchaikovsky1",
-    name: "第一楽章",
+    name: "交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky1.mp3",
-    desc: "チャイコフスキーの交響曲第五番",
+    desc: "第一楽章",
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "Tchaikovsky2",
-    name: "第二楽章",
+    name: "交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky2.mp3",
-    desc: "チャイコフスキーの交響曲第五番",
+    desc: "第二楽章",
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "Tchaikovsky3",
-    name: "第三楽章",
+    name: "交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky3.mp3",
-    desc: "チャイコフスキーの交響曲第五番",
+    desc: "第三楽章",
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "Tchaikovsky4",
-    name: "第四楽章",
+    name: "交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky4.mp3", 
-    desc: "チャイコフスキーの交響曲第五番",
+    desc: "第四楽章",
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
@@ -115,7 +115,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "bgm",
     src: "/script/audio/rock.mp3", // ★新しく用意したmp3ファイルのパス
-    desc: "激しい戦いを予感させるロックな曲です。",
+    desc: "準備中です。",
     // ショップで画像がないと寂しいので、音符マークなどの画像を指定すると良いです
     image: "script/image/music_icon.png" 
   },
@@ -125,7 +125,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "bgm",
     src: "/script/audio/piano.mp3",
-    desc: "集中力を高める静かなピアノ曲です。",
+    desc: "準備中です。",
     image: "script/image/music_icon.png"
   }
 
@@ -136,6 +136,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
