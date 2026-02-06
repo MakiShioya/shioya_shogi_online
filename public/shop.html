@@ -162,8 +162,6 @@
     listContainer.innerHTML = "";
 
     SHOP_ITEMS.forEach(item => {
-      // 0円の初期アイテムはショップに表示しない（または「初期装備」として表示するかはお好みで）
-      // 今回は「0円より高いもの」だけを表示するようにします
       if (item.price <= 0) return;
 
       const isOwned = currentUserInventory.includes(item.id);
