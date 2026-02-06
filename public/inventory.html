@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>しおや将棋 所持品</title>
+  <title>所持品・着せ替え - しおや将棋</title>
   
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -13,7 +13,7 @@
     body {
       margin: 0; padding: 0;
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-      background-color: #2c3e50; /* 落ち着いた色 */
+      background-color: #2c3e50;
       color: white;
       overflow-x: hidden;
       -webkit-user-select: none; user-select: none;
@@ -45,7 +45,6 @@
       position: relative;
       border: 3px solid transparent;
     }
-    /* 装備中の強調スタイル */
     .inv-card.equipped {
       border-color: #ffd700;
       background: #fff8dc;
@@ -77,22 +76,23 @@
 
 <div class="container">
   
-
+  <div class="section-title">将棋の駒</div>
+  <div id="pieceList" class="item-grid"></div>
 
   <div class="section-title">将棋盤</div>
   <div id="boardList" class="item-grid"></div>
 
-    <div class="section-title">駒</div>
-  <div id="pieceList" class="item-grid"></div>
-
-  <div class="section-title">音楽</div>
+  <div class="section-title">BGM</div>
   <div id="bgmList" class="item-grid"></div>
 
 </div>
 
-<script src="script/items.js"></script> <script src="script/auth.js"></script>
+<script src="script/items.js"></script>
+<script src="script/auth.js"></script>
+
 <script>
   let myInventory = [];
+  // 初期装備に bgm も追加
   let myEquipped = { piece: "piece_default", board: "board_default", bgm: "bgm_default" };
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -102,12 +102,14 @@
           if (doc.exists) {
             const data = doc.data();
             myInventory = data.inventory || [];
+            
             // デフォルトアイテムは必ず持っていることにする
             if (!myInventory.includes("piece_default")) myInventory.push("piece_default");
             if (!myInventory.includes("board_default")) myInventory.push("board_default");
+            if (!myInventory.includes("bgm_default")) myInventory.push("bgm_default"); // BGM初期も追加
 
             // 装備情報の取得
-            myEquipped = data.equipped || { piece: "piece_default", board: "board_default" };
+            myEquipped = data.equipped || { piece: "piece_default", board: "board_default", bgm: "bgm_default" };
             
             renderInventory();
           }
@@ -120,20 +122,29 @@
   });
 
   function renderInventory() {
+    if (typeof GAME_ITEMS === 'undefined') {
+        console.error("GAME_ITEMS is not defined. script/items.js failed to load.");
+        return;
+    }
+
     const pieceContainer = document.getElementById("pieceList");
     const boardContainer = document.getElementById("boardList");
+    // ★修正：ここで変数 bgmContainer を定義します
+    const bgmContainer = document.getElementById("bgmList"); 
+
     pieceContainer.innerHTML = "";
     boardContainer.innerHTML = "";
+    // ★修正：中身をクリア
     bgmContainer.innerHTML = "";
 
-    // 定義されている全アイテムの中から、持っているものだけを表示
     GAME_ITEMS.forEach(item => {
       if (myInventory.includes(item.id)) {
         if (item.type === "piece") {
             createItemCard(item, pieceContainer);
         } else if (item.type === "board") {
             createItemCard(item, boardContainer);
-        } else if (item.type === "bgm") { // ▼ 追加
+        } else if (item.type === "bgm") {
+            // ★修正：BGMの場合の処理を追加
             createItemCard(item, bgmContainer);
         }
       }
@@ -149,9 +160,15 @@
     // 画像設定
     let imgStyle = "";
     let imgText = item.placeholderText || "";
+
+    // BGMで画像がない場合は音符マークなどを出すようにしても良いですが、
+    // ここでは items.js の image プロパティに従います
     if (item.image) {
         imgStyle = `background-image: url('${item.image}');`;
         imgText = "";
+    } else if (item.type === "bgm") {
+        // 画像指定がないBGM用のデフォルト表示
+        imgText = "♪"; 
     }
 
     card.innerHTML = `
@@ -175,22 +192,14 @@
     const user = firebase.auth().currentUser;
     if (!user) return;
 
-    // Firestoreの equipped フィールドを更新
-    // equipped.piece または equipped.board を書き換える
     const updateKey = `equipped.${type}`;
     
     db.collection("users").doc(user.uid).update({
       [updateKey]: id
     }).then(() => {
-      // 成功したら onSnapshot が検知して自動再描画
       console.log("装備変更: " + id);
     });
   }
 </script>
 </body>
-
 </html>
-
-
-
-
