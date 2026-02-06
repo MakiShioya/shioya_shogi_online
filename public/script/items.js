@@ -118,12 +118,12 @@ const GAME_ITEMS = [
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
-    id: "bgm_rock",
-    name: "曲２",
-    price: 99999,
+    id: "Happy_Curry_Christmas",
+    name: "Happy Curry Christmas",
+    price: 500,
     type: "bgm",
-    src: "/script/audio/rock.mp3", // ★新しく用意したmp3ファイルのパス
-    desc: "準備中です",
+    src: "/script/audio/Happy_Curry_Christmas.mp3", // ★新しく用意したmp3ファイルのパス
+    desc: "カレー味のクリスマスソング",
     // ショップで画像がないと寂しいので、音符マークなどの画像を指定すると良いです
     image: "script/image/music_icon.png" 
   },
@@ -144,6 +144,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
