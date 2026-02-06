@@ -74,7 +74,7 @@ const GAME_ITEMS = [
     desc: "標準のBGMです。"
   },
   {
-    id: "bgm_default",
+    id: "Tchaikovsky1",
     name: "第一楽章",
     price: 100,
     type: "bgm",
@@ -83,7 +83,7 @@ const GAME_ITEMS = [
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
-    id: "bgm_default",
+    id: "Tchaikovsky2",
     name: "第二楽章",
     price: 100,
     type: "bgm",
@@ -92,7 +92,7 @@ const GAME_ITEMS = [
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
-    id: "bgm_default",
+    id: "Tchaikovsky3",
     name: "第三楽章",
     price: 100,
     type: "bgm",
@@ -101,7 +101,7 @@ const GAME_ITEMS = [
     image: "script/image/Tchaikovsky_5.png" 
   },
   {
-    id: "bgm_default",
+    id: "Tchaikovsky4",
     name: "第四楽章",
     price: 100,
     type: "bgm",
@@ -136,6 +136,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
