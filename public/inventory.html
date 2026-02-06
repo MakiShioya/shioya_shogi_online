@@ -93,7 +93,7 @@
 <script src="script/items.js"></script> <script src="script/auth.js"></script>
 <script>
   let myInventory = [];
-  let myEquipped = { piece: "piece_default", board: "board_default" };
+  let myEquipped = { piece: "piece_default", board: "board_default", bgm: "bgm_default" };
 
   document.addEventListener("DOMContentLoaded", () => {
     firebase.auth().onAuthStateChanged((user) => {
@@ -190,6 +190,7 @@
 </body>
 
 </html>
+
 
 
 
