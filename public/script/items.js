@@ -70,8 +70,40 @@ const GAME_ITEMS = [
     name: "いつもの曲",
     price: 0,
     type: "bgm",
-    src: "/script/audio/natsu2.mp3", // デフォルトの曲パス
+    src: "/script/audio/natsu2.mp3",
     desc: "標準のBGMです。"
+  },
+  {
+    id: "bgm_default",
+    name: "第一楽章",
+    price: 100,
+    type: "bgm",
+    src: "/script/audio/Tchaikovsky1.mp3",
+    desc: "チャイコフスキーの交響曲第五番"
+  },
+  {
+    id: "bgm_default",
+    name: "第二楽章",
+    price: 100,
+    type: "bgm",
+    src: "/script/audio/Tchaikovsky2.mp3",
+    desc: "チャイコフスキーの交響曲第五番"
+  },
+  {
+    id: "bgm_default",
+    name: "第三楽章",
+    price: 100,
+    type: "bgm",
+    src: "/script/audio/Tchaikovsky3.mp3",
+    desc: "チャイコフスキーの交響曲第五番"
+  },
+  {
+    id: "bgm_default",
+    name: "第四楽章",
+    price: 100,
+    type: "bgm",
+    src: "/script/audio/Tchaikovsky4.mp3", 
+    desc: "チャイコフスキーの交響曲第五番"
   },
   {
     id: "bgm_rock",
@@ -100,6 +132,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
