@@ -51,7 +51,7 @@ const GAME_ITEMS = [
   {
     id: "board_komiya",
     name: "こみやの将棋盤",
-    price: 0,
+    price: 1000,
     type: "board",
     image: "/script/image/komiya_icon.png",
     desc: "こみやの将棋盤です。"
@@ -100,6 +100,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
