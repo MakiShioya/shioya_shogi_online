@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ショップ - しおや将棋</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background-color: #f0e68c; /* 背景色 */
+      color: #333;
+      overflow-x: hidden;
+      -webkit-user-select: none; user-select: none; touch-action: manipulation;
+    }
+
+    /* ヘッダーバー */
+    .header-bar {
+      position: sticky; top: 0;
+      background: rgba(139, 69, 19, 0.9); /* 濃い茶色 */
+      color: white;
+      padding: 10px 15px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    .back-btn {
+      background: #ccc; border: none; padding: 5px 15px; border-radius: 5px;
+      cursor: pointer; font-weight: bold; color: black;
+    }
+    .gold-display {
+      font-weight: bold; color: #ffd700; text-shadow: 1px 1px 2px #000; font-size: 1.1rem;
+    }
+
+    /* メインコンテンツ */
+    .shop-container {
+      padding: 20px 10px;
+      max-width: 800px; margin: 0 auto;
+    }
+    h2 { text-align: center; color: #8b4513; margin-bottom: 20px; }
+
+    /* 商品リストのグリッドレイアウト */
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* 自動で折り返す */
+      gap: 15px;
+    }
+
+    /* 商品カード */
+    .item-card {
+      background: white;
+      border: 3px solid #8b4513;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      display: flex; flex-direction: column; align-items: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      transition: transform 0.1s;
+    }
+    .item-card:active { transform: scale(0.98); }
+
+    /* 商品画像プレースホルダー */
+    .item-image {
+      width: 100px; height: 100px;
+      background-color: #ddd;
+      border-radius: 5px; margin-bottom: 10px;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 0.8rem; color: #666; border: 1px solid #ccc;
+      /* 実際の画像を設定する場合はここを上書きします */
+      background-size: cover; background-position: center;
+    }
+
+    .item-name { font-weight: bold; margin-bottom: 5px; font-size: 0.95rem; }
+    .item-price { color: #d32f2f; font-weight: bold; margin-bottom: 10px; }
+
+    /* 購入ボタン */
+    .buy-btn {
+      width: 100%; padding: 8px;
+      border: none; border-radius: 5px;
+      background: #28a745; color: white; font-weight: bold;
+      cursor: pointer;
+    }
+    .buy-btn:disabled {
+      background: #ccc; color: #666; cursor: not-allowed;
+    }
+    .owned-badge {
+      background: #6c757d; color: white; padding: 5px 10px;
+      border-radius: 5px; font-size: 0.8rem; width: 100%; box-sizing: border-box;
+    }
+
+    /* モーダル（アラート用） - home.htmlから流用 */
+    .overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    .modal-box {
+      background: #fff8dc; padding: 20px; border-radius: 10px;
+      border: 4px solid #8b4513; text-align: center; max-width: 80%;
+    }
+  </style>
+</head>
+<body>
+
+  <div class.header-bar>
+    <button class="back-btn" onclick="window.location.href='home.html'">← ホームへ</button>
+    <span class="gold-display">💰 <span id="userGold">---</span> G</span>
+  </div>
+
+  <div class.shop-container>
+    <h2>アイテムショップ</h2>
+    <div id="shopItemsList" class="item-grid"></div>
+  </div>
+
+
+  <div id="alertModal" class.overlay>
+    <div class.modal-box">
+      <h3 id="alertTitle" style="margin-top:0; color:#8b4513;"></h3>
+      <p id="alertMessage"></p>
+      <button onclick="closeAlert()" style="background:#8b4513; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">OK</button>
+    </div>
+  </div>
+
+
+<script src="script/auth.js"></script> <script>
+  // --- ★★★ 1. 商品データの定義 ★★★ ---
+  // ここに販売したいアイテムを登録していきます
+  const SHOP_ITEMS = [
+    {
+      id: "piece_dot",             // アイテムID（DB保存用。ユニークな英数字）
+      name: "ドット絵の駒",        // 表示名
+      price: 1000,                 // 価格
+      type: "piece",               // 種類（piece:駒, board:盤 など。後で役立ちます）
+      image: "script/image/dot/pawn.png", // 画像パス（仮）
+      desc: "レトロな雰囲気のドット絵駒です。" // 説明文（今回は未表示）
+    },
+    {
+      id: "board_wood_dark",
+      name: "高級な木製盤",
+      price: 2500,
+      type: "board",
+      // 画像がない場合のプレースホルダー表示用設定
+      placeholderText: "木の盤画像" 
+    },
+    {
+      id: "piece_gold_style",
+      name: "黄金の駒文字",
+      price: 5000,
+      type: "piece",
+      placeholderText: "金色文字"
+    }
+  ];
+
+  let currentUserGold = 0;
+  let currentUserInventory = [];
+
+  // --- 2. 初期化処理 ---
+  document.addEventListener("DOMContentLoaded", () => {
+    // ログイン状態監視と所持金表示更新
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        // リアルタイムで所持金と持ち物を監視
+        db.collection("users").doc(user.uid).onSnapshot((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            currentUserGold = data.gold || 0;
+            // inventoryが存在しない場合は空配列にする
+            currentUserInventory = data.inventory || [];
+            
+            document.getElementById("userGold").textContent = currentUserGold.toLocaleString();
+            
+            // データ更新に合わせて商品リストを再描画（購入ボタンの状態などを更新するため）
+            renderShopItems();
+          }
+        });
+      } else {
+        // 未ログイン時はホームに戻すなどの処理が必要ですが、とりあえず表示を---に
+        document.getElementById("userGold").textContent = "---";
+        showAlert("エラー", "ログインしていません。ホームに戻ります。", () => {
+            window.location.href = "home.html";
+        });
+      }
+    });
+  });
+
+  // --- 3. 商品リストの描画 ---
+  function renderShopItems() {
+    const listContainer = document.getElementById("shopItemsList");
+    listContainer.innerHTML = ""; // 一旦クリア
+
+    SHOP_ITEMS.forEach(item => {
+      // 既に持っているかチェック
+      const isOwned = currentUserInventory.includes(item.id);
+      // お金が足りているかチェック
+      const canAfford = (currentUserGold >= item.price);
+
+      // カードのHTMLを生成
+      const card = document.createElement("div");
+      card.className = "item-card";
+
+      // 画像部分（画像パス指定があればそれを表示、なければプレースホルダー）
+      let imageStyle = "";
+      let imageText = item.placeholderText || item.name;
+      if (item.image) {
+          imageStyle = `background-image: url('${item.image}');`;
+          imageText = ""; // 画像があるなら文字は消す
+      }
+
+      card.innerHTML = `
+        <div class="item-image" style="${imageStyle}">${imageText}</div>
+        <div class="item-name">${item.name}</div>
+        <div class="item-price">${item.price.toLocaleString()} G</div>
+      `;
+
+      // ボタン部分の生成
+      if (isOwned) {
+        // 購入済みの場合
+        const badge = document.createElement("div");
+        badge.className = "owned-badge";
+        badge.textContent = "購入済み";
+        card.appendChild(badge);
+      } else {
+        // 未購入の場合
+        const buyBtn = document.createElement("button");
+        buyBtn.className = "buy-btn";
+        buyBtn.textContent = "購入する";
+        // お金が足りない場合は無効化
+        if (!canAfford) {
+          buyBtn.disabled = true;
+          buyBtn.textContent = "G不足";
+        }
+        // クリック時の処理を設定
+        buyBtn.onclick = () => buyItem(item);
+        card.appendChild(buyBtn);
+      }
+
+      listContainer.appendChild(card);
+    });
+  }
+
+  // --- 4. 購入処理 ---
+  function buyItem(item) {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    // 念のためクライアント側でも最終チェック
+    if (currentUserInventory.includes(item.id)) {
+        showAlert("情報", "すでにこのアイテムを持っています。");
+        return;
+    }
+    if (currentUserGold < item.price) {
+        showAlert("エラー", "ゴールドが足りません！");
+        return;
+    }
+
+    // 購入確認
+    if (!confirm(`${item.name} を ${item.price}G で購入しますか？`)) {
+        return;
+    }
+
+    // ★Firestoreの更新処理（アトミック操作）★
+    // goldを減らし、inventoryにアイテムIDを追加する
+    db.collection("users").doc(user.uid).update({
+        gold: firebase.firestore.FieldValue.increment(-item.price),
+        inventory: firebase.firestore.FieldValue.arrayUnion(item.id)
+    }).then(() => {
+        // 成功時（onSnapshotが自動で画面を更新するので、ここでは完了メッセージだけ）
+        showAlert("購入完了", `${item.name} を購入しました！`);
+        // 効果音を鳴らすならここに playSound() などを追加
+    }).catch((error) => {
+        console.error("Purchase error:", error);
+        showAlert("エラー", "購入処理に失敗しました。通信環境を確認してください。");
+    });
+  }
+
+  // --- ユーティリティ（アラート表示）---
+  let alertCallback = null;
+  function showAlert(title, msg, callback) {
+    document.getElementById("alertTitle").textContent = title;
+    document.getElementById("alertMessage").textContent = msg;
+    document.getElementById("alertModal").style.display = "flex";
+    alertCallback = callback;
+  }
+  function closeAlert() {
+    document.getElementById("alertModal").style.display = "none";
+    if (alertCallback) {
+        alertCallback();
+        alertCallback = null;
+    }
+  }
+</script>
+
+</body>
+</html>
