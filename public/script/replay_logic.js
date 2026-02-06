@@ -6,6 +6,7 @@
 let replayStates = []; 
 let currentStep = 0;   
 let lastMoveInfo = { from: null, to: null }; 
+let ignoreEngineOutput = false;
 
 // --- エンジン・グラフ用変数 ---
 let evalHistory = []; 
@@ -92,6 +93,17 @@ function handleEngineMessage(msg) {
     }
 
     if (typeof msg === "string") {
+        // --- ★修正：同期ズレ対策 ---
+        // bestmove が返ってきたら、前の stop 命令による探索終了なので、
+        // これ以降のメッセージ（新しい go 命令によるもの）は受け入れてOK
+        if (msg.startsWith("bestmove")) {
+            ignoreEngineOutput = false;
+        }
+
+        // フラグが立っている間（stopした直後など）の info は、古い局面のものなので無視する
+        if (ignoreEngineOutput && msg.startsWith("info")) {
+            return;
+        }
         // --- 1秒時点の候補手をサンプリング ---
         if (msg.includes("info") && msg.includes("pv")) {
             const elapsed = Date.now() - searchStartTime;
@@ -156,9 +168,16 @@ function handleEngineMessage(msg) {
                 score = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
                 const m = parseInt(parts[parts.indexOf("mate") + 1]);
-                score = m >= 0 ? 30000 - m : -30000 + m;
+                
+                // ★修正：Mateスコアの計算式を対称にする（バグの直接原因ではないが推奨）
+                // 元: m >= 0 ? 30000 - m : -30000 + m;
+                // 修正: 負の詰み（自玉の詰み）は -30000 から引く形にして絶対値を合わせる
+                score = m >= 0 ? 30000 - m : -30000 - m; 
             }
+            
+            // ★ここがバグの発生源だった場所（ignoreEngineOutputで対策済み）
             if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") score = -score;
+            
             if (analyzingStep !== -1) {
                 evalHistory[analyzingStep] = score;
                 updateChart();
@@ -180,10 +199,15 @@ function generateSfen() {
 
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
+
+    // ★追加: 新しい解析をリクエストしたので、古い解析結果（bestmoveが返るまで）は無視する
+    ignoreEngineOutput = true;
+
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn;
+    analyzingTurn = window.turn; // ここで新しい手番が入るが、メッセージ受信時はまだ古い手番の結果が来る可能性がある
+
     sendToEngine("stop");
     sendToEngine("position sfen " + generateSfen());
     sendToEngine("go movetime 100000"); 
@@ -578,6 +602,7 @@ async function startAutoAnalysis(timePerMove) {
         lastBestMoveAt1s = null;
 
         let effectiveTime = (i <= 10 && timePerMove > 2000) ? 2000 : timePerMove;
+        ignoreEngineOutput = true;
         sendToEngine("stop");
         sendToEngine("position sfen " + generateSfen());
         sendToEngine("go movetime " + (effectiveTime + 1000));
@@ -645,4 +670,5 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
 
