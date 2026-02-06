@@ -316,6 +316,10 @@ input, textarea {
     <div>
       <span id="userNameDisplay" class="user-name">ゲスト</span> さん
       <button id="editNameBtn" onclick="showNameEditModal()" style="display:none; background:none; border:none; cursor:pointer; font-size:1rem;">✏️</button>
+      
+      <span style="margin-left: 15px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px 2px #000;">
+        💰 <span id="userGoldDisplay">0</span> G
+      </span>
     </div>
 
     <div>
@@ -913,6 +917,22 @@ input, textarea {
             setTimeout(() => {
                 renderLobbyChat();
             }, 500); 
+
+            // ★★★ 追加：所持金 (gold) をリアルタイム監視して表示更新 ★★★
+            db.collection("users").doc(user.uid).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const currentGold = data.gold || 0;
+                    const goldEl = document.getElementById("userGoldDisplay");
+                    if (goldEl) {
+                        goldEl.textContent = currentGold.toLocaleString(); // カンマ区切りで表示 (例: 1,500)
+                    }
+                }
+            });
+        } else {
+            // 未ログイン時は 0 G に戻す
+            const goldEl = document.getElementById("userGoldDisplay");
+            if (goldEl) goldEl.textContent = "0";
         }
     });
 
@@ -981,6 +1001,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
