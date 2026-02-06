@@ -84,7 +84,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky1",
-    name: "交響曲第五番",
+    name: "チャイコフスキー 交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky1.mp3",
@@ -93,7 +93,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky2",
-    name: "交響曲第五番",
+    name: "チャイコフスキー 交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky2.mp3",
@@ -102,7 +102,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky3",
-    name: "交響曲第五番",
+    name: "チャイコフスキー 交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky3.mp3",
@@ -111,7 +111,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky4",
-    name: "交響曲第五番",
+    name: "チャイコフスキー 交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky4.mp3", 
@@ -145,6 +145,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
