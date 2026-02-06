@@ -49,6 +49,14 @@ const GAME_ITEMS = [
     desc: "いつもの将棋盤です"
   },
   {
+    id: "board_isi",
+    name: "大理石の将棋盤",
+    price: 1000,
+    type: "board",
+    image: "/script/image/isi.png",
+    desc: "高級感のある<br>大理石の将棋盤です"
+  },
+  {
     id: "hyoshiki",
     name: "ヨーロッパの標識",
     price: 1000,
@@ -145,6 +153,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
