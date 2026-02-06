@@ -41,7 +41,7 @@ const GAME_ITEMS = [
     desc: "いつもの将棋盤です。"
   },
   {
-    id: "board_default",
+    id: "hyoshiki",
     name: "ヨーロッパの標識",
     price: 1000,
     type: "board",
@@ -92,6 +92,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
