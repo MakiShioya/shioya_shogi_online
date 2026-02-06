@@ -76,6 +76,12 @@ window.addEventListener("load", () => {
       // 少し待ってから思考開始（いきなり動くとびっくりするため）
       setTimeout(() => cpuMove(), 1000);
   }
+
+  firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            applyUserSkin();
+        }
+    });
 });
 
 // --- ★描画関数 (Hybrid: 画像+文字) ---
