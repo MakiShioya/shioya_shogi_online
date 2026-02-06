@@ -95,14 +95,21 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         // --- 1秒時点の候補手サンプリング（変更なし） ---
-        if (msg.includes("info") && msg.includes("pv")) {
-            const elapsed = Date.now() - searchStartTime;
-            if (elapsed >= 1000 && elapsed <= 1500 && !lastBestMoveAt1s) {
-                const parts = msg.split(" ");
-                const pvIdx = parts.indexOf("pv");
-                if (pvIdx !== -1 && parts[pvIdx + 1]) lastBestMoveAt1s = parts[pvIdx + 1];
-            }
+        // --- 修正案：0～1秒の間、常に情報を更新し続ける（最後を採用） ---
+
+if (msg.includes("info") && msg.includes("pv")) {
+    const elapsed = Date.now() - searchStartTime;
+    
+    // 経過時間が 1000ms (1秒) 以内なら、常に情報を更新する
+    // (!lastBestMoveAt1s のチェックを外すことで「上書き」許可にする)
+    if (elapsed <= 1000) {
+        const parts = msg.split(" ");
+        const pvIdx = parts.indexOf("pv");
+        if (pvIdx !== -1 && parts[pvIdx + 1]) {
+            lastBestMoveAt1s = parts[pvIdx + 1];
         }
+    }
+}
 
         // --- bestmove受信（変更なし） ---
         if (msg.startsWith("bestmove")) {
@@ -667,6 +674,7 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
 
 
 
