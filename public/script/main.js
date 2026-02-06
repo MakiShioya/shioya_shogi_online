@@ -808,16 +808,28 @@ function updateTimerDisplay() {
   if (timerBox) timerBox.textContent = "考慮時間: " + currentSeconds + "秒";
 }
 
+// script/main.js の saveGameResult 関数をこれに置き換えてください
+
 function saveGameResult(res) {
   const user = auth.currentUser;
-  if (!user) return; 
-  const opponentDisplayName = window.opponentName || "CPU対局"; 
+  if (!user) return; // ログインしていない場合は保存しない
+
+  const opponentDisplayName = window.opponentName || "CPU対局";
   
-  // ★修正：プレイヤーの色（cpuSideの逆）と勝者（res）が一致しているかで判定する
-  // cpuSide が "white" ならプレイヤーは "black"(先手)
-  // cpuSide が "black" ならプレイヤーは "white"(後手)
+  // プレイヤーの色を判定（cpuSideがwhiteなら、プレイヤーはblack）
   const playerColor = (cpuSide === "white" ? "black" : "white");
+  
+  // 勝敗判定
   const isWin = (res === playerColor);
+
+  // ★★★ 追加：獲得ゴールドの計算 ★★★
+  // オフラインは少し控えめに設定（勝:50G / 負:10G）
+  let earnedGold = 0;
+  if (isWin) {
+      earnedGold = 30; 
+  } else {
+      earnedGold = 5;
+  }
 
   const gameRecord = {
       date: new Date(), 
@@ -827,13 +839,32 @@ function saveGameResult(res) {
       mode: "offline",
       kifuData: kifu 
   };
+
+  // Firestore更新
   db.collection("users").doc(user.uid).update({
       win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
       lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
-      history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+      history: firebase.firestore.FieldValue.arrayUnion(gameRecord),
+      // ★ここにゴールド加算を追加
+      gold: firebase.firestore.FieldValue.increment(earnedGold)
   }).then(() => {
-      console.log(opponentDisplayName + " との対局を保存しました");
-  });
+      console.log(`${opponentDisplayName}戦記録完了: +${earnedGold}G`);
+      
+      // ★★★ 追加：画面に獲得金額を表示する演出 ★★★
+      if (statusDiv) {
+          const msg = isWin ? "勝利ボーナス" : "参加報酬";
+          const color = isWin ? "#ffd700" : "#cccccc"; // 金色 / 灰色
+          
+          const rewardMsg = document.createElement("div");
+          rewardMsg.style.fontWeight = "bold";
+          rewardMsg.style.color = "#d32f2f";
+          rewardMsg.style.marginTop = "5px";
+          // 💰アイコン付きで表示
+          rewardMsg.innerHTML = `<span style="background:${color}; padding:2px 5px; border-radius:3px;">${msg}</span> 💰${earnedGold}G GET!`;
+          
+          statusDiv.appendChild(rewardMsg);
+      }
+  }).catch(console.error);
 }
 
 // script/main.js の末尾に追加
