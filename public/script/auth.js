@@ -170,7 +170,11 @@ function registerUser() {
                 name: tempName, 
                 email: email, 
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                win: 0, lose: 0, history: []
+                win: 0, lose: 0, history: [],
+                // ★★★ ここを追加！ ★★★
+                gold: 1000,           // 初期所持金
+                inventory: [],        // 所持アイテム（最初は空）
+                achievements: {}      // 実績データ（最初は空）
             });
         }).then(() => {
             // ★修正
@@ -266,3 +270,4 @@ function showMyStats() {
     document.getElementById("statsModal").style.display = "flex";
 }
 function closeStatsModal() { document.getElementById("statsModal").style.display = "none"; }
+
