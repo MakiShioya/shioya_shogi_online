@@ -10,6 +10,13 @@ td, .piece-text {
 /* 3. 文字のサイズ */
 td { font-size: 28px; }
 
+/* ★★★ 追加：画像パスを変数で管理する ★★★ */
+:root {
+  /* デフォルトの画像パス（HTMLファイルから見たパス） */
+  --piece-img: url('image/koma.png');
+  --board-img: url('image/shogiban.png');
+}
+
 body {
   font-family: sans-serif;
   background: url('image/haikei.PNG'); 
@@ -94,7 +101,7 @@ body {
 .shogiban-outer {
     padding: 15px; /* ここが「枠」の太さになります */
     background-color: #e3c18d; /* 枠の色（木材の色） */
-    background-image: url('image/shogiban.png'); /* 枠部分にも木目をつける */
+    background-image: var(--board-img);
     background-size: cover;
     
     /* 立体感を出すための境界線と影 */
@@ -145,7 +152,7 @@ td {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-image: url('image/koma.png'); 
+  background-image: var(--piece-img);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
@@ -220,7 +227,7 @@ td.move {
   height: 45px;
   display: block; /* ブロック要素にする */
   
-  background-image: url('image/koma.png');
+  background-image: var(--piece-img);
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
