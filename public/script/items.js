@@ -46,7 +46,7 @@ const GAME_ITEMS = [
     type: "board",
     placeholderText: "黒木",
     desc: "重厚感のある暗い色の木製盤です。"
-  }
+  },
 
   {
     id: "bgm_default",
@@ -83,4 +83,5 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
