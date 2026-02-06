@@ -430,6 +430,12 @@ window.addEventListener("load", () => {
 
   const key = getPositionKey();
   positionHistory[key] = 1;
+
+  firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            applyUserSkin();
+        }
+    });
 });
 
 // ★★★ GameCore へのフック ★★★
@@ -891,3 +897,4 @@ function applyUserSkin() {
         }
     }).catch(err => console.error("スキン読み込み失敗", err));
 }
+
