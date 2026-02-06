@@ -107,6 +107,11 @@ window.addEventListener("load", () => {
       console.error("engine_bridge.js が読み込まれていません！");
       statusDiv.textContent = "エラー: エンジンが見つかりません";
   }
+  firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            applyUserSkin();
+        }
+    });
 });
 
 function sendToEngine(msg) {
