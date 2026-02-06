@@ -5,7 +5,13 @@ const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+// CORS設定を追加
+const io = new Server(server, {
+  cors: {
+    origin: "*",  // すべてのアクセスを許可（セキュリティを気にする場合は "https://あなたのアプリURL" にする）
+    methods: ["GET", "POST"]
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = './chat_history.json';
