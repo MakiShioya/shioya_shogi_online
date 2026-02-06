@@ -44,6 +44,8 @@
       text-align: center;
       position: relative;
       border: 3px solid transparent;
+      /* カードの高さを揃えるためにフレックスボックス化 */
+      display: flex; flex-direction: column; align-items: center; justify-content: space-between;
     }
     .inv-card.equipped {
       border-color: #ffd700;
@@ -55,6 +57,17 @@
       width: 80px; height: 80px; background: #ddd; margin: 0 auto 10px;
       border-radius: 5px; display: flex; align-items: center; justify-content: center;
       background-size: cover; background-position: center;
+      flex-shrink: 0; /* 画像がつぶれないように */
+    }
+
+    /* ★★★ 追加：説明文用のスタイル ★★★ */
+    .item-desc {
+      font-size: 0.75rem;
+      color: #666;
+      margin-bottom: 8px;
+      line-height: 1.3;
+      width: 100%;
+      min-height: 2.6em; /* 2行分確保 */
     }
     
     .equip-btn {
@@ -92,7 +105,6 @@
 
 <script>
   let myInventory = [];
-  // 初期装備に bgm も追加
   let myEquipped = { piece: "piece_default", board: "board_default", bgm: "bgm_default" };
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -103,12 +115,10 @@
             const data = doc.data();
             myInventory = data.inventory || [];
             
-            // デフォルトアイテムは必ず持っていることにする
             if (!myInventory.includes("piece_default")) myInventory.push("piece_default");
             if (!myInventory.includes("board_default")) myInventory.push("board_default");
-            if (!myInventory.includes("bgm_default")) myInventory.push("bgm_default"); // BGM初期も追加
+            if (!myInventory.includes("bgm_default")) myInventory.push("bgm_default");
 
-            // 装備情報の取得
             myEquipped = data.equipped || { piece: "piece_default", board: "board_default", bgm: "bgm_default" };
             
             renderInventory();
@@ -129,12 +139,10 @@
 
     const pieceContainer = document.getElementById("pieceList");
     const boardContainer = document.getElementById("boardList");
-    // ★修正：ここで変数 bgmContainer を定義します
     const bgmContainer = document.getElementById("bgmList"); 
 
     pieceContainer.innerHTML = "";
     boardContainer.innerHTML = "";
-    // ★修正：中身をクリア
     bgmContainer.innerHTML = "";
 
     GAME_ITEMS.forEach(item => {
@@ -144,7 +152,6 @@
         } else if (item.type === "board") {
             createItemCard(item, boardContainer);
         } else if (item.type === "bgm") {
-            // ★修正：BGMの場合の処理を追加
             createItemCard(item, bgmContainer);
         }
       }
@@ -152,28 +159,27 @@
   }
 
   function createItemCard(item, container) {
+    // 厳密なID比較で装備判定
     const isEquipped = (myEquipped[item.type] === item.id);
     
     const card = document.createElement("div");
     card.className = "inv-card" + (isEquipped ? " equipped" : "");
 
-    // 画像設定
     let imgStyle = "";
     let imgText = item.placeholderText || "";
 
-    // BGMで画像がない場合は音符マークなどを出すようにしても良いですが、
-    // ここでは items.js の image プロパティに従います
     if (item.image) {
         imgStyle = `background-image: url('${item.image}');`;
         imgText = "";
     } else if (item.type === "bgm") {
-        // 画像指定がないBGM用のデフォルト表示
         imgText = "♪"; 
     }
 
+    // ★★★ 修正：名前の下に desc を表示する行を追加 ★★★
     card.innerHTML = `
       <div class="item-img" style="${imgStyle}">${imgText}</div>
       <div style="font-weight:bold; font-size:0.9rem;">${item.name}</div>
+      <div class="item-desc">${item.desc || ""}</div>
     `;
 
     const btn = document.createElement("button");
