@@ -124,11 +124,18 @@
     const boardContainer = document.getElementById("boardList");
     pieceContainer.innerHTML = "";
     boardContainer.innerHTML = "";
+    bgmContainer.innerHTML = "";
 
     // 定義されている全アイテムの中から、持っているものだけを表示
     GAME_ITEMS.forEach(item => {
       if (myInventory.includes(item.id)) {
-        createItemCard(item, item.type === "piece" ? pieceContainer : boardContainer);
+        if (item.type === "piece") {
+            createItemCard(item, pieceContainer);
+        } else if (item.type === "board") {
+            createItemCard(item, boardContainer);
+        } else if (item.type === "bgm") { // ▼ 追加
+            createItemCard(item, bgmContainer);
+        }
       }
     });
   }
@@ -183,5 +190,6 @@
 </body>
 
 </html>
+
 
 
