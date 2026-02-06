@@ -10,7 +10,7 @@ const GAME_ITEMS = [
     name: "標準の駒",
     price: 0,
     type: "piece",
-    image: "script/image/koma.png",
+    image: "image/koma.png",
     desc: "いつも使っている標準的な駒です。"
   },
   {
@@ -18,7 +18,7 @@ const GAME_ITEMS = [
     name: "駒２",
     price: 99999,
     type: "piece",
-    image: "script/image/dot_preview.png",
+    image: "image/dot_preview.png",
     desc: "レトロゲーム風のドット絵駒です。"
   },
   {
@@ -37,7 +37,7 @@ const GAME_ITEMS = [
     name: "標準の将棋盤",
     price: 0,
     type: "board",
-    image: "script/image/shogiban.png",
+    image: "image/shogiban.png",
     desc: "いつもの将棋盤です。"
   },
   {
@@ -45,7 +45,7 @@ const GAME_ITEMS = [
     name: "ヨーロッパの標識",
     price: 1000,
     type: "board",
-    image: "script/image/hyoshiki.PNG",
+    image: "image/hyoshiki.PNG",
     desc: "おなじみの標識"
   },
   {
@@ -62,7 +62,7 @@ const GAME_ITEMS = [
     name: "いつもの曲",
     price: 0,
     type: "bgm",
-    src: "script/audio/natsu2.mp3", // デフォルトの曲パス
+    src: "audio/natsu2.mp3", // デフォルトの曲パス
     desc: "標準のBGMです。"
   },
   {
@@ -70,7 +70,7 @@ const GAME_ITEMS = [
     name: "曲２",
     price: 99999,
     type: "bgm",
-    src: "script/audio/rock.mp3", // ★新しく用意したmp3ファイルのパス
+    src: "audio/rock.mp3", // ★新しく用意したmp3ファイルのパス
     desc: "激しい戦いを予感させるロックな曲です。",
     // ショップで画像がないと寂しいので、音符マークなどの画像を指定すると良いです
     image: "script/image/music_icon.png" 
@@ -80,7 +80,7 @@ const GAME_ITEMS = [
     name: "曲３",
     price: 99999,
     type: "bgm",
-    src: "script/audio/piano.mp3",
+    src: "audio/piano.mp3",
     desc: "集中力を高める静かなピアノ曲です。",
     image: "script/image/music_icon.png"
   }
@@ -92,6 +92,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
