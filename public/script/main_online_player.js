@@ -926,18 +926,56 @@ function resolveResignation(winnerColor, reason) {
     }
     render();
 }
+// ★★★ 修正版：勝敗に応じてゴールドを付与する関数 ★★★
 function saveGameResult(resultStatus) {
     const user = auth.currentUser;
-    if (!user) return; 
+    if (!user) return; // ログインしていない場合は何もしない
+
     const isWin = (resultStatus === "win");
+    
+    // ★追加：獲得ゴールドの計算
+    // 勝ちなら150G、負けなら30G（金額はお好みで調整してください）
+    let earnedGold = 0;
+    if (isWin) {
+        earnedGold = 150; 
+    } else if (resultStatus === "lose") {
+        earnedGold = 30;
+    } else {
+        // 引き分けなどの場合
+        earnedGold = 10;
+    }
+
     const gameRecord = {
-        date: new Date(), opponent: "オンライン対戦", moves: moveCount,
-        result: isWin ? "WIN" : "LOSE", mode: "online", kifuData: kifu 
+        date: new Date(), 
+        opponent: "オンライン対戦", 
+        moves: moveCount,
+        result: isWin ? "WIN" : "LOSE", 
+        mode: "online", 
+        kifuData: kifu 
     };
+
+    // Firestoreの更新処理
     db.collection("users").doc(user.uid).update({
         win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
         lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
-        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord),
+        // ★追加：所持金を増やす
+        gold: firebase.firestore.FieldValue.increment(earnedGold)
+    }).then(() => {
+        console.log(`戦績保存完了: ${earnedGold}G 獲得`);
+        
+        // ★追加：画面に獲得金額を表示する演出
+        if (statusDiv) {
+            const msg = isWin ? "勝利ボーナス" : "参加報酬";
+            const color = isWin ? "#ffd700" : "#cccccc"; // 金色 / 灰色
+            // 既存のメッセージの下に追加表示
+            const rewardMsg = document.createElement("div");
+            rewardMsg.style.fontWeight = "bold";
+            rewardMsg.style.color = "#d32f2f"; // 目立つ赤色などで
+            rewardMsg.style.marginTop = "5px";
+            rewardMsg.innerHTML = `<span style="background:${color}; padding:2px 5px; border-radius:3px;">${msg}</span> ${earnedGold}G GET!`;
+            statusDiv.appendChild(rewardMsg);
+        }
     }).catch(console.error);
 }
 function toggleKifu() {
