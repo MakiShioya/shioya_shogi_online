@@ -82,6 +82,11 @@ window.addEventListener("load", () => {
     render();
 
     if (typeof showKifu === "function") showKifu();
+    firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+            applyUserSkin();
+        }
+    });
 });
 
 // ★★★ 3. Firebase認証 & Socket接続 ★★★
