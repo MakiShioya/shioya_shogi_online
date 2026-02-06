@@ -18,7 +18,7 @@ const GAME_ITEMS = [
     name: "金の駒",
     price: 500,
     type: "piece",
-    image: "/script/image/koma.png",
+    image: "/script/image/koma_gold.png",
     desc: "金色の駒です"
   },
   {
@@ -144,6 +144,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
