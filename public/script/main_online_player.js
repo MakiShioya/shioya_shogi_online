@@ -1196,3 +1196,37 @@ window.playSkillEffect = function(imageName, soundName, flashColor) {
         }, 2000);
     }
 };
+
+// ★★★ 着せ替え反映用関数 ★★★
+function applyUserSkin() {
+    const user = firebase.auth().currentUser;
+    if (!user) return; // ゲストの場合はデフォルトのまま
+
+    db.collection("users").doc(user.uid).get().then((doc) => {
+        if (doc.exists) {
+            const data = doc.data();
+            const equipped = data.equipped || {};
+            
+            // script/items.js の GAME_ITEMS を使って画像パスを探す
+            if (typeof GAME_ITEMS !== 'undefined') {
+                // --- 駒の着せ替え ---
+                if (equipped.piece) {
+                    const pieceItem = GAME_ITEMS.find(i => i.id === equipped.piece);
+                    if (pieceItem && pieceItem.image) {
+                        // CSS変数を書き換え
+                        document.documentElement.style.setProperty('--piece-img', `url('${pieceItem.image}')`);
+                        // 色変え系のアイテムなら文字色などもここで調整可能
+                    }
+                }
+                
+                // --- 盤の着せ替え ---
+                if (equipped.board) {
+                    const boardItem = GAME_ITEMS.find(i => i.id === equipped.board);
+                    if (boardItem && boardItem.image) {
+                        document.documentElement.style.setProperty('--board-img', `url('${boardItem.image}')`);
+                    }
+                }
+            }
+        }
+    }).catch(err => console.error("スキン読み込み失敗", err));
+}
