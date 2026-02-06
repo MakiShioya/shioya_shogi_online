@@ -11,7 +11,7 @@ const GAME_ITEMS = [
     price: 0,
     type: "piece",
     image: "/script/image/koma.png",
-    desc: "いつも使っている標準的な駒です。"
+    desc: "いつも使っている標準的な駒です"
   },
   {
     id: "piece_dot",
@@ -19,7 +19,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "piece",
     placeholderText: "準備中",
-    desc: "準備中です。"
+    desc: "準備中です"
   },
   {
     id: "piece_gold_style",
@@ -27,7 +27,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "piece",
     placeholderText: "準備中",
-    desc: "準備中です。"
+    desc: "準備中です"
   },
 
   // --- 盤のデザイン ---
@@ -38,7 +38,7 @@ const GAME_ITEMS = [
     price: 0,
     type: "board",
     image: "/script/image/shogiban.png",
-    desc: "いつもの将棋盤です。"
+    desc: "いつもの将棋盤です"
   },
   {
     id: "hyoshiki",
@@ -54,7 +54,7 @@ const GAME_ITEMS = [
     price: 1000,
     type: "board",
     image: "/script/image/komiya_icon.png",
-    desc: "こみやの将棋盤です。"
+    desc: "こみやの将棋盤です"
   },
   {
     id: "board_wood_dark",
@@ -62,7 +62,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "board",
     placeholderText: "準備中",
-    desc: "準備中です。"
+    desc: "準備中です"
   },
 
   {
@@ -71,7 +71,7 @@ const GAME_ITEMS = [
     price: 0,
     type: "bgm",
     src: "/script/audio/natsu2.mp3",
-    desc: "「夏がやってきた！」いつものBGMです。"
+    desc: "「夏がやってきた！」いつものBGMです"
   },
   {
     id: "Tchaikovsky1",
@@ -115,7 +115,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "bgm",
     src: "/script/audio/rock.mp3", // ★新しく用意したmp3ファイルのパス
-    desc: "準備中です。",
+    desc: "準備中です",
     // ショップで画像がないと寂しいので、音符マークなどの画像を指定すると良いです
     image: "script/image/music_icon.png" 
   },
@@ -125,7 +125,7 @@ const GAME_ITEMS = [
     price: 99999,
     type: "bgm",
     src: "/script/audio/piano.mp3",
-    desc: "準備中です。",
+    desc: "準備中です",
     image: "script/image/music_icon.png"
   }
 
@@ -136,6 +136,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
