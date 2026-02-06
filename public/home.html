@@ -358,7 +358,7 @@ input, textarea {
         ・オンライン対局 実装！<br>
         ・ロビーチャット機能 追加！<br>
         ・棋譜解析機能 実装！<br>
-        ・最強CPU「試験実装」追加
+        ・最強CPU実装！
       </div>
       <button onclick="closeModal('newsModal')" style="background: #ccc; border: none; color: black; padding: 10px 20px; border-radius: 5px; cursor: pointer;">閉じる</button>
     </div>
@@ -494,7 +494,7 @@ input, textarea {
         <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
         <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
         <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
-      </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
+      </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">最強AI（PC限定）</button>
       <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
     </div>
   </div>
@@ -517,9 +517,9 @@ input, textarea {
       <h3 style="color: #8b4513;">モードについて</h3>
       <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
         <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対局ができます。この端末のみを使用して、プレイヤー同士でも対局ができます。</p>
-        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。</p>
         <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
-        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
+        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。※PC限定の機能です。</p>
       </div>
       <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
     </div>
@@ -1007,6 +1007,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
