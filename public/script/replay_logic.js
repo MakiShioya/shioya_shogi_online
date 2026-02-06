@@ -548,15 +548,17 @@ function updateChart() {
     // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
-        if (score === undefined) return null;
-        
-        // ▼▼▼ 削除したロジック: if (i === lastIndex && i !== 0) displayScore = -score; ▼▼▼
-        // そのまま score を使用します
+    if (score === undefined) return null;
 
-        // 詰み（Mate）スコアの表示制限処理
-        if (Math.abs(score) >= 30000) return score > 0 ? 10000 : -10000;
-        return score;
-    });
+    // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
+    
+    // 20000以上なら「詰みが見えている」と判断して、一律で表示用の上限値(例: 10000)にする
+    // これにより 29999 も 30000 も、グラフ上では同じ高さになります
+    if (score > 20000) return 10000;
+    if (score < -20000) return -10000;
+
+    return score;
+});
     evalChart.update();
 
     // 数値評価（テキスト）の更新
@@ -677,5 +679,6 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
 
 
