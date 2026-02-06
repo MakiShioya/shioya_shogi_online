@@ -13,7 +13,7 @@
     body {
       margin: 0; padding: 0;
       font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-      background-color: #f0e68c; /* 背景色 */
+      background-color: #f0e68c;
       color: #333;
       overflow-x: hidden;
       -webkit-user-select: none; user-select: none; touch-action: manipulation;
@@ -22,7 +22,7 @@
     /* ヘッダーバー */
     .header-bar {
       position: sticky; top: 0;
-      background: rgba(139, 69, 19, 0.9); /* 濃い茶色 */
+      background: rgba(139, 69, 19, 0.9);
       color: white;
       padding: 10px 15px;
       display: flex; justify-content: space-between; align-items: center;
@@ -41,13 +41,25 @@
     .shop-container {
       padding: 20px 10px;
       max-width: 800px; margin: 0 auto;
+      padding-bottom: 50px;
     }
     h2 { text-align: center; color: #8b4513; margin-bottom: 20px; }
 
-    /* 商品リストのグリッドレイアウト */
+    /* カテゴリ見出し */
+    .section-title {
+      font-size: 1.2rem;
+      margin-top: 30px;
+      margin-bottom: 10px;
+      color: #8b4513;
+      font-weight: bold;
+      border-bottom: 2px solid #8b4513;
+      padding-bottom: 5px;
+    }
+
+    /* 商品リスト */
     .item-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* 自動で折り返す */
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 15px;
     }
 
@@ -61,10 +73,10 @@
       display: flex; flex-direction: column; align-items: center;
       box-shadow: 0 4px 8px rgba(0,0,0,0.1);
       transition: transform 0.1s;
+      position: relative; /* 試聴ボタンの配置基準 */
     }
     .item-card:active { transform: scale(0.98); }
 
-    /* 商品画像プレースホルダー */
     .item-image {
       width: 100px; height: 100px;
       background-color: #ddd;
@@ -72,12 +84,12 @@
       display: flex; justify-content: center; align-items: center;
       font-size: 0.8rem; color: #666; border: 1px solid #ccc;
       background-size: cover; background-position: center;
+      position: relative;
     }
 
     .item-name { font-weight: bold; margin-bottom: 5px; font-size: 0.95rem; }
     .item-price { color: #d32f2f; font-weight: bold; margin-bottom: 10px; }
 
-    /* 購入ボタン */
     .buy-btn {
       width: 100%; padding: 8px;
       border: none; border-radius: 5px;
@@ -92,7 +104,33 @@
       border-radius: 5px; font-size: 0.8rem; width: 100%; box-sizing: border-box;
     }
 
-    /* モーダル（アラート用） */
+    /* ★★★ 追加：試聴ボタンのスタイル ★★★ */
+    .preview-btn {
+      position: absolute;
+      bottom: 5px; right: 5px; /* 画像の右下に配置 */
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: 2px solid white;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex; justify-content: center; align-items: center;
+      z-index: 5;
+    }
+    .preview-btn:hover { background: rgba(255, 69, 0, 0.8); }
+    /* 再生中のスタイル */
+    .preview-btn.playing {
+      background: #ff4500;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 69, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0); }
+    }
+
+    /* モーダル */
     .overlay {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.7); z-index: 100;
@@ -113,7 +151,15 @@
 
   <div class="shop-container">
     <h2>アイテムショップ</h2>
-    <div id="shopItemsList" class="item-grid"></div>
+    
+    <div class="section-title">将棋の駒</div>
+    <div id="pieceList" class="item-grid"></div>
+
+    <div class="section-title">将棋盤</div>
+    <div id="boardList" class="item-grid"></div>
+
+    <div class="section-title">BGM</div>
+    <div id="bgmList" class="item-grid"></div>
   </div>
 
   <div id="alertModal" class="overlay">
@@ -127,13 +173,15 @@
 <script src="script/items.js"></script>
 <script src="script/auth.js"></script>
 <script>
-  // 定義済みのGAME_ITEMSを使用する
   const SHOP_ITEMS = GAME_ITEMS;
 
   let currentUserGold = 0;
   let currentUserInventory = [];
+  
+  // ★★★ 追加：試聴用の音声オブジェクト ★★★
+  let currentPreviewAudio = null; // 現在再生中のAudio
+  let currentPreviewId = null;    // 現在再生中のアイテムID
 
-  // --- 初期化処理 ---
   document.addEventListener("DOMContentLoaded", () => {
     firebase.auth().onAuthStateChanged((user) => {
       if (user) {
@@ -156,10 +204,14 @@
     });
   });
 
-  // --- 商品リストの描画 ---
   function renderShopItems() {
-    const listContainer = document.getElementById("shopItemsList");
-    listContainer.innerHTML = "";
+    const pieceList = document.getElementById("pieceList");
+    const boardList = document.getElementById("boardList");
+    const bgmList = document.getElementById("bgmList");
+
+    pieceList.innerHTML = "";
+    boardList.innerHTML = "";
+    bgmList.innerHTML = "";
 
     SHOP_ITEMS.forEach(item => {
       if (item.price <= 0) return;
@@ -170,15 +222,30 @@
       const card = document.createElement("div");
       card.className = "item-card";
 
+      // --- 画像表示エリア ---
       let imageStyle = "";
       let imageText = item.placeholderText || item.name;
+      
       if (item.image) {
           imageStyle = `background-image: url('${item.image}');`;
           imageText = "";
+      } else if (item.type === "bgm") {
+          imageText = "♪";
       }
+      
+      // カードの上半分（画像エリア）
+      let imageAreaHTML = `<div class="item-image" style="${imageStyle}">${imageText}`;
+      
+      // ★★★ 追加：BGMなら試聴ボタンを画像の中に埋め込む ★★★
+      if (item.type === 'bgm') {
+          // data-id属性を持たせて、後で制御しやすくする
+          imageAreaHTML += `<button class="preview-btn" id="btn-${item.id}" onclick="playPreview('${item.id}', '${item.src}')">▶</button>`;
+      }
+      
+      imageAreaHTML += `</div>`; // 閉じタグ
 
       card.innerHTML = `
-        <div class="item-image" style="${imageStyle}">${imageText}</div>
+        ${imageAreaHTML}
         <div class="item-name">${item.name}</div>
         <div class="item-price">${item.price.toLocaleString()} G</div>
       `;
@@ -199,14 +266,75 @@
         buyBtn.onclick = () => buyItem(item);
         card.appendChild(buyBtn);
       }
-      listContainer.appendChild(card);
+
+      if (item.type === 'piece') pieceList.appendChild(card);
+      else if (item.type === 'board') boardList.appendChild(card);
+      else if (item.type === 'bgm') bgmList.appendChild(card);
     });
   }
 
-  // --- 購入処理 ---
+  // ★★★ 追加：試聴処理関数 ★★★
+  function playPreview(id, src) {
+      // 1. もし同じ曲が再生中なら、停止する
+      if (currentPreviewId === id) {
+          stopPreview();
+          return;
+      }
+
+      // 2. 別の曲が再生中なら、それを止める
+      if (currentPreviewAudio) {
+          stopPreview();
+      }
+
+      // 3. 新しい曲を再生する
+      currentPreviewAudio = new Audio(src);
+      currentPreviewAudio.volume = 0.5; // 音量は控えめに
+      currentPreviewId = id;
+
+      // ボタンの見た目を「再生中（■）」に変える
+      const btn = document.getElementById(`btn-${id}`);
+      if (btn) {
+          btn.textContent = "■"; // 停止マーク
+          btn.classList.add("playing");
+      }
+
+      currentPreviewAudio.play().catch(e => {
+          console.error("再生エラー:", e);
+          alert("再生できませんでした");
+          stopPreview();
+      });
+
+      // 曲が終わったらボタンを元に戻す
+      currentPreviewAudio.onended = () => {
+          stopPreview();
+      };
+  }
+
+  // ★★★ 追加：停止処理関数 ★★★
+  function stopPreview() {
+      if (currentPreviewAudio) {
+          currentPreviewAudio.pause();
+          currentPreviewAudio = null;
+      }
+      
+      // ボタンの見た目を元に戻す
+      if (currentPreviewId) {
+          const btn = document.getElementById(`btn-${currentPreviewId}`);
+          if (btn) {
+              btn.textContent = "▶";
+              btn.classList.remove("playing");
+          }
+          currentPreviewId = null;
+      }
+  }
+
+  // 購入処理
   function buyItem(item) {
     const user = firebase.auth().currentUser;
     if (!user) return;
+
+    // ★追加：購入時に試聴を止める
+    stopPreview();
 
     if (currentUserInventory.includes(item.id)) {
         showAlert("情報", "すでにこのアイテムを持っています。");
@@ -232,7 +360,11 @@
     });
   }
 
-  // --- ユーティリティ ---
+  // 画面遷移時（戻るボタンなど）に音を止める
+  window.onbeforeunload = function() {
+      stopPreview();
+  };
+
   let alertCallback = null;
   function showAlert(title, msg, callback) {
     document.getElementById("alertTitle").textContent = title;
