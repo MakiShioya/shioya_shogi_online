@@ -79,7 +79,8 @@ const GAME_ITEMS = [
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky1.mp3",
-    desc: "チャイコフスキーの交響曲第五番"
+    desc: "チャイコフスキーの交響曲第五番",
+    image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "bgm_default",
@@ -87,7 +88,8 @@ const GAME_ITEMS = [
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky2.mp3",
-    desc: "チャイコフスキーの交響曲第五番"
+    desc: "チャイコフスキーの交響曲第五番",
+    image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "bgm_default",
@@ -95,7 +97,8 @@ const GAME_ITEMS = [
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky3.mp3",
-    desc: "チャイコフスキーの交響曲第五番"
+    desc: "チャイコフスキーの交響曲第五番",
+    image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "bgm_default",
@@ -103,7 +106,8 @@ const GAME_ITEMS = [
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky4.mp3", 
-    desc: "チャイコフスキーの交響曲第五番"
+    desc: "チャイコフスキーの交響曲第五番",
+    image: "script/image/Tchaikovsky_5.png" 
   },
   {
     id: "bgm_rock",
@@ -132,6 +136,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
