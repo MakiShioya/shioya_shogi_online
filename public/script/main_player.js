@@ -864,37 +864,49 @@ function saveGameResult(res) {
     });
 }　
 
-// ★★★ 着せ替え反映用関数 ★★★
 function applyUserSkin() {
     const user = firebase.auth().currentUser;
-    if (!user) return; // ゲストの場合はデフォルトのまま
+    if (!user) return;
 
     db.collection("users").doc(user.uid).get().then((doc) => {
         if (doc.exists) {
             const data = doc.data();
             const equipped = data.equipped || {};
             
-            // script/items.js の GAME_ITEMS を使って画像パスを探す
             if (typeof GAME_ITEMS !== 'undefined') {
-                // --- 駒の着せ替え ---
+                // --- 駒の反映 ---
                 if (equipped.piece) {
-                    const pieceItem = GAME_ITEMS.find(i => i.id === equipped.piece);
-                    if (pieceItem && pieceItem.image) {
-                        // CSS変数を書き換え
-                        document.documentElement.style.setProperty('--piece-img', `url('${pieceItem.image}')`);
-                        // 色変え系のアイテムなら文字色などもここで調整可能
+                    const item = GAME_ITEMS.find(i => i.id === equipped.piece);
+                    if (item && item.image) {
+                        document.documentElement.style.setProperty('--piece-img', `url('${item.image}')`);
+                    }
+                }
+                // --- 盤の反映 ---
+                if (equipped.board) {
+                    const item = GAME_ITEMS.find(i => i.id === equipped.board);
+                    if (item && item.image) {
+                        document.documentElement.style.setProperty('--board-img', `url('${item.image}')`);
                     }
                 }
                 
-                // --- 盤の着せ替え ---
-                if (equipped.board) {
-                    const boardItem = GAME_ITEMS.find(i => i.id === equipped.board);
-                    if (boardItem && boardItem.image) {
-                        document.documentElement.style.setProperty('--board-img', `url('${boardItem.image}')`);
+                // --- ★★★ 追加：BGMの反映 ★★★ ---
+                if (equipped.bgm) {
+                    const item = GAME_ITEMS.find(i => i.id === equipped.bgm);
+                    // アイテムが存在し、かつ src プロパティがある場合
+                    if (item && item.src) {
+                        const bgmEl = document.getElementById("bgm");
+                        if (bgmEl) {
+                            // 現在再生中のソースと違う場合のみ変更（リロード防止）
+                            // ※パスの比較は完全一致しないことがあるので、ファイル名が含まれるかで判定するなど工夫してもOK
+                            // ここでは単純に上書きします
+                            bgmEl.src = item.src;
+                            
+                            // 画面ロード時に自動再生させたい場合はここでも play() を呼ぶことができますが、
+                            // 通常は「対局開始」等のタイミングで playBGM() が呼ばれるので、srcを変えるだけでOKです。
+                        }
                     }
                 }
             }
         }
-    }).catch(err => console.error("スキン読み込み失敗", err));
+    }).catch(console.error);
 }
-
