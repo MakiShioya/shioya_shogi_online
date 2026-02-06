@@ -11,7 +11,7 @@ const GAME_ITEMS = [
     price: 0,
     type: "piece",
     image: "/script/image/koma.png",
-    desc: "いつも使っている標準的な駒です"
+    desc: "いつも使っている<br>標準的な駒です"
   },
   {
     id: "piece_gold",
@@ -79,12 +79,12 @@ const GAME_ITEMS = [
     price: 0,
     type: "bgm",
     src: "/script/audio/natsu2.mp3",
-    desc: "「夏がやってきた！」いつものBGMです",
+    desc: "「夏がやってきた！」<br>いつものBGMです",
     image: "script/image/music_icon.png" 
   },
   {
     id: "Tchaikovsky1",
-    name: "チャイコフスキー 交響曲第五番",
+    name: "チャイコフスキー<br>交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky1.mp3",
@@ -93,7 +93,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky2",
-    name: "チャイコフスキー 交響曲第五番",
+    name: "チャイコフスキー<br>交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky2.mp3",
@@ -102,7 +102,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky3",
-    name: "チャイコフスキー 交響曲第五番",
+    name: "チャイコフスキー<br>交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky3.mp3",
@@ -111,7 +111,7 @@ const GAME_ITEMS = [
   },
   {
     id: "Tchaikovsky4",
-    name: "チャイコフスキー 交響曲第五番",
+    name: "チャイコフスキー<br>交響曲第五番",
     price: 100,
     type: "bgm",
     src: "/script/audio/Tchaikovsky4.mp3", 
@@ -124,7 +124,7 @@ const GAME_ITEMS = [
     price: 100,
     type: "bgm",
     src: "/script/audio/Happy_Curry_Christmas.mp3", // ★新しく用意したmp3ファイルのパス
-    desc: "カレー味のクリスマスソング",
+    desc: "カレー味の<br>クリスマスソング",
     // ショップで画像がないと寂しいので、音符マークなどの画像を指定すると良いです
     image: "script/image/music_icon.png" 
   },
@@ -145,6 +145,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
