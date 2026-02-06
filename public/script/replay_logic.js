@@ -153,50 +153,36 @@ function handleEngineMessage(msg) {
         if (msg.includes("score cp") || msg.includes("score mate")) {
             const parts = msg.split(" ");
             let rawScore = 0;
-            let scoreType = "";
-            let mateVal = 0;
 
             if (msg.includes("score cp")) {
-                scoreType = "CP";
+                // CP（センチポーン）の場合
                 rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
-                scoreType = "MATE";
-                const m = parseInt(parts[parts.indexOf("mate") + 1]);
-                mateVal = m;
-                // 正負によって計算式が変わる
-                rawScore = m >= 0 ? 30000 - m : -30000 + m;
-            }
+                // Mate（詰み）の場合
+                const mateIndex = parts.indexOf("mate");
+                const mateStr = parts[mateIndex + 1]; // 文字列として取得
+                const m = parseInt(mateStr);
 
-            // 反転前のスコアを保持
-            let scoreBeforeFlip = rawScore;
+                // ★修正ポイント: 文字列が "-" で始まっているかで判定する
+                // parseInt("-0") >= 0 は true になってしまうため、文字列で符号を確認する
+                if (mateStr.startsWith("-")) {
+                    // 負の詰み（自玉が詰む）: -30000 から手数を引く（負の方向に大きくする）
+                    rawScore = -30000 - m; 
+                } else {
+                    // 正の詰み（敵玉を詰ます）: 30000 から手数を引く
+                    rawScore = 30000 - m;
+                }
+            }
             
-            // 現在の「解析対象の手番」を確認
-            // analyzingTurn は analyzeCurrentPosition で設定されたグローバル変数
-            let currentTurnVar = analyzingTurn; 
+            // --- ここから下は変更なし（手番による反転ロジック） ---
             
-            // 反転ロジック
-            let finalScore = scoreBeforeFlip;
-            let didFlip = false;
+            // 後手番なら評価値を反転
             if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
-                finalScore = -scoreBeforeFlip;
-                didFlip = true;
-            }
-
-            // --- 詰みが発生している時のみ、詳細ログを出す ---
-            if (scoreType === "MATE") {
-                console.group(`[DEBUG_MATE] Step: ${analyzingStep}`);
-                console.log(`1. Raw Msg from Engine: "${msg}"`);
-                console.log(`2. Mate Value (m): ${mateVal} (${mateVal > 0 ? "Engine勝ち宣言" : "Engine負け宣言"})`);
-                console.log(`3. Calculated Raw Score: ${scoreBeforeFlip}`);
-                console.log(`4. analyzingTurn Variable: "${currentTurnVar}"`);
-                console.log(`5. Did Flip? : ${didFlip ? "YES (Multiplied by -1)" : "NO"}`);
-                console.log(`6. Final Score stored: ${finalScore}`);
-                console.log(`7. Conclusion: ${finalScore > 0 ? "先手勝ち扱い" : "後手勝ち扱い"}`);
-                console.groupEnd();
+                rawScore = -rawScore;
             }
 
             if (analyzingStep !== -1) {
-                evalHistory[analyzingStep] = finalScore;
+                evalHistory[analyzingStep] = rawScore;
                 updateChart();
             }
         }
@@ -691,4 +677,5 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
 
