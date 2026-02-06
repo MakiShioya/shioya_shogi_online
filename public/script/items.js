@@ -121,7 +121,7 @@ const GAME_ITEMS = [
   {
     id: "Happy_Curry_Christmas",
     name: "Happy Curry Christmas",
-    price: 500,
+    price: 100,
     type: "bgm",
     src: "/script/audio/Happy_Curry_Christmas.mp3", // ★新しく用意したmp3ファイルのパス
     desc: "カレー味のクリスマスソング",
@@ -145,6 +145,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
