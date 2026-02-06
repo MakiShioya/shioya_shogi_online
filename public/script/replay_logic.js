@@ -84,87 +84,123 @@ function getKifuMoveUsi(step) {
 /**
  * 2. エンジン通信 & 解析ロジック
  */
+// --- デバッグ用：handleEngineMessage ---
+// エンジンからのメッセージ受信時に、計算ロジックを全て暴露します
 function handleEngineMessage(msg) {
-    if (msg === "usiok") sendToEngine("isready");
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        if (!isAutoAnalyzing) analyzeCurrentPosition();
-    }
+    if (msg === "usiok") sendToEngine("isready");
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        if (!isAutoAnalyzing) analyzeCurrentPosition();
+    }
 
-    if (typeof msg === "string") {
-        // --- 1秒時点の候補手をサンプリング ---
-        if (msg.includes("info") && msg.includes("pv")) {
-            const elapsed = Date.now() - searchStartTime;
-            if (elapsed >= 1000 && elapsed <= 1500 && !lastBestMoveAt1s) {
-                const parts = msg.split(" ");
-                const pvIdx = parts.indexOf("pv");
-                if (pvIdx !== -1 && parts[pvIdx + 1]) lastBestMoveAt1s = parts[pvIdx + 1];
-            }
-        }
+    if (typeof msg === "string") {
+        // --- 1秒時点の候補手サンプリング（変更なし） ---
+        if (msg.includes("info") && msg.includes("pv")) {
+            const elapsed = Date.now() - searchStartTime;
+            if (elapsed >= 1000 && elapsed <= 1500 && !lastBestMoveAt1s) {
+                const parts = msg.split(" ");
+                const pvIdx = parts.indexOf("pv");
+                if (pvIdx !== -1 && parts[pvIdx + 1]) lastBestMoveAt1s = parts[pvIdx + 1];
+            }
+        }
 
-        // --- 指し手回答（bestmove）受信 ---
-        if (msg.startsWith("bestmove")) {
-            const parts = msg.split(" ");
-            const usiMove = parts[1];
+        // --- bestmove受信（変更なし） ---
+        if (msg.startsWith("bestmove")) {
+            const parts = msg.split(" ");
+            const usiMove = parts[1];
 
-            // ★好手判定ロジック：AIが1秒時点と違う手を選び、かつそれが棋譜と一致したか
-            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
-            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                discoveryFlags[analyzingStep + 1] = true; 
-            }
-            // 2. 一致判定（青点）：単純にAIの最善手と一致したか（★追加部分）
-            if (usiMove === kifuMoveUsi) {
-                matchFlags[analyzingStep + 1] = true;
-            }
+            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
+            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
+                discoveryFlags[analyzingStep + 1] = true; 
+            }
+            if (usiMove === kifuMoveUsi) {
+                matchFlags[analyzingStep + 1] = true;
+            }
 
-            if (isWaitingRecommendation) {
-                isWaitingRecommendation = false;
-                const btn = document.getElementById("recommendBtn");
-                if (btn) btn.disabled = false;
+            if (isWaitingRecommendation) {
+                isWaitingRecommendation = false;
+                const btn = document.getElementById("recommendBtn");
+                if (btn) btn.disabled = false;
 
-                if (usiMove !== "resign" && usiMove !== "(none)") {
-                    let toX, toY, fromX = null, fromY = null, pieceChar;
-                    if (usiMove.includes("*")) {
-                        pieceChar = usiMove[0];
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                    } else {
-                        fromX = 9 - parseInt(usiMove[0]);
-                        fromY = usiMove[1].charCodeAt(0) - 97;
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                        const targetPiece = boardState[fromY][fromX];
-                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
-                    }
-                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
-                    render();
-                }
-                return;
-            }
-        }
+                if (usiMove !== "resign" && usiMove !== "(none)") {
+                    let toX, toY, fromX = null, fromY = null, pieceChar;
+                    if (usiMove.includes("*")) {
+                        pieceChar = usiMove[0];
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                    } else {
+                        fromX = 9 - parseInt(usiMove[0]);
+                        fromY = usiMove[1].charCodeAt(0) - 97;
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                        const targetPiece = boardState[fromY][fromX];
+                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
+                    }
+                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
+                    render();
+                }
+                return;
+            }
+        }
 
-        const isMate = msg.includes("score mate");
-        if (isMate && isAutoAnalyzing && analysisResolver) {
-            analysisResolver();
-            analysisResolver = null;
-        }
+        const isMate = msg.includes("score mate");
+        if (isMate && isAutoAnalyzing && analysisResolver) {
+            analysisResolver();
+            analysisResolver = null;
+        }
 
-        if (msg.includes("score cp") || msg.includes("score mate")) {
-            const parts = msg.split(" ");
-            let score = 0;
-            if (msg.includes("score cp")) {
-                score = parseInt(parts[parts.indexOf("cp") + 1]);
-            } else if (msg.includes("score mate")) {
-                const m = parseInt(parts[parts.indexOf("mate") + 1]);
-                score = m >= 0 ? 30000 - m : -30000 + m;
-            }
-            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") score = -score;
-            if (analyzingStep !== -1) {
-                evalHistory[analyzingStep] = score;
-                updateChart();
-            }
-        }
-    }
+        // ★★★ デバッグ重点箇所 ★★★
+        if (msg.includes("score cp") || msg.includes("score mate")) {
+            const parts = msg.split(" ");
+            let rawScore = 0;
+            let scoreType = "";
+            let mateVal = 0;
+
+            if (msg.includes("score cp")) {
+                scoreType = "CP";
+                rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
+            } else if (msg.includes("score mate")) {
+                scoreType = "MATE";
+                const m = parseInt(parts[parts.indexOf("mate") + 1]);
+                mateVal = m;
+                // 正負によって計算式が変わる
+                rawScore = m >= 0 ? 30000 - m : -30000 + m;
+            }
+
+            // 反転前のスコアを保持
+            let scoreBeforeFlip = rawScore;
+            
+            // 現在の「解析対象の手番」を確認
+            // analyzingTurn は analyzeCurrentPosition で設定されたグローバル変数
+            let currentTurnVar = analyzingTurn; 
+            
+            // 反転ロジック
+            let finalScore = scoreBeforeFlip;
+            let didFlip = false;
+            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
+                finalScore = -scoreBeforeFlip;
+                didFlip = true;
+            }
+
+            // --- 詰みが発生している時のみ、詳細ログを出す ---
+            if (scoreType === "MATE") {
+                console.group(`[DEBUG_MATE] Step: ${analyzingStep}`);
+                console.log(`1. Raw Msg from Engine: "${msg}"`);
+                console.log(`2. Mate Value (m): ${mateVal} (${mateVal > 0 ? "Engine勝ち宣言" : "Engine負け宣言"})`);
+                console.log(`3. Calculated Raw Score: ${scoreBeforeFlip}`);
+                console.log(`4. analyzingTurn Variable: "${currentTurnVar}"`);
+                console.log(`5. Did Flip? : ${didFlip ? "YES (Multiplied by -1)" : "NO"}`);
+                console.log(`6. Final Score stored: ${finalScore}`);
+                console.log(`7. Conclusion: ${finalScore > 0 ? "先手勝ち扱い" : "後手勝ち扱い"}`);
+                console.groupEnd();
+            }
+
+            if (analyzingStep !== -1) {
+                evalHistory[analyzingStep] = finalScore;
+                updateChart();
+            }
+        }
+    }
 }
 
 function sendToEngine(msg) {
@@ -172,21 +208,31 @@ function sendToEngine(msg) {
 }
 
 function generateSfen() {
-    if (typeof convertBoardToSFEN === 'function') {
-        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
-    }
-    return "startpos";
+    let sfen = "startpos";
+    if (typeof convertBoardToSFEN === 'function') {
+        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+    }
+    
+    // SFENの手番部分（" b " か " w " か）を抽出してログに出す
+    const turnChar = sfen.split(" ")[1]; 
+    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
+    
+    return sfen;
 }
 
 function analyzeCurrentPosition() {
-    if (!isEngineReady) return;
-    searchStartTime = Date.now();
-    lastBestMoveAt1s = null;
-    analyzingStep = currentStep;
-    analyzingTurn = window.turn;
-    sendToEngine("stop");
-    sendToEngine("position sfen " + generateSfen());
-    sendToEngine("go movetime 100000"); 
+    if (!isEngineReady) return;
+    
+    searchStartTime = Date.now();
+    lastBestMoveAt1s = null;
+    analyzingStep = currentStep;
+    analyzingTurn = window.turn; // ★ここでグローバル変数にセットしている
+
+    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} | Start Analysis`, "color: green; font-weight: bold;");
+
+    sendToEngine("stop");
+    sendToEngine("position sfen " + generateSfen());
+    sendToEngine("go movetime 100000"); 
 }
 
 /**
@@ -645,3 +691,4 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
