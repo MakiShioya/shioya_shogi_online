@@ -105,7 +105,8 @@ body {
     background-size: cover;
     
     /* 立体感を出すための境界線と影 */
-
+    background-position: center;
+    background-repeat: no-repeat;
     box-shadow: 
         offset 5px 5px 15px rgba(0,0,0,0.4), /* 全体の影 */
         inner 0 0 10px rgba(0,0,0,0.2);     /* 枠の内側の影 */
