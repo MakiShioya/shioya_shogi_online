@@ -79,7 +79,8 @@ const GAME_ITEMS = [
     price: 0,
     type: "bgm",
     src: "/script/audio/natsu2.mp3",
-    desc: "「夏がやってきた！」いつものBGMです"
+    desc: "「夏がやってきた！」いつものBGMです",
+    image: "script/image/music_icon.png" 
   },
   {
     id: "Tchaikovsky1",
@@ -144,6 +145,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
