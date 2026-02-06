@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>所持品・着せ替え - しおや将棋</title>
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      background-color: #2c3e50; /* 落ち着いた色 */
+      color: white;
+      overflow-x: hidden;
+      -webkit-user-select: none; user-select: none;
+    }
+    .header-bar {
+      background: rgba(0,0,0,0.5); padding: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .back-btn {
+      background: #ccc; border: none; padding: 8px 20px; border-radius: 5px;
+      cursor: pointer; font-weight: bold; color: black;
+    }
+    h2 { text-align: center; margin: 20px 0; border-bottom: 2px solid #aaa; padding-bottom: 10px; }
+    
+    .container { max-width: 800px; margin: 0 auto; padding: 10px; }
+    
+    .section-title { font-size: 1.2rem; margin-top: 30px; color: #4facfe; font-weight: bold; }
+
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 15px; margin-top: 10px;
+    }
+
+    .inv-card {
+      background: white; color: black;
+      border-radius: 10px; padding: 10px;
+      text-align: center;
+      position: relative;
+      border: 3px solid transparent;
+    }
+    /* 装備中の強調スタイル */
+    .inv-card.equipped {
+      border-color: #ffd700;
+      background: #fff8dc;
+      box-shadow: 0 0 10px #ffd700;
+    }
+
+    .item-img {
+      width: 80px; height: 80px; background: #ddd; margin: 0 auto 10px;
+      border-radius: 5px; display: flex; align-items: center; justify-content: center;
+      background-size: cover; background-position: center;
+    }
+    
+    .equip-btn {
+      width: 100%; padding: 8px; margin-top: 5px;
+      border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+      background: #007bff; color: white;
+    }
+    .equip-btn.active {
+      background: #28a745; cursor: default;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header-bar">
+  <button class="back-btn" onclick="window.location.href='home.html'">← ホームへ</button>
+  <span style="font-weight:bold;">所持品・着せ替え</span>
+</div>
+
+<div class="container">
+  
+  <div class="section-title">将棋の駒</div>
+  <div id="pieceList" class="item-grid"></div>
+
+  <div class="section-title">将棋盤</div>
+  <div id="boardList" class="item-grid"></div>
+
+</div>
+
+<script src="script/items.js"></script> <script src="script/auth.js"></script>
+<script>
+  let myInventory = [];
+  let myEquipped = { piece: "piece_default", board: "board_default" };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        db.collection("users").doc(user.uid).onSnapshot((doc) => {
+          if (doc.exists) {
+            const data = doc.data();
+            myInventory = data.inventory || [];
+            // デフォルトアイテムは必ず持っていることにする
+            if (!myInventory.includes("piece_default")) myInventory.push("piece_default");
+            if (!myInventory.includes("board_default")) myInventory.push("board_default");
+
+            // 装備情報の取得
+            myEquipped = data.equipped || { piece: "piece_default", board: "board_default" };
+            
+            renderInventory();
+          }
+        });
+      } else {
+        alert("ログインしてください");
+        window.location.href = "home.html";
+      }
+    });
+  });
+
+  function renderInventory() {
+    const pieceContainer = document.getElementById("pieceList");
+    const boardContainer = document.getElementById("boardList");
+    pieceContainer.innerHTML = "";
+    boardContainer.innerHTML = "";
+
+    // 定義されている全アイテムの中から、持っているものだけを表示
+    GAME_ITEMS.forEach(item => {
+      if (myInventory.includes(item.id)) {
+        createItemCard(item, item.type === "piece" ? pieceContainer : boardContainer);
+      }
+    });
+  }
+
+  function createItemCard(item, container) {
+    const isEquipped = (myEquipped[item.type] === item.id);
+    
+    const card = document.createElement("div");
+    card.className = "inv-card" + (isEquipped ? " equipped" : "");
+
+    // 画像設定
+    let imgStyle = "";
+    let imgText = item.placeholderText || "";
+    if (item.image) {
+        imgStyle = `background-image: url('${item.image}');`;
+        imgText = "";
+    }
+
+    card.innerHTML = `
+      <div class="item-img" style="${imgStyle}">${imgText}</div>
+      <div style="font-weight:bold; font-size:0.9rem;">${item.name}</div>
+    `;
+
+    const btn = document.createElement("button");
+    btn.className = "equip-btn" + (isEquipped ? " active" : "");
+    btn.textContent = isEquipped ? "装備中" : "装備する";
+    
+    if (!isEquipped) {
+      btn.onclick = () => equipItem(item.type, item.id);
+    }
+
+    card.appendChild(btn);
+    container.appendChild(card);
+  }
+
+  function equipItem(type, id) {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    // Firestoreの equipped フィールドを更新
+    // equipped.piece または equipped.board を書き換える
+    const updateKey = `equipped.${type}`;
+    
+    db.collection("users").doc(user.uid).update({
+      [updateKey]: id
+    }).then(() => {
+      // 成功したら onSnapshot が検知して自動再描画
+      console.log("装備変更: " + id);
+    });
+  }
+</script>
+</body>
+</html>
