@@ -149,7 +149,6 @@ function handleEngineMessage(msg) {
             analysisResolver = null;
         }
 
-        // ★★★ デバッグ重点箇所 ★★★
         if (msg.includes("score cp") || msg.includes("score mate")) {
             const parts = msg.split(" ");
             let rawScore = 0;
@@ -160,16 +159,13 @@ function handleEngineMessage(msg) {
             } else if (msg.includes("score mate")) {
                 // Mate（詰み）の場合
                 const mateIndex = parts.indexOf("mate");
-                const mateStr = parts[mateIndex + 1]; // 文字列として取得
+                const mateStr = parts[mateIndex + 1]; 
                 const m = parseInt(mateStr);
 
-                // ★修正ポイント: 文字列が "-" で始まっているかで判定する
-                // parseInt("-0") >= 0 は true になってしまうため、文字列で符号を確認する
+                // 文字列が "-" で始まっているかで判定
                 if (mateStr.startsWith("-")) {
-                    // 負の詰み（自玉が詰む）: -30000 から手数を引く（負の方向に大きくする）
                     rawScore = -30000 - m; 
                 } else {
-                    // 正の詰み（敵玉を詰ます）: 30000 から手数を引く
                     rawScore = 30000 - m;
                 }
             }
@@ -194,16 +190,10 @@ function sendToEngine(msg) {
 }
 
 function generateSfen() {
-    let sfen = "startpos";
     if (typeof convertBoardToSFEN === 'function') {
-        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
     }
-    
-    // SFENの手番部分（" b " か " w " か）を抽出してログに出す
-    const turnChar = sfen.split(" ")[1]; 
-    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
-    
-    return sfen;
+    return "startpos";
 }
 
 function analyzeCurrentPosition() {
@@ -212,9 +202,7 @@ function analyzeCurrentPosition() {
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn; // ★ここでグローバル変数にセットしている
-
-    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} | Start Analysis`, "color: green; font-weight: bold;");
+    analyzingTurn = window.turn; // コメントのみ削除
 
     sendToEngine("stop");
     sendToEngine("position sfen " + generateSfen());
@@ -679,6 +667,7 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
 
 
 
