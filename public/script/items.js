@@ -49,6 +49,14 @@ const GAME_ITEMS = [
     desc: "おなじみの標識"
   },
   {
+    id: "board_komiya",
+    name: "こみやの将棋盤",
+    price: 0,
+    type: "board",
+    image: "/script/image/komiya_icon.png",
+    desc: "こみやの将棋盤です。"
+  },
+  {
     id: "board_wood_dark",
     name: "将棋盤３",
     price: 99999,
@@ -92,6 +100,7 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
 
