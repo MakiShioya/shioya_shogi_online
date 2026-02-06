@@ -31,6 +31,7 @@ const GAME_ITEMS = [
   },
 
   // --- 盤のデザイン ---
+  
   {
     id: "board_default",
     name: "標準の将棋盤",
@@ -38,6 +39,14 @@ const GAME_ITEMS = [
     type: "board",
     image: "script/image/shogiban.png",
     desc: "いつもの将棋盤です。"
+  },
+  {
+    id: "board_default",
+    name: "ヨーロッパの標識",
+    price: 0,
+    type: "board",
+    image: "script/image/hyoshiki.PNG",
+    desc: "おなじみの標識"
   },
   {
     id: "board_wood_dark",
@@ -83,5 +92,6 @@ function getItemById(id) {
   if (typeof GAME_ITEMS === 'undefined') return null;
   return GAME_ITEMS.find(item => item.id === id);
 }
+
 
 
