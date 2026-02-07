@@ -780,6 +780,4 @@ function drawRecommendationArrow() {
 
 
 
-よく確認してください。原因が特定できなかったら、デバッグ用コードを作成してください。
-
 
