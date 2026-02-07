@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - 論理・手番デバッグ版
+// replay_logic.js - ID管理による完全同期版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -16,8 +16,9 @@ let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
-// 同期ズレ対策フラグ
-let waitingForReadyToAnalyze = false;
+// ★追加: 解析ID管理（同期ズレ対策の決定版）
+let currentAnalysisId = 0; // 現在リクエスト中の解析ID
+let processingAnalysisId = 0; // 現在処理を許可している解析ID
 
 // --- 全自動検討・おすすめ用の変数 ---
 let isAutoAnalyzing = false;
@@ -79,46 +80,42 @@ function getKifuMoveUsi(step) {
     }
 }
 
-function sendToEngine(msg) {
-    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
-}
-
 /**
  * 2. エンジン通信 & 解析ロジック
  */
 
-// ★デバッグ用：SFEN生成時に手番を確認
 function generateSfen() {
-    let sfen = "startpos";
     if (typeof convertBoardToSFEN === 'function') {
-        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
     }
-    
-    // SFEN文字列から手番(b/w)を抽出してログに出す
-    const turnChar = sfen.split(" ")[1]; 
-    console.log(`%c[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`, "background: #eee; color: #333");
-    
-    return sfen;
+    return "startpos";
 }
 
 // 解析リクエスト関数
+// 新しい解析IDを発行し、エンジンをリセットする
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
-    waitingForReadyToAnalyze = true;
+    // 新しいIDを発行（これにより、古いIDを持つメッセージは全て無視される）
+    currentAnalysisId++;
+    // console.log(`[DEBUG] Requesting Analysis ID: ${currentAnalysisId}`);
     
     sendToEngine("stop");    
     sendToEngine("isready"); 
 }
 
 // 実際の解析開始関数
+// readyok受信後に呼ばれ、正式にIDを適用する
 function startRealAnalysis() {
+    // 処理中のIDを最新のものに更新
+    processingAnalysisId = currentAnalysisId;
+    
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn; // ★ここで現在の手番を保存
+    analyzingTurn = window.turn; 
 
-    console.log(`%c[DEBUG_START] Step:${analyzingStep} | AnalyzingTurn:${analyzingTurn}`, "color: green; font-weight: bold;");
+    // console.log(`[DEBUG] Real Analysis Started. Processing ID: ${processingAnalysisId}`);
 
     sendToEngine("position sfen " + generateSfen());
     sendToEngine("go movetime 100000"); 
@@ -127,10 +124,13 @@ function startRealAnalysis() {
 function handleEngineMessage(msg) {
     if (msg === "usiok") sendToEngine("isready");
     
+    // readyok 受信時の処理
     else if (msg === "readyok") {
         isEngineReady = true;
-        if (waitingForReadyToAnalyze) {
-            waitingForReadyToAnalyze = false;
+        
+        // 解析リクエスト中なら、いよいよ解析を開始する
+        // （ここで processingAnalysisId が更新されるため、これ以降のメッセージが有効になる）
+        if (currentAnalysisId > processingAnalysisId) {
             startRealAnalysis();
         } 
         else if (!isAutoAnalyzing && analyzingStep === -1) {
@@ -140,7 +140,12 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        if (waitingForReadyToAnalyze) return;
+        // ★修正の核心: ID不一致なら即リターン
+        // まだ readyok を受け取っていない（processingAnalysisId が古い）間は、
+        // どんなメッセージが来ても無視する。
+        if (processingAnalysisId !== currentAnalysisId) {
+            return;
+        }
 
         // --- 1秒時点の候補手サンプリング ---
         if (msg.includes("info") && msg.includes("pv")) {
@@ -199,17 +204,13 @@ function handleEngineMessage(msg) {
             analysisResolver = null;
         }
 
-        // ★★★ デバッグ重点箇所：評価値の計算プロセスをログに出す ★★★
         if (msg.includes("score cp") || msg.includes("score mate")) {
             const parts = msg.split(" ");
             let rawScore = 0;
-            let scoreType = "cp"; // cp or mate
 
             if (msg.includes("score cp")) {
-                scoreType = "cp";
                 rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
-                scoreType = "mate";
                 const mateIndex = parts.indexOf("mate");
                 const mateStr = parts[mateIndex + 1]; 
                 const m = parseInt(mateStr);
@@ -221,25 +222,9 @@ function handleEngineMessage(msg) {
                 }
             }
             
-            // --- ここからログ出力用変数 ---
-            let beforeFlip = rawScore;
-            let isTurnWhite = (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white");
-            
-            // 反転ロジック
-            if (isTurnWhite) {
+            // 後手番なら評価値を反転
+            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
                 rawScore = -rawScore;
-            }
-
-            // 詰みが見つかったとき、またはスコアが大きく動いたときにログを出す
-            if (scoreType === "mate" || Math.abs(rawScore) > 2000) {
-                console.group(`[DEBUG_EVAL] Step: ${analyzingStep}`);
-                console.log(`1. Engine Msg: ${msg}`);
-                console.log(`2. Score Type: ${scoreType}`);
-                console.log(`3. Raw Score (Engine View): ${beforeFlip}`);
-                console.log(`4. Analyzing Turn: "${analyzingTurn}" (isWhite? ${isTurnWhite})`);
-                console.log(`5. Flip Multiplier: ${isTurnWhite ? -1 : 1}`);
-                console.log(`6. Final Score (Graph View): ${rawScore}`);
-                console.groupEnd();
             }
 
             if (analyzingStep !== -1) {
@@ -248,6 +233,10 @@ function handleEngineMessage(msg) {
             }
         }
     }
+}
+
+function sendToEngine(msg) {
+    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
 }
 
 /**
