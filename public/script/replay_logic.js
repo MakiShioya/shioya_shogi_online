@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - 全機能復旧・完成版
+// replay_logic.js - スナップショット方式（完全解決版）
 // ==========================================
 
 // --- グローバル変数 ---
@@ -11,21 +11,21 @@ let lastMoveInfo = { from: null, to: null };
 let evalHistory = [];
 let evalChart = null;
 let isEngineReady = false;
-let analyzingStep = -1;
-let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
-// ★重要: 解析ID管理
-let currentAnalysisId = 0;    // 現在リクエストしている最新のID
-let processingAnalysisId = 0; // 現在エンジンが処理中のID
-let pendingAnalysisType = 'normal'; // 解析の種類 ('normal' | 'recommend')
+// ★重要: 解析コンテキスト管理（スナップショット）
+// エンジンが現在処理しているタスクの「正解情報（手数・手番）」をここに保持する
+// グローバル変数（currentStepなど）は見ない。
+let currentAnalysisId = 0;
+let processingAnalysisId = 0;
+let analysisContexts = {}; // IDごとの情報を保存する辞書
 
 // --- 全自動検討・おすすめ用の変数 ---
 let isAutoAnalyzing = false;
 let autoAnalysisTimer = null;
 let recommendedMove = null;
-let recommendTimer = null; // おすすめボタンのタイマー用
+let recommendTimer = null;
 
 // --- 好手（Discovery）検知用変数 ---
 let discoveryFlags = [];
@@ -63,6 +63,7 @@ function formatSeconds(totalSeconds) {
     return min > 0 ? `${min}分${sec}秒` : `${sec}秒`;
 }
 
+// 棋譜の手を取得（引数で指定されたstepの手を取得する）
 function getKifuMoveUsi(step) {
     const nextState = replayStates[step + 1];
     if (!nextState || !nextState.lastMove || !nextState.lastMove.to) return null;
@@ -97,22 +98,26 @@ function generateSfen() {
     return "startpos";
 }
 
-// 通常解析のリクエスト（ID発行・リセット）
+// 解析リクエスト発行
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
+    // 新しいIDを発行し、そのIDで実行したい内容（コンテキスト）を保存
     currentAnalysisId++;
-    pendingAnalysisType = 'normal'; // 通常モードで予約
+    analysisContexts[currentAnalysisId] = {
+        step: currentStep,
+        turn: window.turn,
+        type: 'normal'
+    };
 
     sendToEngine("stop");    
     sendToEngine("isready"); 
 }
 
-// おすすめ機能のリクエスト（ID発行・リセット）
+// おすすめ機能リクエスト
 function getRecommendation() {
     if (!isEngineReady) return alert("エンジンが準備中です。");
     
-    // UIリセット
     recommendedMove = null; 
     render();
     
@@ -122,38 +127,40 @@ function getRecommendation() {
         btn.textContent = "準備中...";
     }
 
-    // ★IDを更新して、おすすめモードで予約
     currentAnalysisId++;
-    pendingAnalysisType = 'recommend'; 
+    // コンテキストにおすすめモードであることを記録
+    analysisContexts[currentAnalysisId] = {
+        step: currentStep,
+        turn: window.turn,
+        type: 'recommend'
+    };
     
     sendToEngine("stop");
     sendToEngine("isready");
 }
 
-// 実際の解析開始（readyok受信後に呼ばれる）
+// エンジンに実際の計算を開始させる
 function startRealAnalysis() {
-    // 処理中のIDを最新のものに更新
+    // 現在処理するIDを更新
     processingAnalysisId = currentAnalysisId;
     
-    analyzingStep = currentStep;
-    analyzingTurn = window.turn;
+    // コンテキストを取得
+    const ctx = analysisContexts[processingAnalysisId];
+    if (!ctx) return; // 万が一なければ終了
+
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
 
-    const sfen = generateSfen();
+    const sfen = generateSfen(); // ※generateSfenは現在のglobal stateを見るが、同期が取れている前提
 
-    // モードによる分岐
-    if (pendingAnalysisType === 'recommend') {
-        // --- おすすめモード ---
+    if (ctx.type === 'recommend') {
         isWaitingRecommendation = true;
         sendToEngine("position sfen " + sfen);
-        sendToEngine("go movetime 5000"); // 5秒思考
+        sendToEngine("go movetime 5000"); 
         
-        // カウントダウン演出
         let timeLeft = 5;
         const btn = document.getElementById("recommendBtn");
         if(btn) btn.textContent = `考え中… ${timeLeft}`;
-        
         if (recommendTimer) clearInterval(recommendTimer);
         recommendTimer = setInterval(() => {
             timeLeft--;
@@ -165,19 +172,15 @@ function startRealAnalysis() {
         }, 1000);
 
     } else {
-        // --- 通常解析モード ---
         isWaitingRecommendation = false;
-        
-        // おすすめタイマーなどが残っていたらリセット
         if (recommendTimer) clearInterval(recommendTimer);
         const btn = document.getElementById("recommendBtn");
         if(btn) {
              btn.textContent = "おすすめ";
              btn.disabled = false;
         }
-
         sendToEngine("position sfen " + sfen);
-        sendToEngine("go movetime 100000"); // 無制限思考
+        sendToEngine("go movetime 100000"); 
     }
 }
 
@@ -186,24 +189,26 @@ function handleEngineMessage(msg) {
     
     else if (msg === "readyok") {
         isEngineReady = true;
-        
-        // 解析リクエストがある（IDが新しい）場合、指定されたモードで開始
         if (currentAnalysisId > processingAnalysisId) {
             startRealAnalysis();
         } 
-        else if (!isAutoAnalyzing && analyzingStep === -1) {
+        else if (!isAutoAnalyzing && processingAnalysisId === 0) {
+             // 初回起動時など
              analyzeCurrentPosition();
         }
     }
 
     if (typeof msg === "string") {
         
-        // ★ID不一致なら無視
-        if (processingAnalysisId !== currentAnalysisId) {
-            return;
-        }
+        // ★最重要修正: グローバル変数ではなく、IDに紐付いた「コンテキスト」を取得する
+        // processingAnalysisId は「今エンジンが計算しているID」を指している
+        const ctx = analysisContexts[processingAnalysisId];
+        
+        // コンテキストが存在しない、または極端に古いIDの残骸なら無視
+        // (ただし、今回はID管理しているので processingAnalysisId は信頼できる)
+        if (!ctx) return;
 
-        // --- 1秒時点の候補手サンプリング ---
+        // 1秒時点の候補手サンプリング
         if (msg.includes("info") && msg.includes("pv")) {
             const elapsed = Date.now() - searchStartTime;
             if (elapsed <= 1000) {
@@ -219,41 +224,29 @@ function handleEngineMessage(msg) {
         if (msg.startsWith("bestmove")) {
             const parts = msg.split(" ");
             const usiMove = parts[1];
-            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
             
-            // 青丸・星の判定
-            // ★今回の修正: フラグを立てるだけでなく、必ず updateChart() を呼んで画面に反映する
-            let flagChanged = false;
+            // ★コンテキスト内の step を使って正解手を取得（これでズレない！）
+            const kifuMoveUsi = getKifuMoveUsi(ctx.step);
             
-            // 毎回リセットしてから判定（誤判定防止）
-            if (analyzingStep + 1 < discoveryFlags.length) {
-                discoveryFlags[analyzingStep + 1] = false;
-                matchFlags[analyzingStep + 1] = false;
-            }
-
+            // フラグ更新
             if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                discoveryFlags[analyzingStep + 1] = true; 
-                flagChanged = true;
+                discoveryFlags[ctx.step + 1] = true; 
             }
             if (usiMove === kifuMoveUsi) {
-                matchFlags[analyzingStep + 1] = true;
-                flagChanged = true;
+                matchFlags[ctx.step + 1] = true;
             }
             
-            // ★ここが抜けていました！フラグが変わったらグラフを再描画
-            if (flagChanged) {
-                updateChart();
-            }
+            // グラフ更新（青丸などを反映）
+            updateChart();
 
-            // おすすめ機能の完了処理
-            if (isWaitingRecommendation) {
+            // おすすめ機能完了処理
+            if (ctx.type === 'recommend') {
                 isWaitingRecommendation = false;
                 const btn = document.getElementById("recommendBtn");
                 if (btn) {
                     btn.textContent = "おすすめ";
                     btn.disabled = false;
                 }
-                
                 if (usiMove !== "resign" && usiMove !== "(none)") {
                     let toX, toY, fromX = null, fromY = null, pieceChar;
                     if (usiMove.includes("*")) {
@@ -265,7 +258,8 @@ function handleEngineMessage(msg) {
                         fromY = usiMove[1].charCodeAt(0) - 97;
                         toX = 9 - parseInt(usiMove[2]);
                         toY = usiMove[3].charCodeAt(0) - 97;
-                        const targetPiece = boardState[fromY][fromX];
+                        // 注意: boardStateは現在のものを使うしかないが、おすすめ時は画面も止まっているはず
+                        const targetPiece = boardState[fromY][fromX]; 
                         if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
                     }
                     recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
@@ -298,13 +292,14 @@ function handleEngineMessage(msg) {
                 }
             }
             
-            // 後手番なら評価値を反転
-            if (analyzingTurn === "white") {
+            // ★コンテキスト内の turn を使って反転判定（これで絶対にズレない！）
+            if (ctx.turn === "white") {
                 rawScore = -rawScore;
             }
 
-            if (analyzingStep !== -1) {
-                evalHistory[analyzingStep] = rawScore;
+            // ★コンテキスト内の step に書き込む
+            if (ctx.step !== -1) {
+                evalHistory[ctx.step] = rawScore;
                 updateChart();
             }
         }
@@ -408,13 +403,12 @@ function applyState(state) {
     render();
     updateUI();
 
-    // ★修正: オート解析でないなら、「通常解析リクエスト」を投げる
     if (!isAutoAnalyzing) {
         if (evalHistory[currentStep] === undefined) {
             analyzeCurrentPosition();
         } else {
-            // IDを更新して古い処理を無効化しつつ、stopを送る
-            currentAnalysisId++; 
+            // 計算済みなら、IDを新しくして(古い受信を無効化しつつ)止める
+            currentAnalysisId++;
             sendToEngine("stop");
             updateChart(); 
         }
