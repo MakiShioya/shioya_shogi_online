@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - Analysis ID 管理版
+// replay_logic.js - ID管理・全機能統合版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -17,13 +17,15 @@ let isWaitingRecommendation = false;
 let analysisResolver = null;
 
 // ★重要: 解析ID管理
-let currentAnalysisId = 0; // 現在リクエストしている解析ID
-let processingAnalysisId = 0; // 現在処理中の解析ID（エンジンが計算しているID）
+let currentAnalysisId = 0;    // 現在リクエストしている最新のID
+let processingAnalysisId = 0; // 現在エンジンが処理中のID
+let pendingAnalysisType = 'normal'; // 解析の種類 ('normal' | 'recommend')
 
 // --- 全自動検討・おすすめ用の変数 ---
 let isAutoAnalyzing = false;
 let autoAnalysisTimer = null;
 let recommendedMove = null;
+let recommendTimer = null; // おすすめボタンのタイマー用
 
 // --- 好手（Discovery）検知用変数 ---
 let discoveryFlags = [];
@@ -95,32 +97,90 @@ function generateSfen() {
     return "startpos";
 }
 
-// 解析開始関数（ID発行・リセット）
+// 通常解析のリクエスト（ID発行・リセット）
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
-    // 新しい解析IDを発行
     currentAnalysisId++;
-    // console.log(`[REQ] Analysis ID: ${currentAnalysisId} for Step: ${currentStep}`);
+    pendingAnalysisType = 'normal'; // 通常モードで予約
 
     sendToEngine("stop");    
-    sendToEngine("isready"); // readyok を待ってから startRealAnalysis を呼ぶ
+    sendToEngine("isready"); 
 }
 
-// 実際の解析開始（readyok後に呼ばれる）
+// おすすめ機能のリクエスト（ID発行・リセット）
+function getRecommendation() {
+    if (!isEngineReady) return alert("エンジンが準備中です。");
+    
+    // UIリセット
+    recommendedMove = null; 
+    render();
+    
+    const btn = document.getElementById("recommendBtn");
+    if(btn) {
+        btn.disabled = true;
+        btn.textContent = "準備中...";
+    }
+
+    // ★IDを更新して、おすすめモードで予約
+    currentAnalysisId++;
+    pendingAnalysisType = 'recommend'; 
+    
+    sendToEngine("stop");
+    sendToEngine("isready");
+}
+
+// 実際の解析開始（readyok受信後に呼ばれる）
 function startRealAnalysis() {
-    // 処理中のIDを更新（これで新しいメッセージを受け付けるようになる）
+    // 処理中のIDを最新のものに更新（これでメッセージが通過できるようになる）
     processingAnalysisId = currentAnalysisId;
     
+    // 共通の初期化
     analyzingStep = currentStep;
     analyzingTurn = window.turn;
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
 
-    // console.log(`[START] Analysis ID: ${processingAnalysisId}, Step: ${analyzingStep}, Turn: ${analyzingTurn}`);
+    const sfen = generateSfen();
 
-    sendToEngine("position sfen " + generateSfen());
-    sendToEngine("go movetime 100000"); 
+    // モードによる分岐
+    if (pendingAnalysisType === 'recommend') {
+        // --- おすすめモード ---
+        isWaitingRecommendation = true;
+        sendToEngine("position sfen " + sfen);
+        sendToEngine("go movetime 5000"); // 5秒思考
+        
+        // カウントダウン演出
+        let timeLeft = 5;
+        const btn = document.getElementById("recommendBtn");
+        if(btn) btn.textContent = `考え中… ${timeLeft}`;
+        
+        if (recommendTimer) clearInterval(recommendTimer);
+        recommendTimer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0) {
+                if(btn) btn.textContent = `考え中… ${timeLeft}`;
+            } else {
+                clearInterval(recommendTimer);
+                // ボタンの復帰はbestmove受信時に行う
+            }
+        }, 1000);
+
+    } else {
+        // --- 通常解析モード ---
+        isWaitingRecommendation = false;
+        
+        // おすすめタイマーなどが残っていたらリセット
+        if (recommendTimer) clearInterval(recommendTimer);
+        const btn = document.getElementById("recommendBtn");
+        if(btn) {
+             btn.textContent = "おすすめ";
+             btn.disabled = false;
+        }
+
+        sendToEngine("position sfen " + sfen);
+        sendToEngine("go movetime 100000"); // 無制限思考
+    }
 }
 
 function handleEngineMessage(msg) {
@@ -129,7 +189,7 @@ function handleEngineMessage(msg) {
     else if (msg === "readyok") {
         isEngineReady = true;
         
-        // 解析リクエストがある場合（IDが新しい場合）、解析を開始
+        // 解析リクエストがある（IDが新しい）場合、指定されたモードで開始
         if (currentAnalysisId > processingAnalysisId) {
             startRealAnalysis();
         } 
@@ -140,7 +200,7 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        // ★重要: ID不一致なら無視（古い解析結果を捨てる）
+        // ★ID不一致なら無視（古い解析結果を捨てる）
         if (processingAnalysisId !== currentAnalysisId) {
             return;
         }
@@ -159,12 +219,11 @@ function handleEngineMessage(msg) {
 
         // --- bestmove受信 ---
         if (msg.startsWith("bestmove")) {
-            // 自動解析で連打された場合など、IDが古くなっている可能性があるので再チェックは不要（冒頭で弾いているため）
-            
             const parts = msg.split(" ");
             const usiMove = parts[1];
             const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
             
+            // 青丸・星の判定
             if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
                 discoveryFlags[analyzingStep + 1] = true; 
             }
@@ -172,10 +231,15 @@ function handleEngineMessage(msg) {
                 matchFlags[analyzingStep + 1] = true;
             }
 
+            // おすすめ機能の完了処理
             if (isWaitingRecommendation) {
                 isWaitingRecommendation = false;
                 const btn = document.getElementById("recommendBtn");
-                if (btn) btn.disabled = false;
+                if (btn) {
+                    btn.textContent = "おすすめ";
+                    btn.disabled = false;
+                }
+                
                 if (usiMove !== "resign" && usiMove !== "(none)") {
                     let toX, toY, fromX = null, fromY = null, pieceChar;
                     if (usiMove.includes("*")) {
@@ -221,7 +285,6 @@ function handleEngineMessage(msg) {
             }
             
             // 後手番なら評価値を反転
-            // analyzingTurn は startRealAnalysis で固定されている
             if (analyzingTurn === "white") {
                 rawScore = -rawScore;
             }
@@ -331,14 +394,12 @@ function applyState(state) {
     render();
     updateUI();
 
-    // ★修正: オート解析でないなら、「最新の解析リクエスト」を投げる
+    // ★修正: オート解析でないなら、「通常解析リクエスト」を投げる
     if (!isAutoAnalyzing) {
-        // すでに計算済みのStepでなければ解析
         if (evalHistory[currentStep] === undefined) {
             analyzeCurrentPosition();
         } else {
-            // 既に計算済みならストップさせる（リソース節約）
-            // IDをインクリメントして古い処理を無効化しつつ、stopを送る
+            // IDを更新して古い処理を無効化しつつ、stopを送る
             currentAnalysisId++; 
             sendToEngine("stop");
             updateChart(); 
@@ -356,55 +417,45 @@ function render() {
         const tr = document.createElement("tr");
         for (let x = 0; x < 9; x++) {
             const td = document.createElement("td");
-            const p = boardState[y][x]; // 実際の駒
+            const p = boardState[y][x]; 
             
-            // おすすめの一手がある場合、その情報を優先して表示するか判定
             let displayPiece = p;
             let isRecommendation = false;
 
             if (recommendedMove && recommendedMove.x === x && recommendedMove.y === y) {
-                // おすすめの手の場所に「おすすめの駒名」を表示する
                 isRecommendation = true;
             }
 
-            // --- 駒の描画処理 ---
             if (displayPiece || isRecommendation) {
                 const isW = displayPiece === displayPiece.toLowerCase() && displayPiece !== "";
                 const key = displayPiece.startsWith("+") ? "+" + displayPiece.replace("+","").toUpperCase() : displayPiece.toUpperCase();
                 
-                // おすすめ表示の場合はその文字、そうでなければ pieceName から取得
                 let charText = (typeof pieceName !== 'undefined' && pieceName[key]) ? pieceName[key] : key;
                 if (isRecommendation) charText = recommendedMove.name;
 
-                // ★ハイブリッド方式：コンテナ作成
                 const container = document.createElement("div");
                 container.className = "piece-container";
 
-                // ★サイズ補正クラス (例: size-P)
                 if (!isRecommendation && displayPiece !== "") {
                     const baseType = displayPiece.replace("+", "").toUpperCase();
                     container.classList.add("size-" + baseType);
                 }
 
-                // ★後手番の影反転
                 if (isW) {
                     container.classList.add("gote");
                 }
 
-                // 文字表示
                 const textSpan = document.createElement("span");
                 textSpan.className = "piece-text";
                 if (key.startsWith("+")) textSpan.classList.add("promoted");
                 
                 textSpan.textContent = charText;
 
-                // おすすめの場所の特別スタイル
                 if (isRecommendation) {
                     td.classList.add("recommended-cell");
-                    textSpan.style.color = "#007bff";       // 青色
-                    textSpan.style.fontWeight = "bold";     // 太字
-                    textSpan.style.textShadow = "1px 1px 0px #fff"; // 視認性向上のための白フチ
-                    // おすすめの手番が後手なら回転
+                    textSpan.style.color = "#007bff"; 
+                    textSpan.style.fontWeight = "bold"; 
+                    textSpan.style.textShadow = "1px 1px 0px #fff"; 
                     if (window.turn === "white") {
                         container.classList.add("gote");
                         td.style.transform = "rotate(180deg)";
@@ -417,11 +468,9 @@ function render() {
                 td.appendChild(container);
             }
 
-            // 移動元のハイライト
             if (lastMoveInfo.from && lastMoveInfo.from.x === x && lastMoveInfo.from.y === y) {
                 td.classList.add("move-from");
             }
-            // 移動先のハイライト
             if (lastMoveInfo.to && lastMoveInfo.to.x === x && lastMoveInfo.to.y === y) {
                 td.classList.add("move-to");
             }
@@ -439,46 +488,35 @@ function renderHands() {
     const bh = document.getElementById("blackHand"), wh = document.getElementById("whiteHand");
     if (!bh || !wh) return;
 
-    // 持ち駒の並び順定義
-    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; // K(玉)も念のため追加
+    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; 
     
-    // ソート実行
     hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-    // HTMLのリセット
     bh.innerHTML = "";
     wh.innerHTML = "";
 
-    // 持ち駒生成ヘルパー関数
     const createHandPiece = (player, p) => {
-        // ★コンテナ作成
         const container = document.createElement("div");
         container.className = "hand-piece-container";
 
-        // ★後手の影反転
         if (player === "white") {
             container.classList.add("gote");
-            // コンテナ自体を回転（CSSで対応済みなら不要ですが、念のため）
             container.style.transform = "rotate(180deg)";
         }
 
-        // 文字作成
         const textSpan = document.createElement("span");
         textSpan.className = "piece-text";
-        // pieceNameが定義されていれば変換、なければそのまま
         textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
 
         container.appendChild(textSpan);
         return container;
     };
 
-    // 先手の持ち駒生成
     hands.black.forEach(p => {
         bh.appendChild(createHandPiece("black", p));
     });
 
-    // 後手の持ち駒生成
     hands.white.forEach(p => {
         wh.appendChild(createHandPiece("white", p));
     });
@@ -507,24 +545,15 @@ function initChart() {
             backgroundColor: 'rgba(255, 69, 0, 0.1)', 
             fill: true, 
             tension: 0.3,
-            // 1. 点の形（好手なら星、それ以外は丸）
             pointStyle: (ctx) => discoveryFlags[ctx.dataIndex] ? 'star' : 'circle',
-
-            // 2. 点の大きさ（好手=10、一致=5、通常=2）
             pointRadius: (ctx) => discoveryFlags[ctx.dataIndex] ? 10 : (matchFlags[ctx.dataIndex] ? 3 : 2),
-
-            // 3. 点の色（好手=金、一致=青、通常=赤）
             pointBackgroundColor: (ctx) => {
-                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; // 金色
-                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     // 青色
-                return '#ff4500';                                    // 赤色
+                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; 
+                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     
+                return '#ff4500';                                    
             },
-
-    // 4. 点の枠線色（好手=濃い金、一致=濃い青、通常=赤）
-    pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
-
-    // 5. 枠線の太さ（好手と一致は強調する）
-    pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
+            pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
+            pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
         }] },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -556,30 +585,22 @@ function resetChartZoom() { if (evalChart) evalChart.resetZoom(); }
 function updateChart() {
     if (!evalChart) return;
     
-    // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
         if (score === undefined) return null;
-
-        // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
         if (score > 20000) return 10000;
         if (score < -20000) return -10000;
-
         return score;
     });
     evalChart.update();
 
-    // 数値評価（テキスト）の更新
     const currentScore = evalHistory[currentStep];
-
     const evalElem = document.getElementById("numericEval");
     if (evalElem && currentScore !== undefined) {
         if (Math.abs(currentScore) >= 20000) {
-            // Mateスコアの処理
             const winner = currentScore > 0 ? "先手" : "後手";
             evalElem.textContent = `評価値: ${winner}勝ち`;
         } else {
-            // 通常スコア（勝率換算付き）
             const wr = (1 / (1 + Math.exp(-currentScore / 1200)) * 100).toFixed(1);
             evalElem.textContent = `評価値: ${currentScore > 0 ? "+" : ""}${currentScore} (勝率: ${wr}%)`;
         }
@@ -616,7 +637,6 @@ async function startAutoAnalysis(timePerMove) {
         applyState(replayStates[i]);
         
         // ★重要: ここでも analyzeCurrentPosition を呼ぶことでIDを発行・管理させる
-        // ただし、待機処理は Promise で行うため、ここでは呼ぶだけ
         analyzeCurrentPosition();
 
         let effectiveTime = (i <= 10 && timePerMove > 2000) ? 2000 : timePerMove;
@@ -634,8 +654,6 @@ function stopAutoAnalysis() {
     if (autoAnalysisTimer) { clearTimeout(autoAnalysisTimer); autoAnalysisTimer = null; }
     const btn = document.getElementById("stopAutoBtn");
     if (btn) btn.style.display = "none";
-    
-    // 終了時は通常の解析に戻る（ここでもIDが新しくなるので安全）
     analyzeCurrentPosition(); 
 }
 
@@ -651,27 +669,27 @@ function updateUI() {
     if (st) st.textContent = (currentStep === 0) ? "開始局面" : `${currentStep} / ${totalSteps}手目`;
 }
 
-/**
- * おすすめ機能
- */
+// おすすめ機能のリクエスト（ID発行・リセット）
+// ※getRecommendation という関数名はそのまま維持（UIから呼ばれるため）
 function getRecommendation() {
     if (!isEngineReady) return alert("エンジンが準備中です。");
-    recommendedMove = null; render();
+    
+    // UIリセット
+    recommendedMove = null; 
+    render();
+    
     const btn = document.getElementById("recommendBtn");
-    btn.disabled = true;
+    if(btn) {
+        btn.disabled = true;
+        btn.textContent = "準備中...";
+    }
+
+    // ★IDを更新して、おすすめモードで予約
+    currentAnalysisId++;
+    pendingAnalysisType = 'recommend'; 
+    
     sendToEngine("stop");
-    isWaitingRecommendation = false;
-    setTimeout(() => {
-        isWaitingRecommendation = true;
-        sendToEngine("position sfen " + generateSfen());
-        sendToEngine("go movetime 5000");
-        let timeLeft = 5;
-        const timer = setInterval(() => {
-            timeLeft--;
-            if (timeLeft > 0) btn.textContent = `考え中…`;
-            else { clearInterval(timer); btn.textContent = "おすすめ"; btn.disabled = false; }
-        }, 1000);
-    }, 100);
+    sendToEngine("isready");
 }
 
 function drawRecommendationArrow() {
