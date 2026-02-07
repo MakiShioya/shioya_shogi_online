@@ -1,3 +1,4 @@
+
 // ==========================================
 // replay_logic.js - プロ解析ワークステーション統合版
 // ==========================================
@@ -87,109 +88,106 @@ function getKifuMoveUsi(step) {
 // --- デバッグ用：handleEngineMessage ---
 // エンジンからのメッセージ受信時に、計算ロジックを全て暴露します
 function handleEngineMessage(msg) {
-    if (msg === "usiok") sendToEngine("isready");
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        if (!isAutoAnalyzing) analyzeCurrentPosition();
-    }
+    if (msg === "usiok") sendToEngine("isready");
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        if (!isAutoAnalyzing) analyzeCurrentPosition();
+    }
 
-    if (typeof msg === "string") {
-        // --- 1秒時点の候補手サンプリング（変更なし） ---
-        // --- 修正案：0～1秒の間、常に情報を更新し続ける（最後を採用） ---
+    if (typeof msg === "string") {
+        // --- 1秒時点の候補手サンプリング（変更なし） ---
+        if (msg.includes("info") && msg.includes("pv")) {
+            const elapsed = Date.now() - searchStartTime;
+            if (elapsed >= 1000 && elapsed <= 1500 && !lastBestMoveAt1s) {
+                const parts = msg.split(" ");
+                const pvIdx = parts.indexOf("pv");
+                if (pvIdx !== -1 && parts[pvIdx + 1]) lastBestMoveAt1s = parts[pvIdx + 1];
+            }
+        }
 
-if (msg.includes("info") && msg.includes("pv")) {
-    const elapsed = Date.now() - searchStartTime;
-    
-    // 経過時間が 1000ms (1秒) 以内なら、常に情報を更新する
-    // (!lastBestMoveAt1s のチェックを外すことで「上書き」許可にする)
-    if (elapsed <= 1000) {
-        const parts = msg.split(" ");
-        const pvIdx = parts.indexOf("pv");
-        if (pvIdx !== -1 && parts[pvIdx + 1]) {
-            lastBestMoveAt1s = parts[pvIdx + 1];
-        }
-    }
-}
+        // --- bestmove受信（変更なし） ---
+        if (msg.startsWith("bestmove")) {
+            const parts = msg.split(" ");
+            const usiMove = parts[1];
 
-        // --- bestmove受信（変更なし） ---
-        if (msg.startsWith("bestmove")) {
-            const parts = msg.split(" ");
-            const usiMove = parts[1];
+            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
+            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
+                discoveryFlags[analyzingStep + 1] = true; 
+            }
+            if (usiMove === kifuMoveUsi) {
+                matchFlags[analyzingStep + 1] = true;
+            }
 
-            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
-            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                discoveryFlags[analyzingStep + 1] = true; 
-            }
-            if (usiMove === kifuMoveUsi) {
-                matchFlags[analyzingStep + 1] = true;
-            }
+            if (isWaitingRecommendation) {
+                isWaitingRecommendation = false;
+                const btn = document.getElementById("recommendBtn");
+                if (btn) btn.disabled = false;
 
-            if (isWaitingRecommendation) {
-                isWaitingRecommendation = false;
-                const btn = document.getElementById("recommendBtn");
-                if (btn) btn.disabled = false;
+                if (usiMove !== "resign" && usiMove !== "(none)") {
+                    let toX, toY, fromX = null, fromY = null, pieceChar;
+                    if (usiMove.includes("*")) {
+                        pieceChar = usiMove[0];
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                    } else {
+                        fromX = 9 - parseInt(usiMove[0]);
+                        fromY = usiMove[1].charCodeAt(0) - 97;
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                        const targetPiece = boardState[fromY][fromX];
+                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
+                    }
+                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
+                    render();
+                }
+                return;
+            }
+        }
 
-                if (usiMove !== "resign" && usiMove !== "(none)") {
-                    let toX, toY, fromX = null, fromY = null, pieceChar;
-                    if (usiMove.includes("*")) {
-                        pieceChar = usiMove[0];
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                    } else {
-                        fromX = 9 - parseInt(usiMove[0]);
-                        fromY = usiMove[1].charCodeAt(0) - 97;
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                        const targetPiece = boardState[fromY][fromX];
-                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
-                    }
-                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
-                    render();
-                }
-                return;
-            }
-        }
+        const isMate = msg.includes("score mate");
+        if (isMate && isAutoAnalyzing && analysisResolver) {
+            analysisResolver();
+            analysisResolver = null;
+        }
 
-        const isMate = msg.includes("score mate");
-        if (isMate && isAutoAnalyzing && analysisResolver) {
-            analysisResolver();
-            analysisResolver = null;
-        }
+        // ★★★ デバッグ重点箇所 ★★★
+        if (msg.includes("score cp") || msg.includes("score mate")) {
+            const parts = msg.split(" ");
+            let rawScore = 0;
 
-        if (msg.includes("score cp") || msg.includes("score mate")) {
-            const parts = msg.split(" ");
-            let rawScore = 0;
+            if (msg.includes("score cp")) {
+                // CP（センチポーン）の場合
+                rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
+            } else if (msg.includes("score mate")) {
+                // Mate（詰み）の場合
+                const mateIndex = parts.indexOf("mate");
+                const mateStr = parts[mateIndex + 1]; // 文字列として取得
+                const m = parseInt(mateStr);
 
-            if (msg.includes("score cp")) {
-                // CP（センチポーン）の場合
-                rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
-            } else if (msg.includes("score mate")) {
-                // Mate（詰み）の場合
-                const mateIndex = parts.indexOf("mate");
-                const mateStr = parts[mateIndex + 1]; 
-                const m = parseInt(mateStr);
+                // ★修正ポイント: 文字列が "-" で始まっているかで判定する
+                // parseInt("-0") >= 0 は true になってしまうため、文字列で符号を確認する
+                if (mateStr.startsWith("-")) {
+                    // 負の詰み（自玉が詰む）: -30000 から手数を引く（負の方向に大きくする）
+                    rawScore = -30000 - m; 
+                } else {
+                    // 正の詰み（敵玉を詰ます）: 30000 から手数を引く
+                    rawScore = 30000 - m;
+                }
+            }
+            
+            // --- ここから下は変更なし（手番による反転ロジック） ---
+            
+            // 後手番なら評価値を反転
+            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
+                rawScore = -rawScore;
+            }
 
-                // 文字列が "-" で始まっているかで判定
-                if (mateStr.startsWith("-")) {
-                    rawScore = -30000 - m; 
-                } else {
-                    rawScore = 30000 - m;
-                }
-            }
-            
-            // --- ここから下は変更なし（手番による反転ロジック） ---
-            
-            // 後手番なら評価値を反転
-            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
-                rawScore = -rawScore;
-            }
-
-            if (analyzingStep !== -1) {
-                evalHistory[analyzingStep] = rawScore;
-                updateChart();
-            }
-        }
-    }
+            if (analyzingStep !== -1) {
+                evalHistory[analyzingStep] = rawScore;
+                updateChart();
+            }
+        }
+    }
 }
 
 function sendToEngine(msg) {
@@ -197,23 +195,31 @@ function sendToEngine(msg) {
 }
 
 function generateSfen() {
-    if (typeof convertBoardToSFEN === 'function') {
-        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
-    }
-    return "startpos";
+    let sfen = "startpos";
+    if (typeof convertBoardToSFEN === 'function') {
+        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+    }
+    
+    // SFENの手番部分（" b " か " w " か）を抽出してログに出す
+    const turnChar = sfen.split(" ")[1]; 
+    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
+    
+    return sfen;
 }
 
 function analyzeCurrentPosition() {
-    if (!isEngineReady) return;
-    
-    searchStartTime = Date.now();
-    lastBestMoveAt1s = null;
-    analyzingStep = currentStep;
-    analyzingTurn = window.turn; // コメントのみ削除
+    if (!isEngineReady) return;
+    
+    searchStartTime = Date.now();
+    lastBestMoveAt1s = null;
+    analyzingStep = currentStep;
+    analyzingTurn = window.turn; // ★ここでグローバル変数にセットしている
 
-    sendToEngine("stop");
-    sendToEngine("position sfen " + generateSfen());
-    sendToEngine("go movetime 100000"); 
+    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} | Start Analysis`, "color: green; font-weight: bold;");
+
+    sendToEngine("stop");
+    sendToEngine("position sfen " + generateSfen());
+    sendToEngine("go movetime 100000"); 
 }
 
 /**
@@ -543,16 +549,16 @@ function updateChart() {
     // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
-    if (score === undefined) return null;
+    if (score === undefined) return null;
 
-    // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
-    
-    // 20000以上なら「詰みが見えている」と判断して、一律で表示用の上限値(例: 10000)にする
-    // これにより 29999 も 30000 も、グラフ上では同じ高さになります
-    if (score > 20000) return 10000;
-    if (score < -20000) return -10000;
+    // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
+    
+    // 20000以上なら「詰みが見えている」と判断して、一律で表示用の上限値(例: 10000)にする
+    // これにより 29999 も 30000 も、グラフ上では同じ高さになります
+    if (score > 20000) return 10000;
+    if (score < -20000) return -10000;
 
-    return score;
+    return score;
 });
     evalChart.update();
 
@@ -674,8 +680,3 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
-
-
-
-
-
