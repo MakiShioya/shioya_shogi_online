@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - ID管理・全機能統合版
+// replay_logic.js - 全機能復旧・完成版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -132,10 +132,9 @@ function getRecommendation() {
 
 // 実際の解析開始（readyok受信後に呼ばれる）
 function startRealAnalysis() {
-    // 処理中のIDを最新のものに更新（これでメッセージが通過できるようになる）
+    // 処理中のIDを最新のものに更新
     processingAnalysisId = currentAnalysisId;
     
-    // 共通の初期化
     analyzingStep = currentStep;
     analyzingTurn = window.turn;
     searchStartTime = Date.now();
@@ -153,7 +152,7 @@ function startRealAnalysis() {
         // カウントダウン演出
         let timeLeft = 5;
         const btn = document.getElementById("recommendBtn");
-        if(btn) btn.textContent = `考え中 ${timeLeft}`;
+        if(btn) btn.textContent = `考え中… ${timeLeft}`;
         
         if (recommendTimer) clearInterval(recommendTimer);
         recommendTimer = setInterval(() => {
@@ -162,7 +161,6 @@ function startRealAnalysis() {
                 if(btn) btn.textContent = `考え中… ${timeLeft}`;
             } else {
                 clearInterval(recommendTimer);
-                // ボタンの復帰はbestmove受信時に行う
             }
         }, 1000);
 
@@ -200,7 +198,7 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        // ★ID不一致なら無視（古い解析結果を捨てる）
+        // ★ID不一致なら無視
         if (processingAnalysisId !== currentAnalysisId) {
             return;
         }
@@ -224,11 +222,27 @@ function handleEngineMessage(msg) {
             const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
             
             // 青丸・星の判定
+            // ★今回の修正: フラグを立てるだけでなく、必ず updateChart() を呼んで画面に反映する
+            let flagChanged = false;
+            
+            // 毎回リセットしてから判定（誤判定防止）
+            if (analyzingStep + 1 < discoveryFlags.length) {
+                discoveryFlags[analyzingStep + 1] = false;
+                matchFlags[analyzingStep + 1] = false;
+            }
+
             if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
                 discoveryFlags[analyzingStep + 1] = true; 
+                flagChanged = true;
             }
             if (usiMove === kifuMoveUsi) {
                 matchFlags[analyzingStep + 1] = true;
+                flagChanged = true;
+            }
+            
+            // ★ここが抜けていました！フラグが変わったらグラフを再描画
+            if (flagChanged) {
+                updateChart();
             }
 
             // おすすめ機能の完了処理
@@ -545,15 +559,24 @@ function initChart() {
             backgroundColor: 'rgba(255, 69, 0, 0.1)', 
             fill: true, 
             tension: 0.3,
+            // 1. 点の形（好手なら星、それ以外は丸）
             pointStyle: (ctx) => discoveryFlags[ctx.dataIndex] ? 'star' : 'circle',
+
+            // 2. 点の大きさ（好手=10、一致=5、通常=2）
             pointRadius: (ctx) => discoveryFlags[ctx.dataIndex] ? 10 : (matchFlags[ctx.dataIndex] ? 3 : 2),
+
+            // 3. 点の色（好手=金、一致=青、通常=赤）
             pointBackgroundColor: (ctx) => {
-                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; 
-                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     
-                return '#ff4500';                                    
+                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; // 金色
+                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     // 青色
+                return '#ff4500';                                    // 赤色
             },
-            pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
-            pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
+
+    // 4. 点の枠線色（好手=濃い金、一致=濃い青、通常=赤）
+    pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
+
+    // 5. 枠線の太さ（好手と一致は強調する）
+    pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
         }] },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -585,22 +608,30 @@ function resetChartZoom() { if (evalChart) evalChart.resetZoom(); }
 function updateChart() {
     if (!evalChart) return;
     
+    // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
         if (score === undefined) return null;
+
+        // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
         if (score > 20000) return 10000;
         if (score < -20000) return -10000;
+
         return score;
     });
     evalChart.update();
 
+    // 数値評価（テキスト）の更新
     const currentScore = evalHistory[currentStep];
+
     const evalElem = document.getElementById("numericEval");
     if (evalElem && currentScore !== undefined) {
         if (Math.abs(currentScore) >= 20000) {
+            // Mateスコアの処理
             const winner = currentScore > 0 ? "先手" : "後手";
             evalElem.textContent = `評価値: ${winner}勝ち`;
         } else {
+            // 通常スコア（勝率換算付き）
             const wr = (1 / (1 + Math.exp(-currentScore / 1200)) * 100).toFixed(1);
             evalElem.textContent = `評価値: ${currentScore > 0 ? "+" : ""}${currentScore} (勝率: ${wr}%)`;
         }
@@ -669,29 +700,6 @@ function updateUI() {
     if (st) st.textContent = (currentStep === 0) ? "開始局面" : `${currentStep} / ${totalSteps}手目`;
 }
 
-// おすすめ機能のリクエスト（ID発行・リセット）
-// ※getRecommendation という関数名はそのまま維持（UIから呼ばれるため）
-function getRecommendation() {
-    if (!isEngineReady) return alert("エンジンが準備中です。");
-    
-    // UIリセット
-    recommendedMove = null; 
-    render();
-    
-    const btn = document.getElementById("recommendBtn");
-    if(btn) {
-        btn.disabled = true;
-        btn.textContent = "準備中...";
-    }
-
-    // ★IDを更新して、おすすめモードで予約
-    currentAnalysisId++;
-    pendingAnalysisType = 'recommend'; 
-    
-    sendToEngine("stop");
-    sendToEngine("isready");
-}
-
 function drawRecommendationArrow() {
     const svg = document.getElementById("arrow-layer");
     if (!svg || !recommendedMove || recommendedMove.fromX === null) { if(svg) svg.innerHTML = ""; return; }
@@ -705,4 +713,3 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
-
