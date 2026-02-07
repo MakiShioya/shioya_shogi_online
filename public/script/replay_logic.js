@@ -1,4 +1,4 @@
-// ==========================================
+直ったと思った評価値反転バグが治っていませんでした。// ==========================================
 // replay_logic.js - プロ解析ワークステーション統合版
 // ==========================================
 
@@ -94,116 +94,33 @@ function handleEngineMessage(msg) {
     }
 
     if (typeof msg === "string") {
-        // --- 1秒時点の候補手サンプリング（変更なし） ---
+        
+        // ★修正: stopコマンドに対する bestmove が返ってきたら、新しい解析の準備完了とみなす
+        // （これで手番ズレによる誤爆を防ぎます）
+        if (msg.startsWith("bestmove")) {
+            if (ignoreOldInfo) {
+                ignoreOldInfo = false; // 無視モード解除
+                // bestmove自体は古い探索の結果なので、ここではグラフ更新などに使わずリターンする手もありますが、
+                // 1秒未満の指し手検知などに影響するため、フラグ解除だけ行い下流へ流します。
+            }
+        }
+
+        // --- 1秒時点の候補手サンプリング ---
         if (msg.includes("info") && msg.includes("pv")) {
+            // ★追加: 無視モード中は情報を取得しない
+            if (ignoreOldInfo) return;
+
             const elapsed = Date.now() - searchStartTime;
-            if (elapsed >= 1000 && elapsed <= 1500 && !lastBestMoveAt1s) {
+            if (elapsed <= 1000) {
                 const parts = msg.split(" ");
                 const pvIdx = parts.indexOf("pv");
-                if (pvIdx !== -1 && parts[pvIdx + 1]) lastBestMoveAt1s = parts[pvIdx + 1];
-            }
-        }
-
-        // --- bestmove受信（変更なし） ---
-        if (msg.startsWith("bestmove")) {
-            const parts = msg.split(" ");
-            const usiMove = parts[1];
-
-            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
-            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                discoveryFlags[analyzingStep + 1] = true; 
-            }
-            if (usiMove === kifuMoveUsi) {
-                matchFlags[analyzingStep + 1] = true;
-            }
-
-            if (isWaitingRecommendation) {
-                isWaitingRecommendation = false;
-                const btn = document.getElementById("recommendBtn");
-                if (btn) btn.disabled = false;
-
-                if (usiMove !== "resign" && usiMove !== "(none)") {
-                    let toX, toY, fromX = null, fromY = null, pieceChar;
-                    if (usiMove.includes("*")) {
-                        pieceChar = usiMove[0];
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                    } else {
-                        fromX = 9 - parseInt(usiMove[0]);
-                        fromY = usiMove[1].charCodeAt(0) - 97;
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                        const targetPiece = boardState[fromY][fromX];
-                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
-                    }
-                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
-                    render();
+                if (pvIdx !== -1 && parts[pvIdx + 1]) {
+                    lastBestMoveAt1s = parts[pvIdx + 1];
                 }
-                return;
             }
         }
 
-        const isMate = msg.includes("score mate");
-        if (isMate && isAutoAnalyzing && analysisResolver) {
-            analysisResolver();
-            analysisResolver = null;
-        }
-
-        // ★★★ デバッグ重点箇所 ★★★
-        if (msg.includes("score cp") || msg.includes("score mate")) {
-            const parts = msg.split(" ");
-            let rawScore = 0;
-            let scoreType = "";
-            let mateVal = 0;
-
-            if (msg.includes("score cp")) {
-                scoreType = "CP";
-                rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
-            } else if (msg.includes("score mate")) {
-                scoreType = "MATE";
-                const m = parseInt(parts[parts.indexOf("mate") + 1]);
-                mateVal = m;
-                // 正負によって計算式が変わる
-                rawScore = m >= 0 ? 30000 - m : -30000 + m;
-            }
-
-            // 反転前のスコアを保持
-            let scoreBeforeFlip = rawScore;
-            
-            // 現在の「解析対象の手番」を確認
-            // analyzingTurn は analyzeCurrentPosition で設定されたグローバル変数
-            let currentTurnVar = analyzingTurn; 
-            
-            // 反転ロジック
-            let finalScore = scoreBeforeFlip;
-            let didFlip = false;
-            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
-                finalScore = -scoreBeforeFlip;
-                didFlip = true;
-            }
-
-            // --- 詰みが発生している時のみ、詳細ログを出す ---
-            if (scoreType === "MATE") {
-                console.group(`[DEBUG_MATE] Step: ${analyzingStep}`);
-                console.log(`1. Raw Msg from Engine: "${msg}"`);
-                console.log(`2. Mate Value (m): ${mateVal} (${mateVal > 0 ? "Engine勝ち宣言" : "Engine負け宣言"})`);
-                console.log(`3. Calculated Raw Score: ${scoreBeforeFlip}`);
-                console.log(`4. analyzingTurn Variable: "${currentTurnVar}"`);
-                console.log(`5. Did Flip? : ${didFlip ? "YES (Multiplied by -1)" : "NO"}`);
-                console.log(`6. Final Score stored: ${finalScore}`);
-                console.log(`7. Conclusion: ${finalScore > 0 ? "先手勝ち扱い" : "後手勝ち扱い"}`);
-                console.groupEnd();
-            }
-
-            if (analyzingStep !== -1) {
-                evalHistory[analyzingStep] = finalScore;
-                updateChart();
-            }
-        }
-    }
-}
-
-        // --- bestmove受信（変更なし） ---
+        // --- bestmove受信 ---
         if (msg.startsWith("bestmove")) {
             const parts = msg.split(" ");
             const usiMove = parts[1];
@@ -249,27 +166,33 @@ function handleEngineMessage(msg) {
         }
 
         if (msg.includes("score cp") || msg.includes("score mate")) {
+            // ★追加: 無視モード中は評価値を更新しない
+            if (ignoreOldInfo) return;
+
             const parts = msg.split(" ");
             let rawScore = 0;
 
             if (msg.includes("score cp")) {
-                // CP（センチポーン）の場合
                 rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
-                // Mate（詰み）の場合
                 const mateIndex = parts.indexOf("mate");
                 const mateStr = parts[mateIndex + 1]; 
                 const m = parseInt(mateStr);
 
-                // 文字列が "-" で始まっているかで判定
-                if (mateStr.startsWith("-")) {
-                    rawScore = -30000 - m; 
+                // ★★★ 修正の核心部分 ★★★
+                // "0" (符号なし) も負けとして扱う必要があります
+                // startsWith("-") だけだと "0" が漏れて 30000 (勝ち) になってしまいます
+                if (mateStr.startsWith("-") || mateStr === "0" || m === 0) {
+                    // 負の詰み（自玉が詰む）
+                    rawScore = -30000 - Math.abs(m); 
                 } else {
-                    rawScore = 30000 - m;
+                    // 正の詰み（敵玉を詰ます）
+                    rawScore = 30000 - Math.abs(m);
                 }
+                
+                // デバッグ用（もし直らなければこのログを見てください）
+                // console.log(`[MateCheck] Str:${mateStr} Val:${m} Raw:${rawScore}`);
             }
-            
-            // --- ここから下は変更なし（手番による反転ロジック） ---
             
             // 後手番なら評価値を反転
             if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
@@ -284,36 +207,112 @@ function handleEngineMessage(msg) {
     }
 }
 
+        // --- bestmove受信（変更なし） ---
+        if (msg.startsWith("bestmove")) {
+            const parts = msg.split(" ");
+            const usiMove = parts[1];
+
+            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
+            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
+                discoveryFlags[analyzingStep + 1] = true; 
+            }
+            if (usiMove === kifuMoveUsi) {
+                matchFlags[analyzingStep + 1] = true;
+            }
+
+            if (isWaitingRecommendation) {
+                isWaitingRecommendation = false;
+                const btn = document.getElementById("recommendBtn");
+                if (btn) btn.disabled = false;
+
+                if (usiMove !== "resign" && usiMove !== "(none)") {
+                    let toX, toY, fromX = null, fromY = null, pieceChar;
+                    if (usiMove.includes("*")) {
+                        pieceChar = usiMove[0];
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                    } else {
+                        fromX = 9 - parseInt(usiMove[0]);
+                        fromY = usiMove[1].charCodeAt(0) - 97;
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                        const targetPiece = boardState[fromY][fromX];
+                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
+                    }
+                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
+                    render();
+                }
+                return;
+            }
+        }
+
+        const isMate = msg.includes("score mate");
+        if (isMate && isAutoAnalyzing && analysisResolver) {
+            analysisResolver();
+            analysisResolver = null;
+        }
+
+        if (msg.includes("score cp") || msg.includes("score mate")) {
+            const parts = msg.split(" ");
+            let rawScore = 0;
+
+            if (msg.includes("score cp")) {
+                // CP（センチポーン）の場合
+                rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
+            } else if (msg.includes("score mate")) {
+                // Mate（詰み）の場合
+                const mateIndex = parts.indexOf("mate");
+                const mateStr = parts[mateIndex + 1]; 
+                const m = parseInt(mateStr);
+
+                // 文字列が "-" で始まっているかで判定
+                if (mateStr.startsWith("-")) {
+                    rawScore = -30000 - m; 
+                } else {
+                    rawScore = 30000 - m;
+                }
+            }
+            
+            // --- ここから下は変更なし（手番による反転ロジック） ---
+            
+            // 後手番なら評価値を反転
+            if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
+                rawScore = -rawScore;
+            }
+
+            if (analyzingStep !== -1) {
+                evalHistory[analyzingStep] = rawScore;
+                updateChart();
+            }
+        }
+    }
+}
+
 function sendToEngine(msg) {
     if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
 }
 
-// --- デバッグ用：generateSfen ---
-// SFEN生成時に、手番がどうなっているかを確認します
 function generateSfen() {
-    let sfen = "startpos";
-    if (typeof convertBoardToSFEN === 'function') {
-        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
-    }
-    
-    // SFENの手番部分（" b " か " w " か）を抽出してログに出す
-    const turnChar = sfen.split(" ")[1]; 
-    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
-    
-    return sfen;
+    if (typeof convertBoardToSFEN === 'function') {
+        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+    }
+    return "startpos";
 }
 
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
+    // ★修正: 新しい解析を始める前に、古い結果を無視するモードにする
+    ignoreOldInfo = true;
+
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn; // ★ここでグローバル変数にセットしている
+    analyzingTurn = window.turn;
 
-    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} | Start Analysis`, "color: green; font-weight: bold;");
+    // console.log(`[DEBUG] Analysis Start: Step=${analyzingStep} Turn=${analyzingTurn}`);
 
-    sendToEngine("stop");
+    sendToEngine("stop"); // 前の思考を停止
     sendToEngine("position sfen " + generateSfen());
     sendToEngine("go movetime 100000"); 
 }
@@ -645,16 +644,16 @@ function updateChart() {
     // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
-    if (score === undefined) return null;
+    if (score === undefined) return null;
 
-    // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
-    
-    // 20000以上なら「詰みが見えている」と判断して、一律で表示用の上限値(例: 10000)にする
-    // これにより 29999 も 30000 も、グラフ上では同じ高さになります
-    if (score > 20000) return 10000;
-    if (score < -20000) return -10000;
+    // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
+    
+    // 20000以上なら「詰みが見えている」と判断して、一律で表示用の上限値(例: 10000)にする
+    // これにより 29999 も 30000 も、グラフ上では同じ高さになります
+    if (score > 20000) return 10000;
+    if (score < -20000) return -10000;
 
-    return score;
+    return score;
 });
     evalChart.update();
 
@@ -780,6 +779,4 @@ function drawRecommendationArrow() {
 
 
 
-
-
-
+よく確認してください。原因が特定できなかったら、デバッグ用コードを作成してください。
