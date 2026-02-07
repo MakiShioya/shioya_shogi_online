@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - プロ解析ワークステーション統合版
+// replay_logic.js - デバッグ特化版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -16,7 +16,7 @@ let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
-// ★追加: 古い解析結果を無視するためのフラグ（手番ズレ対策）
+// ★追加: 古い解析結果を無視するためのフラグ
 let ignoreOldInfo = false;
 
 // --- 全自動検討・おすすめ用の変数 ---
@@ -60,22 +60,15 @@ function formatSeconds(totalSeconds) {
     return min > 0 ? `${min}分${sec}秒` : `${sec}秒`;
 }
 
-/**
- * 棋譜の次の指し手をUSI形式（例: 7g7f）に変換して取得する
- */
 function getKifuMoveUsi(step) {
     const nextState = replayStates[step + 1];
     if (!nextState || !nextState.lastMove || !nextState.lastMove.to) return null;
-    
     const m = nextState.lastMove;
     const toStr = (9 - m.to.x) + String.fromCharCode(97 + m.to.y);
-    
     if (!m.from) { 
-        // 持ち駒を打った場合
         const piece = nextState.boardState[m.to.y][m.to.x].replace("+", "").toUpperCase();
         return piece + "*" + toStr;
     } else {
-        // 盤上の駒を動かした場合
         const fromStr = (9 - m.from.x) + String.fromCharCode(97 + m.from.y);
         const prevPiece = replayStates[step].boardState[m.from.y][m.from.x];
         const nextPiece = nextState.boardState[m.to.y][m.to.x];
@@ -84,33 +77,41 @@ function getKifuMoveUsi(step) {
     }
 }
 
-/**
- * 2. エンジン通信 & 解析ロジック
- */
-
-function generateSfen() {
-    if (typeof convertBoardToSFEN === 'function') {
-        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
-    }
-    return "startpos";
+function sendToEngine(msg) {
+    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
 }
 
+// --- SFEN生成（デバッグログ付き） ---
+function generateSfen() {
+    let sfen = "startpos";
+    if (typeof convertBoardToSFEN === 'function') {
+        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+    }
+    // SFENの手番（b=先手, w=後手）を確認
+    const turnChar = sfen.split(" ")[1];
+    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
+    return sfen;
+}
+
+// --- 解析開始（デバッグログ付き） ---
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
-    // ★修正: 新しい解析を始める前に、古い結果を無視するモードにする
-    ignoreOldInfo = true;
+    ignoreOldInfo = true; // 古い情報を遮断
 
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn;
+    analyzingTurn = window.turn; // ★重要：ここで現在の「手番」を保存
 
-    sendToEngine("stop"); // 前の思考を停止
+    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} (Is White? ${analyzingTurn === "white"})`, "color: #00AA00; font-weight: bold;");
+
+    sendToEngine("stop");
     sendToEngine("position sfen " + generateSfen());
     sendToEngine("go movetime 100000"); 
 }
 
+// --- エンジン受信 & ログ出力の心臓部 ---
 function handleEngineMessage(msg) {
     if (msg === "usiok") sendToEngine("isready");
     else if (msg === "readyok") {
@@ -120,107 +121,118 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        // ★修正: stopコマンドに対する bestmove が返ってきたら、新しい解析の準備完了とみなす
+        // 新しい解析結果が来始めたら無視モード解除
         if (msg.startsWith("bestmove")) {
             if (ignoreOldInfo) {
-                ignoreOldInfo = false; // 無視モード解除
-                // ここでのbestmoveは古い解析のものなので、下流の処理には流さないほうが安全だが、
-                // 今回のロジックではフラグ解除だけ行い、下の処理で弾くか判断させる
+                console.log("[DEBUG] Ignore mode cleared by bestmove");
+                ignoreOldInfo = false;
             }
         }
 
-        // --- 1秒時点の候補手サンプリング ---
+        // --- 1秒時点の候補手 ---
         if (msg.includes("info") && msg.includes("pv")) {
-            // ★追加: 無視モード中は情報を取得しない
-            if (ignoreOldInfo) return;
-
-            const elapsed = Date.now() - searchStartTime;
-            // 経過時間が 1000ms (1秒) 以内なら、常に情報を更新する（上書き許可）
-            if (elapsed <= 1000) {
-                const parts = msg.split(" ");
-                const pvIdx = parts.indexOf("pv");
-                if (pvIdx !== -1 && parts[pvIdx + 1]) {
-                    lastBestMoveAt1s = parts[pvIdx + 1];
+            if (!ignoreOldInfo) {
+                const elapsed = Date.now() - searchStartTime;
+                if (elapsed <= 1000) {
+                    const parts = msg.split(" ");
+                    const pvIdx = parts.indexOf("pv");
+                    if (pvIdx !== -1 && parts[pvIdx + 1]) {
+                        lastBestMoveAt1s = parts[pvIdx + 1];
+                    }
                 }
             }
         }
 
         // --- bestmove受信 ---
         if (msg.startsWith("bestmove")) {
-            // ここでも念のため、無視モード中なら処理しない（ただし上で解除されているはず）
-            if (ignoreOldInfo) return;
-
-            const parts = msg.split(" ");
-            const usiMove = parts[1];
-
-            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
-            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                discoveryFlags[analyzingStep + 1] = true; 
-            }
-            if (usiMove === kifuMoveUsi) {
-                matchFlags[analyzingStep + 1] = true;
-            }
-
-            if (isWaitingRecommendation) {
-                isWaitingRecommendation = false;
-                const btn = document.getElementById("recommendBtn");
-                if (btn) btn.disabled = false;
-
-                if (usiMove !== "resign" && usiMove !== "(none)") {
-                    let toX, toY, fromX = null, fromY = null, pieceChar;
-                    if (usiMove.includes("*")) {
-                        pieceChar = usiMove[0];
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                    } else {
-                        fromX = 9 - parseInt(usiMove[0]);
-                        fromY = usiMove[1].charCodeAt(0) - 97;
-                        toX = 9 - parseInt(usiMove[2]);
-                        toY = usiMove[3].charCodeAt(0) - 97;
-                        const targetPiece = boardState[fromY][fromX];
-                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
-                    }
-                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
-                    render();
+            if (!ignoreOldInfo) {
+                const parts = msg.split(" ");
+                const usiMove = parts[1];
+                const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
+                
+                if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
+                    discoveryFlags[analyzingStep + 1] = true; 
                 }
-                return;
+                if (usiMove === kifuMoveUsi) {
+                    matchFlags[analyzingStep + 1] = true;
+                }
+
+                if (isWaitingRecommendation) {
+                    isWaitingRecommendation = false;
+                    const btn = document.getElementById("recommendBtn");
+                    if (btn) btn.disabled = false;
+                    // おすすめの手処理（省略せず記述）
+                    if (usiMove !== "resign" && usiMove !== "(none)") {
+                        let toX, toY, fromX = null, fromY = null, pieceChar;
+                        if (usiMove.includes("*")) {
+                            pieceChar = usiMove[0];
+                            toX = 9 - parseInt(usiMove[2]);
+                            toY = usiMove[3].charCodeAt(0) - 97;
+                        } else {
+                            fromX = 9 - parseInt(usiMove[0]);
+                            fromY = usiMove[1].charCodeAt(0) - 97;
+                            toX = 9 - parseInt(usiMove[2]);
+                            toY = usiMove[3].charCodeAt(0) - 97;
+                            const targetPiece = boardState[fromY][fromX];
+                            if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
+                        }
+                        recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
+                        render();
+                    }
+                }
             }
+            return; // bestmove時はここで終了
         }
 
+        // --- 詰みチェック ---
         const isMate = msg.includes("score mate");
         if (isMate && isAutoAnalyzing && analysisResolver) {
             analysisResolver();
             analysisResolver = null;
         }
 
+        // ★★★ 評価値処理 & 詳細デバッグログ ★★★
         if (msg.includes("score cp") || msg.includes("score mate")) {
-            // ★追加: 無視モード中は評価値を更新しない
             if (ignoreOldInfo) return;
 
             const parts = msg.split(" ");
             let rawScore = 0;
+            let debugMate = false;
 
             if (msg.includes("score cp")) {
                 rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
+                debugMate = true; // 詰みのときだけ詳細ログを出す準備
                 const mateIndex = parts.indexOf("mate");
                 const mateStr = parts[mateIndex + 1]; 
                 const m = parseInt(mateStr);
 
-                // ★★★ 修正の核心部分 (Mate 0対応) ★★★
-                // "0" (符号なし) も負けとして扱う
+                // Mate 0 / -0 対策
                 if (mateStr.startsWith("-") || mateStr === "0" || m === 0) {
-                    // 負の詰み（自玉が詰む）
                     rawScore = -30000 - Math.abs(m); 
                 } else {
-                    // 正の詰み（敵玉を詰ます）
                     rawScore = 30000 - Math.abs(m);
                 }
             }
             
-            // 後手番なら評価値を反転
+            // --- 反転ロジックの可視化 ---
+            let scoreBeforeFlip = rawScore;
+            let didFlip = false;
+            
             if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
                 rawScore = -rawScore;
+                didFlip = true;
+            }
+
+            // --- コンソールに犯人を捜すためのログを出力 ---
+            if (debugMate) { // 詰み筋が見えたときのみ表示
+                console.group(`[DEBUG_MATE_CALC] Step: ${analyzingStep}`);
+                console.log(`1. Engine Msg: ${msg}`);
+                console.log(`2. Raw Score (Before Flip): ${scoreBeforeFlip}`);
+                console.log(`3. analyzingTurn: "${analyzingTurn}"`);
+                console.log(`4. Did Flip? : ${didFlip} (Should be TRUE only if Turn is White)`);
+                console.log(`5. Final Score: ${rawScore}`);
+                console.groupEnd();
             }
 
             if (analyzingStep !== -1) {
@@ -231,13 +243,8 @@ function handleEngineMessage(msg) {
     }
 }
 
-function sendToEngine(msg) {
-    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
-}
+// --- 以降は変更なし（棋譜読み込み・描画など） ---
 
-/**
- * 3. 棋譜解析
- */
 function loadKifu() {
     const text = document.getElementById("kifuInputArea").value;
     if (!text) return alert("棋譜を入力してください");
@@ -313,9 +320,6 @@ function executeAction(action, turnColor, lastTo) {
     return { from: (fromX !== null ? {x: fromX, y: fromY} : null), to: {x: toX, y: toY} };
 }
 
-/**
- * 4. 描画
- */
 function applyState(state) {
     recommendedMove = null; 
     boardState = JSON.parse(JSON.stringify(state.boardState));
@@ -332,21 +336,16 @@ function applyState(state) {
     render();
     updateUI();
 
-    // ★【修正ポイント】評価値の上書き防止ロジック
     if (!isAutoAnalyzing) {
         if (evalHistory[currentStep] === undefined) {
-            // まだ評価値がない局面のみ、新規にエンジン解析を開始
             analyzeCurrentPosition();
         } else {
-            // すでに評価値（自動解析結果など）がある場合は上書きしない
-            // 動いている解析があれば止め、グラフと数値を表示のみ更新
             sendToEngine("stop");
             updateChart(); 
         }
     }
 }
 
-// --- 修正版 render 関数 ---
 function render() {
     const bt = document.getElementById("board");
     if (!bt) return;
@@ -356,55 +355,45 @@ function render() {
         const tr = document.createElement("tr");
         for (let x = 0; x < 9; x++) {
             const td = document.createElement("td");
-            const p = boardState[y][x]; // 実際の駒
+            const p = boardState[y][x];
             
-            // おすすめの一手がある場合、その情報を優先して表示するか判定
             let displayPiece = p;
             let isRecommendation = false;
 
             if (recommendedMove && recommendedMove.x === x && recommendedMove.y === y) {
-                // おすすめの手の場所に「おすすめの駒名」を表示する
                 isRecommendation = true;
             }
 
-            // --- 駒の描画処理 ---
             if (displayPiece || isRecommendation) {
                 const isW = displayPiece === displayPiece.toLowerCase() && displayPiece !== "";
                 const key = displayPiece.startsWith("+") ? "+" + displayPiece.replace("+","").toUpperCase() : displayPiece.toUpperCase();
                 
-                // おすすめ表示の場合はその文字、そうでなければ pieceName から取得
                 let charText = (typeof pieceName !== 'undefined' && pieceName[key]) ? pieceName[key] : key;
                 if (isRecommendation) charText = recommendedMove.name;
 
-                // ★ハイブリッド方式：コンテナ作成
                 const container = document.createElement("div");
                 container.className = "piece-container";
 
-                // ★サイズ補正クラス (例: size-P)
                 if (!isRecommendation && displayPiece !== "") {
                     const baseType = displayPiece.replace("+", "").toUpperCase();
                     container.classList.add("size-" + baseType);
                 }
 
-                // ★後手番の影反転
                 if (isW) {
                     container.classList.add("gote");
                 }
 
-                // 文字表示
                 const textSpan = document.createElement("span");
                 textSpan.className = "piece-text";
                 if (key.startsWith("+")) textSpan.classList.add("promoted");
                 
                 textSpan.textContent = charText;
 
-                // おすすめの場所の特別スタイル
                 if (isRecommendation) {
                     td.classList.add("recommended-cell");
-                    textSpan.style.color = "#007bff";       // 青色
-                    textSpan.style.fontWeight = "bold";     // 太字
-                    textSpan.style.textShadow = "1px 1px 0px #fff"; // 視認性向上のための白フチ
-                    // おすすめの手番が後手なら回転
+                    textSpan.style.color = "#007bff"; 
+                    textSpan.style.fontWeight = "bold"; 
+                    textSpan.style.textShadow = "1px 1px 0px #fff"; 
                     if (window.turn === "white") {
                         container.classList.add("gote");
                         td.style.transform = "rotate(180deg)";
@@ -417,11 +406,9 @@ function render() {
                 td.appendChild(container);
             }
 
-            // 移動元のハイライト
             if (lastMoveInfo.from && lastMoveInfo.from.x === x && lastMoveInfo.from.y === y) {
                 td.classList.add("move-from");
             }
-            // 移動先のハイライト
             if (lastMoveInfo.to && lastMoveInfo.to.x === x && lastMoveInfo.to.y === y) {
                 td.classList.add("move-to");
             }
@@ -434,54 +421,33 @@ function render() {
     setTimeout(drawRecommendationArrow, 10);
 }
 
-// --- 修正版 renderHands 関数 ---
 function renderHands() {
     const bh = document.getElementById("blackHand"), wh = document.getElementById("whiteHand");
     if (!bh || !wh) return;
 
-    // 持ち駒の並び順定義
-    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; // K(玉)も念のため追加
-    
-    // ソート実行
+    const order = ["P", "L", "N", "S", "G", "B", "R", "K"];
     hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-    // HTMLのリセット
     bh.innerHTML = "";
     wh.innerHTML = "";
 
-    // 持ち駒生成ヘルパー関数
     const createHandPiece = (player, p) => {
-        // ★コンテナ作成
         const container = document.createElement("div");
         container.className = "hand-piece-container";
-
-        // ★後手の影反転
         if (player === "white") {
             container.classList.add("gote");
-            // コンテナ自体を回転（CSSで対応済みなら不要ですが、念のため）
             container.style.transform = "rotate(180deg)";
         }
-
-        // 文字作成
         const textSpan = document.createElement("span");
         textSpan.className = "piece-text";
-        // pieceNameが定義されていれば変換、なければそのまま
         textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
-
         container.appendChild(textSpan);
         return container;
     };
 
-    // 先手の持ち駒生成
-    hands.black.forEach(p => {
-        bh.appendChild(createHandPiece("black", p));
-    });
-
-    // 後手の持ち駒生成
-    hands.white.forEach(p => {
-        wh.appendChild(createHandPiece("white", p));
-    });
+    hands.black.forEach(p => { bh.appendChild(createHandPiece("black", p)); });
+    hands.white.forEach(p => { wh.appendChild(createHandPiece("white", p)); });
 }
 
 function playReplayCutIn(imageName) {
@@ -493,9 +459,6 @@ function playReplayCutIn(imageName) {
     img.classList.add("cut-in-active");
 }
 
-/**
- * 5. グラフ
- */
 function initChart() {
     const ctx = document.getElementById('evalChart').getContext('2d');
     if (evalChart) evalChart.destroy();
@@ -507,24 +470,15 @@ function initChart() {
             backgroundColor: 'rgba(255, 69, 0, 0.1)', 
             fill: true, 
             tension: 0.3,
-            // 1. 点の形（好手なら星、それ以外は丸）
             pointStyle: (ctx) => discoveryFlags[ctx.dataIndex] ? 'star' : 'circle',
-
-            // 2. 点の大きさ（好手=10、一致=5、通常=2）
             pointRadius: (ctx) => discoveryFlags[ctx.dataIndex] ? 10 : (matchFlags[ctx.dataIndex] ? 3 : 2),
-
-            // 3. 点の色（好手=金、一致=青、通常=赤）
             pointBackgroundColor: (ctx) => {
-                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; // 金色
-                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     // 青色
-                return '#ff4500';                                    // 赤色
+                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; 
+                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     
+                return '#ff4500';                                    
             },
-
-    // 4. 点の枠線色（好手=濃い金、一致=濃い青、通常=赤）
-    pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
-
-    // 5. 枠線の太さ（好手と一致は強調する）
-    pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
+            pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
+            pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
         }] },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -555,31 +509,22 @@ function resetChartZoom() { if (evalChart) evalChart.resetZoom(); }
 
 function updateChart() {
     if (!evalChart) return;
-    
-    // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
         if (score === undefined) return null;
-
-        // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
         if (score > 20000) return 10000;
         if (score < -20000) return -10000;
-
         return score;
     });
     evalChart.update();
 
-    // 数値評価（テキスト）の更新
     const currentScore = evalHistory[currentStep];
-
     const evalElem = document.getElementById("numericEval");
     if (evalElem && currentScore !== undefined) {
         if (Math.abs(currentScore) >= 20000) {
-            // Mateスコアの処理
             const winner = currentScore > 0 ? "先手" : "後手";
             evalElem.textContent = `評価値: ${winner}勝ち`;
         } else {
-            // 通常スコア（勝率換算付き）
             const wr = (1 / (1 + Math.exp(-currentScore / 1200)) * 100).toFixed(1);
             evalElem.textContent = `評価値: ${currentScore > 0 ? "+" : ""}${currentScore} (勝率: ${wr}%)`;
         }
@@ -595,9 +540,6 @@ function updateChartSettings() {
     updateChart();
 }
 
-/**
- * 6. オート検討
- */
 async function startAutoAnalysis(timePerMove) {
     const n = replayStates.length - 1;
     if (n <= 10) return alert("この棋譜は短すぎます。全自動モードには11手以上の棋譜が必要です。");
@@ -649,9 +591,6 @@ function updateUI() {
     if (st) st.textContent = (currentStep === 0) ? "開始局面" : `${currentStep} / ${totalSteps}手目`;
 }
 
-/**
- * おすすめ機能
- */
 function getRecommendation() {
     if (!isEngineReady) return alert("エンジンが準備中です。");
     recommendedMove = null; render();
