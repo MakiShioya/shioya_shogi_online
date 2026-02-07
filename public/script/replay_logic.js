@@ -21,6 +21,7 @@ let isAutoAnalyzing = false;
 let autoAnalysisTimer = null;
 let recommendedMove = null; 
 
+let ignoreOldInfo = false;
 // --- 好手（Discovery）検知用変数 ---
 let discoveryFlags = [];    // 各手番が「好手」かどうかのフラグ
 let matchFlags = [];        // ★追加：各手番が「AI一致」かどうかのフラグ
@@ -780,4 +781,5 @@ function drawRecommendationArrow() {
 
 
 よく確認してください。原因が特定できなかったら、デバッグ用コードを作成してください。
+
 
