@@ -153,7 +153,7 @@ function startRealAnalysis() {
         // カウントダウン演出
         let timeLeft = 5;
         const btn = document.getElementById("recommendBtn");
-        if(btn) btn.textContent = `考え中… ${timeLeft}`;
+        if(btn) btn.textContent = `考え中 ${timeLeft}`;
         
         if (recommendTimer) clearInterval(recommendTimer);
         recommendTimer = setInterval(() => {
@@ -705,3 +705,4 @@ function drawRecommendationArrow() {
         <defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="rgba(30, 144, 255, 0.8)" /></marker></defs>
         <line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="rgba(30, 144, 255, 0.6)" stroke-width="6" marker-end="url(#arrowhead)" />`;
 }
+
