@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - 完全同期修正版
+// replay_logic.js - 完全同期修正版（Strict）
 // ==========================================
 
 // --- グローバル変数 ---
@@ -90,7 +90,7 @@ function generateSfen() {
     return "startpos";
 }
 
-// ★修正: 解析リクエスト関数
+// 解析リクエスト関数
 // いきなり go を送らず、まず isready でエンジンをクリーンな状態にする
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
@@ -102,7 +102,7 @@ function analyzeCurrentPosition() {
     sendToEngine("isready"); // 準備できたか（＝古いメッセージを全部吐き出したか）聞く
 }
 
-// ★修正: 実際の解析開始関数
+// 実際の解析開始関数
 // readyok を確認してから呼ばれるので、古いメッセージは混入しない
 function startRealAnalysis() {
     searchStartTime = Date.now();
@@ -119,7 +119,7 @@ function startRealAnalysis() {
 function handleEngineMessage(msg) {
     if (msg === "usiok") sendToEngine("isready");
     
-    // ★修正: readyok 受信時の処理
+    // readyok 受信時の処理
     else if (msg === "readyok") {
         isEngineReady = true;
         
@@ -136,8 +136,9 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        // waitingForReadyToAnalyze が true の間は、
-        // エンジン整理中のため、info や bestmove は全て無視する（これが重要）
+        // ★修正ポイント: waitingForReadyToAnalyze が true の間は、
+        // エンジン整理中のため、info や bestmove は全て無視する。
+        // 前回のコードではここで bestmove を拾ってガードを解除してしまっていた。
         if (waitingForReadyToAnalyze) return;
 
         // --- 1秒時点の候補手サンプリング ---
@@ -330,10 +331,14 @@ function applyState(state) {
     render();
     updateUI();
 
+    // ★【修正ポイント】評価値の上書き防止ロジック
     if (!isAutoAnalyzing) {
         if (evalHistory[currentStep] === undefined) {
+            // まだ評価値がない局面のみ、新規にエンジン解析を開始
             analyzeCurrentPosition();
         } else {
+            // すでに評価値（自動解析結果など）がある場合は上書きしない
+            // 動いている解析があれば止め、グラフと数値を表示のみ更新
             sendToEngine("stop");
             updateChart(); 
         }
@@ -350,45 +355,55 @@ function render() {
         const tr = document.createElement("tr");
         for (let x = 0; x < 9; x++) {
             const td = document.createElement("td");
-            const p = boardState[y][x]; 
+            const p = boardState[y][x]; // 実際の駒
             
+            // おすすめの一手がある場合、その情報を優先して表示するか判定
             let displayPiece = p;
             let isRecommendation = false;
 
             if (recommendedMove && recommendedMove.x === x && recommendedMove.y === y) {
+                // おすすめの手の場所に「おすすめの駒名」を表示する
                 isRecommendation = true;
             }
 
+            // --- 駒の描画処理 ---
             if (displayPiece || isRecommendation) {
                 const isW = displayPiece === displayPiece.toLowerCase() && displayPiece !== "";
                 const key = displayPiece.startsWith("+") ? "+" + displayPiece.replace("+","").toUpperCase() : displayPiece.toUpperCase();
                 
+                // おすすめ表示の場合はその文字、そうでなければ pieceName から取得
                 let charText = (typeof pieceName !== 'undefined' && pieceName[key]) ? pieceName[key] : key;
                 if (isRecommendation) charText = recommendedMove.name;
 
+                // ★ハイブリッド方式：コンテナ作成
                 const container = document.createElement("div");
                 container.className = "piece-container";
 
+                // ★サイズ補正クラス (例: size-P)
                 if (!isRecommendation && displayPiece !== "") {
                     const baseType = displayPiece.replace("+", "").toUpperCase();
                     container.classList.add("size-" + baseType);
                 }
 
+                // ★後手番の影反転
                 if (isW) {
                     container.classList.add("gote");
                 }
 
+                // 文字表示
                 const textSpan = document.createElement("span");
                 textSpan.className = "piece-text";
                 if (key.startsWith("+")) textSpan.classList.add("promoted");
                 
                 textSpan.textContent = charText;
 
+                // おすすめの場所の特別スタイル
                 if (isRecommendation) {
                     td.classList.add("recommended-cell");
-                    textSpan.style.color = "#007bff"; 
-                    textSpan.style.fontWeight = "bold"; 
-                    textSpan.style.textShadow = "1px 1px 0px #fff"; 
+                    textSpan.style.color = "#007bff";       // 青色
+                    textSpan.style.fontWeight = "bold";     // 太字
+                    textSpan.style.textShadow = "1px 1px 0px #fff"; // 視認性向上のための白フチ
+                    // おすすめの手番が後手なら回転
                     if (window.turn === "white") {
                         container.classList.add("gote");
                         td.style.transform = "rotate(180deg)";
@@ -401,9 +416,11 @@ function render() {
                 td.appendChild(container);
             }
 
+            // 移動元のハイライト
             if (lastMoveInfo.from && lastMoveInfo.from.x === x && lastMoveInfo.from.y === y) {
                 td.classList.add("move-from");
             }
+            // 移動先のハイライト
             if (lastMoveInfo.to && lastMoveInfo.to.x === x && lastMoveInfo.to.y === y) {
                 td.classList.add("move-to");
             }
@@ -421,35 +438,46 @@ function renderHands() {
     const bh = document.getElementById("blackHand"), wh = document.getElementById("whiteHand");
     if (!bh || !wh) return;
 
-    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; 
+    // 持ち駒の並び順定義
+    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; // K(玉)も念のため追加
     
+    // ソート実行
     hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
+    // HTMLのリセット
     bh.innerHTML = "";
     wh.innerHTML = "";
 
+    // 持ち駒生成ヘルパー関数
     const createHandPiece = (player, p) => {
+        // ★コンテナ作成
         const container = document.createElement("div");
         container.className = "hand-piece-container";
 
+        // ★後手の影反転
         if (player === "white") {
             container.classList.add("gote");
+            // コンテナ自体を回転（CSSで対応済みなら不要ですが、念のため）
             container.style.transform = "rotate(180deg)";
         }
 
+        // 文字作成
         const textSpan = document.createElement("span");
         textSpan.className = "piece-text";
+        // pieceNameが定義されていれば変換、なければそのまま
         textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
 
         container.appendChild(textSpan);
         return container;
     };
 
+    // 先手の持ち駒生成
     hands.black.forEach(p => {
         bh.appendChild(createHandPiece("black", p));
     });
 
+    // 後手の持ち駒生成
     hands.white.forEach(p => {
         wh.appendChild(createHandPiece("white", p));
     });
@@ -478,15 +506,24 @@ function initChart() {
             backgroundColor: 'rgba(255, 69, 0, 0.1)', 
             fill: true, 
             tension: 0.3,
+            // 1. 点の形（好手なら星、それ以外は丸）
             pointStyle: (ctx) => discoveryFlags[ctx.dataIndex] ? 'star' : 'circle',
+
+            // 2. 点の大きさ（好手=10、一致=5、通常=2）
             pointRadius: (ctx) => discoveryFlags[ctx.dataIndex] ? 10 : (matchFlags[ctx.dataIndex] ? 3 : 2),
+
+            // 3. 点の色（好手=金、一致=青、通常=赤）
             pointBackgroundColor: (ctx) => {
-                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; 
-                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     
-                return '#ff4500';                                    
+                if (discoveryFlags[ctx.dataIndex]) return '#ffd700'; // 金色
+                if (matchFlags[ctx.dataIndex]) return '#1e90ff';     // 青色
+                return '#ff4500';                                    // 赤色
             },
-            pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
-            pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
+
+    // 4. 点の枠線色（好手=濃い金、一致=濃い青、通常=赤）
+    pointBorderColor: (ctx) => discoveryFlags[ctx.dataIndex] ? '#b8860b' : (matchFlags[ctx.dataIndex] ? '#0000cd' : '#ff4500'),
+
+    // 5. 枠線の太さ（好手と一致は強調する）
+    pointBorderWidth: (ctx) => (discoveryFlags[ctx.dataIndex] || matchFlags[ctx.dataIndex]) ? 2 : 1
         }] },
         options: {
             responsive: true, maintainAspectRatio: false,
@@ -518,6 +555,7 @@ function resetChartZoom() { if (evalChart) evalChart.resetZoom(); }
 function updateChart() {
     if (!evalChart) return;
     
+    // グラフデータの更新
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
         if (score === undefined) return null;
@@ -530,14 +568,17 @@ function updateChart() {
     });
     evalChart.update();
 
+    // 数値評価（テキスト）の更新
     const currentScore = evalHistory[currentStep];
 
     const evalElem = document.getElementById("numericEval");
     if (evalElem && currentScore !== undefined) {
         if (Math.abs(currentScore) >= 20000) {
+            // Mateスコアの処理
             const winner = currentScore > 0 ? "先手" : "後手";
             evalElem.textContent = `評価値: ${winner}勝ち`;
         } else {
+            // 通常スコア（勝率換算付き）
             const wr = (1 / (1 + Math.exp(-currentScore / 1200)) * 100).toFixed(1);
             evalElem.textContent = `評価値: ${currentScore > 0 ? "+" : ""}${currentScore} (勝率: ${wr}%)`;
         }
