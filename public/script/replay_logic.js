@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - データ欠損防止・完全版
+// replay_logic.js - データ欠損・スキップ防止版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -16,7 +16,7 @@ let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
-// ★重要: 解析コンテキスト管理（スナップショット）
+// ★重要: 解析コンテキスト管理
 let currentAnalysisId = 0;    // リクエストID
 let processingAnalysisId = 0; // 実行中ID
 let analysisContexts = {};    // IDごとの解析情報を保存
@@ -178,9 +178,7 @@ function startRealAnalysis() {
              btn.disabled = false;
         }
         sendToEngine("position sfen " + sfen);
-        
         // 通常・自動解析時
-        // 自動解析でも無限探索にしておき、ループ側のタイマーでstopをかける方式が最も安全
         sendToEngine("go movetime 100000"); 
     }
 }
@@ -201,7 +199,6 @@ function handleEngineMessage(msg) {
 
     if (typeof msg === "string") {
         
-        // Contextベースでの処理（ID不一致でもContextがあれば処理する）
         const ctx = analysisContexts[processingAnalysisId];
         if (!ctx) return;
 
@@ -222,7 +219,6 @@ function handleEngineMessage(msg) {
             const parts = msg.split(" ");
             const usiMove = parts[1];
             
-            // ★Contextの情報を使って正誤判定
             const kifuMoveUsi = getKifuMoveUsi(ctx.step);
             
             let flagChanged = false;
@@ -271,16 +267,14 @@ function handleEngineMessage(msg) {
                 }
             }
 
-            // ★修正: 自動解析時は、bestmoveを受け取って初めて次へ進む
-            // これにより、データが保存される前に進んでしまうことを防ぐ
-            if (isAutoAnalyzing && analysisResolver) {
+            // ★重要修正: 自動解析の進行制御
+            // 「最新のID」に対する bestmove である場合のみ、次へ進む
+            // これにより、古いIDの bestmove で勝手にスキップされるのを防ぐ
+            if (isAutoAnalyzing && analysisResolver && processingAnalysisId === currentAnalysisId) {
                 analysisResolver();
                 analysisResolver = null;
             }
         }
-
-        // ★修正: 自動解析中の「詰み」によるショートカットは削除しました。
-        // 必ずbestmoveを待つことで、データの取りこぼしを防ぎます。
 
         if (msg.includes("score cp") || msg.includes("score mate")) {
             const parts = msg.split(" ");
@@ -415,6 +409,7 @@ function applyState(state) {
         if (evalHistory[currentStep] === undefined) {
             analyzeCurrentPosition();
         } else {
+            // 計算済みならIDを更新して止める
             currentAnalysisId++;
             sendToEngine("stop");
             updateChart(); 
@@ -673,9 +668,7 @@ async function startAutoAnalysis(timePerMove) {
 
         let effectiveTime = (i <= 10 && timePerMove > 2000) ? 2000 : timePerMove;
         
-        // ★重要: ここはループ側の「タイムアウト」であり、エンジン停止の最終防衛ライン
-        // 基本的にはbestmoveが返ってきて analysisResolver が呼ばれるはずだが、
-        // 万が一エンジンが沈黙した場合のみ、ここで強制的に次へ行く
+        // ★重要: タイムアウトは「エンジンの思考時間 + α」で設定
         await new Promise(resolve => {
             analysisResolver = resolve;
             autoAnalysisTimer = setTimeout(() => { 
