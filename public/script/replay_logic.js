@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - デバッグ特化版
+// replay_logic.js - 完全同期修正版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -16,8 +16,8 @@ let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
-// ★追加: 古い解析結果を無視するためのフラグ
-let ignoreOldInfo = false;
+// ★追加: 解析開始待ちフラグ（同期ズレ対策の切り札）
+let waitingForReadyToAnalyze = false;
 
 // --- 全自動検討・おすすめ用の変数 ---
 let isAutoAnalyzing = false;
@@ -25,10 +25,10 @@ let autoAnalysisTimer = null;
 let recommendedMove = null;
 
 // --- 好手（Discovery）検知用変数 ---
-let discoveryFlags = [];    // 各手番が「好手」かどうかのフラグ
-let matchFlags = [];        // 各手番が「AI一致」かどうかのフラグ
-let lastBestMoveAt1s = null; // 1秒時点での候補手
-let searchStartTime = 0;    // 解析開始時刻
+let discoveryFlags = [];    
+let matchFlags = [];        
+let lastBestMoveAt1s = null; 
+let searchStartTime = 0;    
 
 const kanjiToNum = { "一": 0, "二": 1, "三": 2, "四": 3, "五": 4, "六": 5, "七": 6, "八": 7, "九": 8 };
 const zenkakuToNum = { "１": 0, "２": 1, "３": 2, "４": 3, "５": 4, "６": 5, "７": 6, "８": 7, "９": 8 };
@@ -63,8 +63,10 @@ function formatSeconds(totalSeconds) {
 function getKifuMoveUsi(step) {
     const nextState = replayStates[step + 1];
     if (!nextState || !nextState.lastMove || !nextState.lastMove.to) return null;
+    
     const m = nextState.lastMove;
     const toStr = (9 - m.to.x) + String.fromCharCode(97 + m.to.y);
+    
     if (!m.from) { 
         const piece = nextState.boardState[m.to.y][m.to.x].replace("+", "").toUpperCase();
         return piece + "*" + toStr;
@@ -77,132 +79,131 @@ function getKifuMoveUsi(step) {
     }
 }
 
-function sendToEngine(msg) {
-    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
-}
+/**
+ * 2. エンジン通信 & 解析ロジック
+ */
 
-// --- SFEN生成（デバッグログ付き） ---
 function generateSfen() {
-    let sfen = "startpos";
     if (typeof convertBoardToSFEN === 'function') {
-        sfen = convertBoardToSFEN(boardState, hands, window.turn, currentStep);
+        return convertBoardToSFEN(boardState, hands, window.turn, currentStep);
     }
-    // SFENの手番（b=先手, w=後手）を確認
-    const turnChar = sfen.split(" ")[1];
-    console.log(`[DEBUG_SFEN] Step:${currentStep} | UI_Turn:${window.turn} | SFEN_Turn:${turnChar}`);
-    return sfen;
+    return "startpos";
 }
 
-// --- 解析開始（デバッグログ付き） ---
+// ★修正: 解析リクエスト関数
+// いきなり go を送らず、まず isready でエンジンをクリーンな状態にする
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
-    ignoreOldInfo = true; // 古い情報を遮断
+    // フラグを立てて、handleEngineMessage 内での readyok 受信を待つ
+    waitingForReadyToAnalyze = true;
+    
+    sendToEngine("stop");    // まず止める
+    sendToEngine("isready"); // 準備できたか（＝古いメッセージを全部吐き出したか）聞く
+}
 
+// ★修正: 実際の解析開始関数
+// readyok を確認してから呼ばれるので、古いメッセージは混入しない
+function startRealAnalysis() {
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
     analyzingStep = currentStep;
-    analyzingTurn = window.turn; // ★重要：ここで現在の「手番」を保存
+    analyzingTurn = window.turn;
 
-    console.log(`%c[DEBUG_START] Step:${analyzingStep} | Turn:${analyzingTurn} (Is White? ${analyzingTurn === "white"})`, "color: #00AA00; font-weight: bold;");
+    // console.log(`[DEBUG] Real Analysis Started for Step ${analyzingStep}`);
 
-    sendToEngine("stop");
     sendToEngine("position sfen " + generateSfen());
     sendToEngine("go movetime 100000"); 
 }
 
-// --- エンジン受信 & ログ出力の心臓部 ---
 function handleEngineMessage(msg) {
     if (msg === "usiok") sendToEngine("isready");
+    
+    // ★修正: readyok 受信時の処理
     else if (msg === "readyok") {
         isEngineReady = true;
-        if (!isAutoAnalyzing) analyzeCurrentPosition();
+        
+        // 解析待ち状態なら、ここで初めて解析コマンドを送る
+        if (waitingForReadyToAnalyze) {
+            waitingForReadyToAnalyze = false;
+            startRealAnalysis();
+        } 
+        // 初期起動時などの自動スタート用（オートモードでない場合）
+        else if (!isAutoAnalyzing && analyzingStep === -1) {
+             analyzeCurrentPosition();
+        }
     }
 
     if (typeof msg === "string") {
         
-        // 新しい解析結果が来始めたら無視モード解除
-        if (msg.startsWith("bestmove")) {
-            if (ignoreOldInfo) {
-                console.log("[DEBUG] Ignore mode cleared by bestmove");
-                ignoreOldInfo = false;
-            }
-        }
+        // waitingForReadyToAnalyze が true の間は、
+        // エンジン整理中のため、info や bestmove は全て無視する（これが重要）
+        if (waitingForReadyToAnalyze) return;
 
-        // --- 1秒時点の候補手 ---
+        // --- 1秒時点の候補手サンプリング ---
         if (msg.includes("info") && msg.includes("pv")) {
-            if (!ignoreOldInfo) {
-                const elapsed = Date.now() - searchStartTime;
-                if (elapsed <= 1000) {
-                    const parts = msg.split(" ");
-                    const pvIdx = parts.indexOf("pv");
-                    if (pvIdx !== -1 && parts[pvIdx + 1]) {
-                        lastBestMoveAt1s = parts[pvIdx + 1];
-                    }
+            const elapsed = Date.now() - searchStartTime;
+            if (elapsed <= 1000) {
+                const parts = msg.split(" ");
+                const pvIdx = parts.indexOf("pv");
+                if (pvIdx !== -1 && parts[pvIdx + 1]) {
+                    lastBestMoveAt1s = parts[pvIdx + 1];
                 }
             }
         }
 
         // --- bestmove受信 ---
         if (msg.startsWith("bestmove")) {
-            if (!ignoreOldInfo) {
-                const parts = msg.split(" ");
-                const usiMove = parts[1];
-                const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
-                
-                if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
-                    discoveryFlags[analyzingStep + 1] = true; 
-                }
-                if (usiMove === kifuMoveUsi) {
-                    matchFlags[analyzingStep + 1] = true;
-                }
+            const parts = msg.split(" ");
+            const usiMove = parts[1];
 
-                if (isWaitingRecommendation) {
-                    isWaitingRecommendation = false;
-                    const btn = document.getElementById("recommendBtn");
-                    if (btn) btn.disabled = false;
-                    // おすすめの手処理（省略せず記述）
-                    if (usiMove !== "resign" && usiMove !== "(none)") {
-                        let toX, toY, fromX = null, fromY = null, pieceChar;
-                        if (usiMove.includes("*")) {
-                            pieceChar = usiMove[0];
-                            toX = 9 - parseInt(usiMove[2]);
-                            toY = usiMove[3].charCodeAt(0) - 97;
-                        } else {
-                            fromX = 9 - parseInt(usiMove[0]);
-                            fromY = usiMove[1].charCodeAt(0) - 97;
-                            toX = 9 - parseInt(usiMove[2]);
-                            toY = usiMove[3].charCodeAt(0) - 97;
-                            const targetPiece = boardState[fromY][fromX];
-                            if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
-                        }
-                        recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
-                        render();
-                    }
-                }
+            const kifuMoveUsi = getKifuMoveUsi(analyzingStep);
+            if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
+                discoveryFlags[analyzingStep + 1] = true; 
             }
-            return; // bestmove時はここで終了
+            if (usiMove === kifuMoveUsi) {
+                matchFlags[analyzingStep + 1] = true;
+            }
+
+            if (isWaitingRecommendation) {
+                isWaitingRecommendation = false;
+                const btn = document.getElementById("recommendBtn");
+                if (btn) btn.disabled = false;
+
+                if (usiMove !== "resign" && usiMove !== "(none)") {
+                    let toX, toY, fromX = null, fromY = null, pieceChar;
+                    if (usiMove.includes("*")) {
+                        pieceChar = usiMove[0];
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                    } else {
+                        fromX = 9 - parseInt(usiMove[0]);
+                        fromY = usiMove[1].charCodeAt(0) - 97;
+                        toX = 9 - parseInt(usiMove[2]);
+                        toY = usiMove[3].charCodeAt(0) - 97;
+                        const targetPiece = boardState[fromY][fromX];
+                        if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
+                    }
+                    recommendedMove = { x: toX, y: toY, fromX: fromX, fromY: fromY, name: pieceName[pieceChar] || pieceChar };
+                    render();
+                }
+                return;
+            }
         }
 
-        // --- 詰みチェック ---
         const isMate = msg.includes("score mate");
         if (isMate && isAutoAnalyzing && analysisResolver) {
             analysisResolver();
             analysisResolver = null;
         }
 
-        // ★★★ 評価値処理 & 詳細デバッグログ ★★★
         if (msg.includes("score cp") || msg.includes("score mate")) {
-            if (ignoreOldInfo) return;
-
             const parts = msg.split(" ");
             let rawScore = 0;
-            let debugMate = false;
 
             if (msg.includes("score cp")) {
                 rawScore = parseInt(parts[parts.indexOf("cp") + 1]);
             } else if (msg.includes("score mate")) {
-                debugMate = true; // 詰みのときだけ詳細ログを出す準備
                 const mateIndex = parts.indexOf("mate");
                 const mateStr = parts[mateIndex + 1]; 
                 const m = parseInt(mateStr);
@@ -215,24 +216,9 @@ function handleEngineMessage(msg) {
                 }
             }
             
-            // --- 反転ロジックの可視化 ---
-            let scoreBeforeFlip = rawScore;
-            let didFlip = false;
-            
+            // 後手番なら評価値を反転
             if (typeof analyzingTurn !== 'undefined' && analyzingTurn === "white") {
                 rawScore = -rawScore;
-                didFlip = true;
-            }
-
-            // --- コンソールに犯人を捜すためのログを出力 ---
-            if (debugMate) { // 詰み筋が見えたときのみ表示
-                console.group(`[DEBUG_MATE_CALC] Step: ${analyzingStep}`);
-                console.log(`1. Engine Msg: ${msg}`);
-                console.log(`2. Raw Score (Before Flip): ${scoreBeforeFlip}`);
-                console.log(`3. analyzingTurn: "${analyzingTurn}"`);
-                console.log(`4. Did Flip? : ${didFlip} (Should be TRUE only if Turn is White)`);
-                console.log(`5. Final Score: ${rawScore}`);
-                console.groupEnd();
             }
 
             if (analyzingStep !== -1) {
@@ -243,8 +229,13 @@ function handleEngineMessage(msg) {
     }
 }
 
-// --- 以降は変更なし（棋譜読み込み・描画など） ---
+function sendToEngine(msg) {
+    if (typeof engineWorker !== 'undefined' && engineWorker) engineWorker.postMessage(msg);
+}
 
+/**
+ * 3. 棋譜解析
+ */
 function loadKifu() {
     const text = document.getElementById("kifuInputArea").value;
     if (!text) return alert("棋譜を入力してください");
@@ -320,6 +311,9 @@ function executeAction(action, turnColor, lastTo) {
     return { from: (fromX !== null ? {x: fromX, y: fromY} : null), to: {x: toX, y: toY} };
 }
 
+/**
+ * 4. 描画
+ */
 function applyState(state) {
     recommendedMove = null; 
     boardState = JSON.parse(JSON.stringify(state.boardState));
@@ -346,6 +340,7 @@ function applyState(state) {
     }
 }
 
+// --- 修正版 render 関数 ---
 function render() {
     const bt = document.getElementById("board");
     if (!bt) return;
@@ -355,7 +350,7 @@ function render() {
         const tr = document.createElement("tr");
         for (let x = 0; x < 9; x++) {
             const td = document.createElement("td");
-            const p = boardState[y][x];
+            const p = boardState[y][x]; 
             
             let displayPiece = p;
             let isRecommendation = false;
@@ -421,11 +416,13 @@ function render() {
     setTimeout(drawRecommendationArrow, 10);
 }
 
+// --- 修正版 renderHands 関数 ---
 function renderHands() {
     const bh = document.getElementById("blackHand"), wh = document.getElementById("whiteHand");
     if (!bh || !wh) return;
 
-    const order = ["P", "L", "N", "S", "G", "B", "R", "K"];
+    const order = ["P", "L", "N", "S", "G", "B", "R", "K"]; 
+    
     hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
@@ -435,19 +432,27 @@ function renderHands() {
     const createHandPiece = (player, p) => {
         const container = document.createElement("div");
         container.className = "hand-piece-container";
+
         if (player === "white") {
             container.classList.add("gote");
             container.style.transform = "rotate(180deg)";
         }
+
         const textSpan = document.createElement("span");
         textSpan.className = "piece-text";
         textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
+
         container.appendChild(textSpan);
         return container;
     };
 
-    hands.black.forEach(p => { bh.appendChild(createHandPiece("black", p)); });
-    hands.white.forEach(p => { wh.appendChild(createHandPiece("white", p)); });
+    hands.black.forEach(p => {
+        bh.appendChild(createHandPiece("black", p));
+    });
+
+    hands.white.forEach(p => {
+        wh.appendChild(createHandPiece("white", p));
+    });
 }
 
 function playReplayCutIn(imageName) {
@@ -459,6 +464,9 @@ function playReplayCutIn(imageName) {
     img.classList.add("cut-in-active");
 }
 
+/**
+ * 5. グラフ
+ */
 function initChart() {
     const ctx = document.getElementById('evalChart').getContext('2d');
     if (evalChart) evalChart.destroy();
@@ -509,16 +517,21 @@ function resetChartZoom() { if (evalChart) evalChart.resetZoom(); }
 
 function updateChart() {
     if (!evalChart) return;
+    
     evalChart.data.labels = replayStates.map((_, i) => i.toString());
     evalChart.data.datasets[0].data = evalHistory.map((score, i) => {
         if (score === undefined) return null;
+
+        // ★修正ポイント: しきい値を下げて、詰み関連のスコアをすべて一定値に丸める
         if (score > 20000) return 10000;
         if (score < -20000) return -10000;
+
         return score;
     });
     evalChart.update();
 
     const currentScore = evalHistory[currentStep];
+
     const evalElem = document.getElementById("numericEval");
     if (evalElem && currentScore !== undefined) {
         if (Math.abs(currentScore) >= 20000) {
@@ -540,6 +553,9 @@ function updateChartSettings() {
     updateChart();
 }
 
+/**
+ * 6. オート検討
+ */
 async function startAutoAnalysis(timePerMove) {
     const n = replayStates.length - 1;
     if (n <= 10) return alert("この棋譜は短すぎます。全自動モードには11手以上の棋譜が必要です。");
@@ -591,6 +607,9 @@ function updateUI() {
     if (st) st.textContent = (currentStep === 0) ? "開始局面" : `${currentStep} / ${totalSteps}手目`;
 }
 
+/**
+ * おすすめ機能
+ */
 function getRecommendation() {
     if (!isEngineReady) return alert("エンジンが準備中です。");
     recommendedMove = null; render();
