@@ -1,5 +1,5 @@
 // ==========================================
-// replay_logic.js - スナップショット方式（完全解決版）
+// replay_logic.js - データ欠損防止・完全版
 // ==========================================
 
 // --- グローバル変数 ---
@@ -11,15 +11,15 @@ let lastMoveInfo = { from: null, to: null };
 let evalHistory = [];
 let evalChart = null;
 let isEngineReady = false;
+let analyzingStep = -1;
+let analyzingTurn = "black";
 let isWaitingRecommendation = false;
 let analysisResolver = null;
 
 // ★重要: 解析コンテキスト管理（スナップショット）
-// エンジンが現在処理しているタスクの「正解情報（手数・手番）」をここに保持する
-// グローバル変数（currentStepなど）は見ない。
-let currentAnalysisId = 0;
-let processingAnalysisId = 0;
-let analysisContexts = {}; // IDごとの情報を保存する辞書
+let currentAnalysisId = 0;    // リクエストID
+let processingAnalysisId = 0; // 実行中ID
+let analysisContexts = {};    // IDごとの解析情報を保存
 
 // --- 全自動検討・おすすめ用の変数 ---
 let isAutoAnalyzing = false;
@@ -63,7 +63,6 @@ function formatSeconds(totalSeconds) {
     return min > 0 ? `${min}分${sec}秒` : `${sec}秒`;
 }
 
-// 棋譜の手を取得（引数で指定されたstepの手を取得する）
 function getKifuMoveUsi(step) {
     const nextState = replayStates[step + 1];
     if (!nextState || !nextState.lastMove || !nextState.lastMove.to) return null;
@@ -102,7 +101,6 @@ function generateSfen() {
 function analyzeCurrentPosition() {
     if (!isEngineReady) return;
     
-    // 新しいIDを発行し、そのIDで実行したい内容（コンテキスト）を保存
     currentAnalysisId++;
     analysisContexts[currentAnalysisId] = {
         step: currentStep,
@@ -128,7 +126,6 @@ function getRecommendation() {
     }
 
     currentAnalysisId++;
-    // コンテキストにおすすめモードであることを記録
     analysisContexts[currentAnalysisId] = {
         step: currentStep,
         turn: window.turn,
@@ -139,19 +136,19 @@ function getRecommendation() {
     sendToEngine("isready");
 }
 
-// エンジンに実際の計算を開始させる
+// 実際の解析開始（readyok受信後に呼ばれる）
 function startRealAnalysis() {
-    // 現在処理するIDを更新
     processingAnalysisId = currentAnalysisId;
     
-    // コンテキストを取得
     const ctx = analysisContexts[processingAnalysisId];
-    if (!ctx) return; // 万が一なければ終了
+    if (!ctx) return;
 
+    analyzingStep = ctx.step;
+    analyzingTurn = ctx.turn;
     searchStartTime = Date.now();
     lastBestMoveAt1s = null;
 
-    const sfen = generateSfen(); // ※generateSfenは現在のglobal stateを見るが、同期が取れている前提
+    const sfen = generateSfen();
 
     if (ctx.type === 'recommend') {
         isWaitingRecommendation = true;
@@ -161,6 +158,7 @@ function startRealAnalysis() {
         let timeLeft = 5;
         const btn = document.getElementById("recommendBtn");
         if(btn) btn.textContent = `考え中… ${timeLeft}`;
+        
         if (recommendTimer) clearInterval(recommendTimer);
         recommendTimer = setInterval(() => {
             timeLeft--;
@@ -180,6 +178,9 @@ function startRealAnalysis() {
              btn.disabled = false;
         }
         sendToEngine("position sfen " + sfen);
+        
+        // 通常・自動解析時
+        // 自動解析でも無限探索にしておき、ループ側のタイマーでstopをかける方式が最も安全
         sendToEngine("go movetime 100000"); 
     }
 }
@@ -189,23 +190,19 @@ function handleEngineMessage(msg) {
     
     else if (msg === "readyok") {
         isEngineReady = true;
+        
         if (currentAnalysisId > processingAnalysisId) {
             startRealAnalysis();
         } 
         else if (!isAutoAnalyzing && processingAnalysisId === 0) {
-             // 初回起動時など
              analyzeCurrentPosition();
         }
     }
 
     if (typeof msg === "string") {
         
-        // ★最重要修正: グローバル変数ではなく、IDに紐付いた「コンテキスト」を取得する
-        // processingAnalysisId は「今エンジンが計算しているID」を指している
+        // Contextベースでの処理（ID不一致でもContextがあれば処理する）
         const ctx = analysisContexts[processingAnalysisId];
-        
-        // コンテキストが存在しない、または極端に古いIDの残骸なら無視
-        // (ただし、今回はID管理しているので processingAnalysisId は信頼できる)
         if (!ctx) return;
 
         // 1秒時点の候補手サンプリング
@@ -225,19 +222,27 @@ function handleEngineMessage(msg) {
             const parts = msg.split(" ");
             const usiMove = parts[1];
             
-            // ★コンテキスト内の step を使って正解手を取得（これでズレない！）
+            // ★Contextの情報を使って正誤判定
             const kifuMoveUsi = getKifuMoveUsi(ctx.step);
             
-            // フラグ更新
+            let flagChanged = false;
+
+            while (discoveryFlags.length <= ctx.step + 1) discoveryFlags.push(false);
+            while (matchFlags.length <= ctx.step + 1) matchFlags.push(false);
+
+            discoveryFlags[ctx.step + 1] = false;
+            matchFlags[ctx.step + 1] = false;
+
             if (lastBestMoveAt1s && usiMove !== lastBestMoveAt1s && usiMove === kifuMoveUsi) {
                 discoveryFlags[ctx.step + 1] = true; 
+                flagChanged = true;
             }
             if (usiMove === kifuMoveUsi) {
                 matchFlags[ctx.step + 1] = true;
+                flagChanged = true;
             }
             
-            // グラフ更新（青丸などを反映）
-            updateChart();
+            if (flagChanged) updateChart();
 
             // おすすめ機能完了処理
             if (ctx.type === 'recommend') {
@@ -258,7 +263,6 @@ function handleEngineMessage(msg) {
                         fromY = usiMove[1].charCodeAt(0) - 97;
                         toX = 9 - parseInt(usiMove[2]);
                         toY = usiMove[3].charCodeAt(0) - 97;
-                        // 注意: boardStateは現在のものを使うしかないが、おすすめ時は画面も止まっているはず
                         const targetPiece = boardState[fromY][fromX]; 
                         if (targetPiece) pieceChar = targetPiece.replace("+", "").toUpperCase();
                     }
@@ -266,13 +270,17 @@ function handleEngineMessage(msg) {
                     render();
                 }
             }
+
+            // ★修正: 自動解析時は、bestmoveを受け取って初めて次へ進む
+            // これにより、データが保存される前に進んでしまうことを防ぐ
+            if (isAutoAnalyzing && analysisResolver) {
+                analysisResolver();
+                analysisResolver = null;
+            }
         }
 
-        const isMate = msg.includes("score mate");
-        if (isMate && isAutoAnalyzing && analysisResolver) {
-            analysisResolver();
-            analysisResolver = null;
-        }
+        // ★修正: 自動解析中の「詰み」によるショートカットは削除しました。
+        // 必ずbestmoveを待つことで、データの取りこぼしを防ぎます。
 
         if (msg.includes("score cp") || msg.includes("score mate")) {
             const parts = msg.split(" ");
@@ -292,12 +300,12 @@ function handleEngineMessage(msg) {
                 }
             }
             
-            // ★コンテキスト内の turn を使って反転判定（これで絶対にズレない！）
+            // Contextの手番情報を使って反転判定
             if (ctx.turn === "white") {
                 rawScore = -rawScore;
             }
 
-            // ★コンテキスト内の step に書き込む
+            // Contextのステップ位置に書き込む
             if (ctx.step !== -1) {
                 evalHistory[ctx.step] = rawScore;
                 updateChart();
@@ -407,7 +415,6 @@ function applyState(state) {
         if (evalHistory[currentStep] === undefined) {
             analyzeCurrentPosition();
         } else {
-            // 計算済みなら、IDを新しくして(古い受信を無効化しつつ)止める
             currentAnalysisId++;
             sendToEngine("stop");
             updateChart(); 
@@ -666,9 +673,17 @@ async function startAutoAnalysis(timePerMove) {
 
         let effectiveTime = (i <= 10 && timePerMove > 2000) ? 2000 : timePerMove;
         
+        // ★重要: ここはループ側の「タイムアウト」であり、エンジン停止の最終防衛ライン
+        // 基本的にはbestmoveが返ってきて analysisResolver が呼ばれるはずだが、
+        // 万が一エンジンが沈黙した場合のみ、ここで強制的に次へ行く
         await new Promise(resolve => {
             analysisResolver = resolve;
-            autoAnalysisTimer = setTimeout(() => { if (analysisResolver === resolve) { analysisResolver(); analysisResolver = null; } }, effectiveTime);
+            autoAnalysisTimer = setTimeout(() => { 
+                if (analysisResolver === resolve) { 
+                    analysisResolver(); 
+                    analysisResolver = null; 
+                } 
+            }, effectiveTime + 2000); // 余裕をもって待つ
         });
     }
     stopAutoAnalysis();
