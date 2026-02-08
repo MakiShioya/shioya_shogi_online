@@ -378,6 +378,71 @@ input, textarea {
       text-align: center;
     }
 
+    /* --- 右側の浮遊ボタンエリア --- */
+    .right-side-menu {
+      position: absolute;
+      right: 15px;
+      top: 130px; /* 上部メニューの下あたり */
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 20; /* キャラ画像より手前に */
+    }
+
+    .mission-main-btn {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(to bottom, #fff176, #fbc02d); /* 金色っぽいグラデーション */
+      border: 3px solid #fff;
+      border-radius: 50%; /* 丸いボタン */
+      color: #5d4037;
+      font-weight: bold;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      animation: float-btn 3s infinite ease-in-out; /* ふわふわ動く */
+    }
+    
+    .mission-main-btn:active {
+      transform: scale(0.95);
+    }
+
+    .mission-icon-emoji {
+      font-size: 1.5rem;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    /* ふわふわアニメーション */
+    @keyframes float-btn {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    /* ミッション用バッジ（未達成・報酬ありの数など） */
+    .mission-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: #d32f2f;
+      color: white;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid white;
+      font-weight: bold;
+      display: none; /* JSで制御 */
+    }
+
     /* チャット吹き出し・アイコン関連 */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -430,6 +495,14 @@ input, textarea {
       <button class="top-btn" style="background: #6f42c1;" onclick="openModal('helpContact')">不具合</button>
       <button class="top-btn" style="background: #6c757d;" onclick="openModal('settingsMainMenu')"> 設定 </button>
     </div>
+  </div>
+
+  <div class="right-side-menu">
+    <button class="mission-main-btn" onclick="window.location.href='mission.html'">
+      <span class="mission-icon-emoji">📜</span>
+      <div>任務</div>
+      <span id="missionBadge" class="mission-badge">!</span>
+    </button>
   </div>
 
   <div id="characterBubble" class="speech-bubble"></div>
@@ -1313,6 +1386,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
