@@ -43,7 +43,7 @@ const GAME_MISSIONS = [
   {
     id: "mission_analysis_first",
     title: "テスト４",
-    desc: "解析機能を初めて利用する",
+    desc: "未定",
     type: "use_analysis",
     target: 1,
     rewardType: "item", // アイテム報酬の例
@@ -52,3 +52,4 @@ const GAME_MISSIONS = [
   }
 
 ];
+
