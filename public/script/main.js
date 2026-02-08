@@ -840,6 +840,15 @@ function saveGameResult(res) {
       kifuData: kifu 
   };
 
+  if (typeof updateMissionProgress === "function") {
+      // 1. 「対局する」ミッションの進行 (+1回)
+      updateMissionProgress("play", 1);
+
+      // 2. 「勝利する」ミッションの進行 (勝った場合のみ +1回)
+      if (isWin) {
+          updateMissionProgress("win", 1);
+      }
+  }
   // Firestore更新
   db.collection("users").doc(user.uid).update({
       win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
