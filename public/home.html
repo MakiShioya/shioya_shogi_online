@@ -824,6 +824,7 @@ input, textarea {
     </div>
   </div>
   
+  <script src="script/missions.js"></script>
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
 <script src="script/serifu/b.js"></script>
@@ -1132,30 +1133,60 @@ input, textarea {
                 renderLobbyChat();
             }, 500); 
 
-            // ★★★ 追加：所持金 (gold) をリアルタイム監視して表示更新 ★★★
+            // ★★★ データのリアルタイム監視 ★★★
             db.collection("users").doc(user.uid).onSnapshot((doc) => {
-    if (doc.exists) {
-        const data = doc.data();
-        
-        // 1. 所持金の更新
-        const currentGold = data.gold || 0;
-        const goldEl = document.getElementById("userGoldDisplay");
-        if (goldEl) {
-            goldEl.textContent = currentGold.toLocaleString();
-        }
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    // 1. 所持金の更新
+                    const currentGold = data.gold || 0;
+                    const goldEl = document.getElementById("userGoldDisplay");
+                    if (goldEl) {
+                        goldEl.textContent = currentGold.toLocaleString();
+                    }
 
-        // 2. ★★★ メールの監視と更新 ★★★
-        const mailbox = data.mailbox || [];
-        updateMailBadge(mailbox);
-        // メールボックスが開かれているならリストも更新
-        if (document.getElementById("mailboxModal").style.display === "flex") {
-             renderMailList(mailbox);
+                    // 2. メールの監視と更新
+                    const mailbox = data.mailbox || [];
+                    updateMailBadge(mailbox);
+                    if (document.getElementById("mailboxModal").style.display === "flex") {
+                         renderMailList(mailbox);
+                    }
+                    window.currentUserMailbox = mailbox;
+
+                    // 3. ★★★ ここに追加：ミッションバッジの更新 ★★★
+                    const missions = data.missions || {};
+                    let claimableCount = 0;
+
+                    // GAME_MISSIONS（定義ファイル）が読み込まれているか確認
+                    if (typeof GAME_MISSIONS !== 'undefined') {
+                        GAME_MISSIONS.forEach(m => {
+                            const uData = missions[m.id];
+                            // 「進捗が目標以上」かつ「まだ受け取っていない」数をカウント
+                            if (uData && uData.progress >= m.target && !uData.collected) {
+                                claimableCount++;
+                            }
+                        });
+                    }
+
+                    // バッジの表示切り替え
+                    const mBadge = document.getElementById("missionBadge");
+                    if (mBadge) {
+                        if (claimableCount > 0) {
+                            mBadge.style.display = "flex";
+                            mBadge.textContent = claimableCount;
+                        } else {
+                            mBadge.style.display = "none";
+                        }
+                    }
+                    // ★★★ 追加ここまで ★★★
+                }
+            });
+        } else {
+            // 未ログイン時は 0 G に戻す
+            const goldEl = document.getElementById("userGoldDisplay");
+            if (goldEl) goldEl.textContent = "0";
         }
-        
-        // windowオブジェクトに現在のデータを保存（詳細表示などで使うため）
-        window.currentUserMailbox = mailbox;
-    }
-});
+    });
         } else {
             // 未ログイン時は 0 G に戻す
             const goldEl = document.getElementById("userGoldDisplay");
@@ -1386,6 +1417,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
