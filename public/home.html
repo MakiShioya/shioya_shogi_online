@@ -474,6 +474,26 @@ input, textarea {
       display: block;
     }
 
+    /* ★★★ メールの状態ごとの色分け ★★★ */
+    /* 1. 添付あり・未受け取り（薄い青） */
+    .mail-item.type-reward-active {
+      background-color: #e3f2fd;
+      border-left: 5px solid #2196f3; /* アクセント */
+    }
+    
+    /* 2. 添付あり・受取済み（薄い灰色） */
+    .mail-item.type-reward-claimed {
+      background-color: #f5f5f5;
+      color: #888;
+      border-left: 5px solid #bdbdbd;
+    }
+
+    /* 3. 添付なし（薄い赤） */
+    .mail-item.type-normal {
+      background-color: #ffebee;
+      border-left: 5px solid #ef5350;
+    }
+
     /* チャット吹き出し・アイコン関連 */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -1277,164 +1297,214 @@ input, textarea {
     // --- メールボックス機能 ---
 
   // バッジ（赤丸）の更新
-  function updateMailBadge(mailbox) {
-      // 未読、かつ未受け取りの数をカウント（あるいは単に全件数でもOK）
-      const unreadCount = mailbox.length; 
-      const badge = document.getElementById("mailBadge");
-      
-      if (unreadCount > 0) {
-          badge.textContent = unreadCount;
-          badge.style.display = "flex";
-      } else {
-          badge.style.display = "none";
-      }
-  }
+  // --- ★★★ メールボックス機能（仕様変更版） ★★★ ---
 
-  // メールボックスを開く
-  function openMailbox() {
-      openModal('mailboxModal');
-      backToMailList(); // 常にリスト画面から開始
-      // データがあれば描画
-      if (window.currentUserMailbox) {
-          renderMailList(window.currentUserMailbox);
-      }
-  }
+    // バッジ更新
+    function updateMailBadge(mailbox) {
+        // 未読、かつ「報酬があるのにまだ受け取っていない」メールの数をカウントするように変更
+        // (単に未読管理したい場合は既読フラグが必要ですが、今回は「未受取」を通知します)
+        let unreadCount = 0;
+        mailbox.forEach(m => {
+            // 報酬がある かつ まだ受け取っていない(claimedフラグがない/false)
+            if (m.reward && !m.claimed) {
+                unreadCount++;
+            }
+            // ※もし「報酬なし」のメールも含めて単に「未読」を管理したい場合は
+            // 別途 read: false などのフラグを管理する必要があります。
+        });
+        
+        const badge = document.getElementById("mailBadge");
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount;
+            badge.style.display = "flex";
+        } else {
+            badge.style.display = "none";
+        }
+    }
 
-  // リスト描画
-  function renderMailList(mailbox) {
-      const listEl = document.getElementById("mailList");
-      const noMsg = document.getElementById("noMailMsg");
-      listEl.innerHTML = "";
+    // メールボックスを開く
+    function openMailbox() {
+        openModal('mailboxModal');
+        backToMailList(); 
+        if (window.currentUserMailbox) {
+            renderMailList(window.currentUserMailbox);
+        }
+    }
 
-      // 新しい順にソート（作成日時があれば）
-      // ここでは配列の後ろに追加される想定なので、逆順にする
-      const sortedMail = [...mailbox].reverse();
+    // リスト描画（色分けロジック追加）
+    function renderMailList(mailbox) {
+        const listEl = document.getElementById("mailList");
+        const noMsg = document.getElementById("noMailMsg");
+        listEl.innerHTML = "";
 
-      if (sortedMail.length === 0) {
-          noMsg.style.display = "block";
-      } else {
-          noMsg.style.display = "none";
-          sortedMail.forEach((mail, index) => {
-              const li = document.createElement("li");
-              li.className = "mail-item";
-              // まだ詳細を見ていない等のフラグがあれば classList.add('unread')
-              
-              // 日付のフォーマット
-              let dateStr = "---";
-              if (mail.date && mail.date.toDate) {
-                  const d = mail.date.toDate();
-                  dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
-              } else if (mail.date) {
-                  // Timestampでない場合
-                  dateStr = "日付不明"; 
-              }
+        // 新しい順にソート
+        const sortedMail = [...mailbox].reverse();
 
-              li.innerHTML = `
-                  <div class="mail-subject">${mail.subject}</div>
-                  <div class="mail-date">${dateStr}</div>
-              `;
-              
-              // クリックで詳細へ。 IDを使うのが確実
-              li.onclick = () => showMailDetail(mail);
-              
-              listEl.appendChild(li);
-          });
-      }
-  }
+        if (sortedMail.length === 0) {
+            noMsg.style.display = "block";
+        } else {
+            noMsg.style.display = "none";
+            sortedMail.forEach((mail) => {
+                const li = document.createElement("li");
+                
+                // ★★★ 色分けのクラス適用 ★★★
+                let itemClass = "mail-item";
+                
+                if (mail.reward) {
+                    if (mail.claimed) {
+                        // 添付あり・受取済 → 薄い灰色
+                        itemClass += " type-reward-claimed";
+                    } else {
+                        // 添付あり・未受取 → 薄い青
+                        itemClass += " type-reward-active";
+                    }
+                } else {
+                    // 添付なし → 薄い赤
+                    itemClass += " type-normal";
+                }
+                
+                li.className = itemClass;
+                
+                // 日付フォーマット
+                let dateStr = "---";
+                if (mail.date && mail.date.toDate) {
+                    const d = mail.date.toDate();
+                    dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                } else if (mail.date) {
+                    dateStr = "日付不明"; 
+                }
 
-  // 詳細画面を表示
-  function showMailDetail(mail) {
-      document.getElementById("mailListView").style.display = "none";
-      document.getElementById("mailDetailView").style.display = "flex";
+                // 件名の表示（受取済なら「(済)」をつけるなどしても分かりやすい）
+                let subjectText = mail.subject;
+                if (mail.reward && mail.claimed) {
+                    subjectText = "【済】 " + subjectText;
+                }
 
-      document.getElementById("detailSubject").textContent = mail.subject;
-      
-      let dateStr = "";
-      if (mail.date && mail.date.toDate) {
-           dateStr = mail.date.toDate().toLocaleString();
-      }
-      document.getElementById("detailDate").textContent = dateStr;
-      
-      document.getElementById("detailBody").textContent = mail.body;
+                li.innerHTML = `
+                    <div class="mail-subject">${subjectText}</div>
+                    <div class="mail-date">${dateStr}</div>
+                `;
+                
+                li.onclick = () => showMailDetail(mail);
+                
+                listEl.appendChild(li);
+            });
+        }
+    }
 
-      // 報酬エリアの設定
-      const rewardArea = document.getElementById("rewardArea");
-      const rewardBtn = document.getElementById("claimRewardBtn");
-      
-      if (mail.reward) {
-          rewardArea.style.display = "block";
-          document.getElementById("rewardContent").textContent = mail.reward.name || "報酬あり";
-          
-          // ボタンに受け取り処理を紐付け
-          rewardBtn.onclick = () => claimMailReward(mail);
-      } else {
-          rewardArea.style.display = "none";
-      }
-  }
+    // 詳細画面を表示（ボタン制御追加）
+    function showMailDetail(mail) {
+        document.getElementById("mailListView").style.display = "none";
+        document.getElementById("mailDetailView").style.display = "flex";
 
-  // リストに戻る
-  function backToMailList() {
-      document.getElementById("mailListView").style.display = "flex";
-      document.getElementById("mailDetailView").style.display = "none";
-  }
+        document.getElementById("detailSubject").textContent = mail.subject;
+        
+        let dateStr = "";
+        if (mail.date && mail.date.toDate) {
+             dateStr = mail.date.toDate().toLocaleString();
+        }
+        document.getElementById("detailDate").textContent = dateStr;
+        
+        document.getElementById("detailBody").textContent = mail.body;
 
-  // ★★★ 報酬受け取り処理 ★★★
-  async function claimMailReward(mail) {
-      const user = firebase.auth().currentUser;
-      if (!user) return;
-      
-      if (!confirm("報酬を受け取りますか？")) return;
+        const rewardArea = document.getElementById("rewardArea");
+        const rewardBtn = document.getElementById("claimRewardBtn");
+        
+        if (mail.reward) {
+            rewardArea.style.display = "block";
+            document.getElementById("rewardContent").textContent = mail.reward.name || "報酬あり";
+            
+            // ★★★ 受取状況によってボタンを変える ★★★
+            if (mail.claimed) {
+                // 受取済みの場合
+                rewardBtn.textContent = "受取済み";
+                rewardBtn.style.background = "#ccc";
+                rewardBtn.disabled = true;
+                rewardBtn.onclick = null;
+            } else {
+                // 未受取の場合
+                rewardBtn.textContent = "受け取る";
+                rewardBtn.style.background = "#28a745";
+                rewardBtn.disabled = false;
+                rewardBtn.onclick = () => claimMailReward(mail);
+            }
+        } else {
+            rewardArea.style.display = "none";
+        }
+    }
 
-      const userRef = db.collection("users").doc(user.uid);
+    // リストに戻る
+    function backToMailList() {
+        document.getElementById("mailListView").style.display = "flex";
+        document.getElementById("mailDetailView").style.display = "none";
+    }
 
-      try {
-          await db.runTransaction(async (transaction) => {
-              const doc = await transaction.get(userRef);
-              if (!doc.exists) throw "User not found";
+    // 報酬受け取り処理（削除せずフラグ更新）
+    async function claimMailReward(mail) {
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+        
+        if (!confirm("報酬を受け取りますか？")) return;
 
-              const userData = doc.data();
-              const currentMailbox = userData.mailbox || [];
-              
-              // 1. 対象のメールが存在するか確認
-              const targetIndex = currentMailbox.findIndex(m => m.id === mail.id);
-              if (targetIndex === -1) {
-                   throw "このメールは既に存在しないか、受け取り済みです。";
-              }
+        const userRef = db.collection("users").doc(user.uid);
 
-              // 2. 報酬を付与するための更新データ作成
-              const updates = {};
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(userRef);
+                if (!doc.exists) throw "User not found";
 
-              if (mail.reward.type === "gold") {
-                  updates.gold = (userData.gold || 0) + Number(mail.reward.value);
-              } else if (mail.reward.type === "item") {
-                  const currentInv = userData.inventory || [];
-                  if (!currentInv.includes(mail.reward.value)) {
-                      updates.inventory = firebase.firestore.FieldValue.arrayUnion(mail.reward.value);
-                  }
-              }
+                const userData = doc.data();
+                const currentMailbox = userData.mailbox || [];
+                
+                // 対象のメールを探す
+                const targetIndex = currentMailbox.findIndex(m => m.id === mail.id);
+                if (targetIndex === -1) {
+                     throw "このメールは見つかりませんでした。";
+                }
+                
+                // 既に受け取っていないか念のためチェック
+                if (currentMailbox[targetIndex].claimed) {
+                    throw "この報酬は既に受け取っています。";
+                }
 
-              // 3. メールボックスからこのメールを削除
-              // (または既読/受取済フラグを立てる設計も可ですが、今回は削除します)
-              const newMailbox = currentMailbox.filter(m => m.id !== mail.id);
-              updates.mailbox = newMailbox;
+                const updates = {};
 
-              transaction.update(userRef, updates);
-          });
+                // 報酬の付与
+                if (mail.reward.type === "gold") {
+                    updates.gold = (userData.gold || 0) + Number(mail.reward.value);
+                } else if (mail.reward.type === "item") {
+                    const currentInv = userData.inventory || [];
+                    if (!currentInv.includes(mail.reward.value)) {
+                        updates.inventory = firebase.firestore.FieldValue.arrayUnion(mail.reward.value);
+                    }
+                }
 
-          // 成功時
-          alert(`受け取りました！\n${mail.reward.name}`);
-          backToMailList(); // 一覧に戻る
+                // ★★★ メールを削除せず、claimedフラグを立てて更新する ★★★
+                // 配列内のオブジェクトを直接書き換える
+                currentMailbox[targetIndex].claimed = true;
+                
+                // 更新した配列全体をセット
+                updates.mailbox = currentMailbox;
 
-      } catch (e) {
-          console.error(e);
-          alert("受け取りに失敗しました: " + e);
-      }
-  }
+                transaction.update(userRef, updates);
+            });
+
+            alert(`受け取りました！\n${mail.reward.name}`);
+            
+            // 成功したらリストに戻る（自動的に再描画され、グレーになります）
+            backToMailList(); 
+
+        } catch (e) {
+            console.error(e);
+            alert("受け取りに失敗しました: " + e);
+        }
+    }
     
 </script>
 
 </body>
 </html>
+
 
 
 
