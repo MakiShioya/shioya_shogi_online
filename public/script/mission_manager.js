@@ -2,7 +2,7 @@
 
 // Firestoreの user.missions = { "mission_id": { progress: 0, collected: false } } という構造を想定
 
-// 進捗を更新する関数（対局終了時などに呼ぶ）
+// 進捗を更新する関数
 async function updateMissionProgress(actionType, incrementAmount = 1) {
   const user = firebase.auth().currentUser;
   if (!user) return;
@@ -19,34 +19,36 @@ async function updateMissionProgress(actionType, incrementAmount = 1) {
       let updated = false;
 
       // 定義済みミッションの中から、該当するタイプを探す
-      GAME_MISSIONS.forEach(mission => {
-        if (mission.type === actionType) {
-          const mData = currentMissions[mission.id] || { progress: 0, collected: false };
-          
-          // まだ報酬を受け取っておらず、目標未達の場合のみ更新
-          if (!mData.collected && mData.progress < mission.target) {
-            mData.progress += incrementAmount;
-            
-            // 上限キャップ
-            if (mData.progress > mission.target) mData.progress = mission.target;
+      // ※ GAME_MISSIONS が定義されている前提
+      if (typeof GAME_MISSIONS !== 'undefined') {
+          GAME_MISSIONS.forEach(mission => {
+            if (mission.type === actionType) {
+              const mData = currentMissions[mission.id] || { progress: 0, collected: false };
+              
+              // まだ報酬を受け取っておらず、目標未達の場合のみ更新
+              if (!mData.collected && mData.progress < mission.target) {
+                mData.progress += incrementAmount;
+                
+                // 上限キャップ
+                if (mData.progress > mission.target) mData.progress = mission.target;
 
-            currentMissions[mission.id] = mData;
-            updated = true;
+                currentMissions[mission.id] = mData;
+                updated = true;
 
-            // 達成通知（簡易的なログ）
-            if (mData.progress >= mission.target) {
-              console.log(`ミッション達成！: ${mission.title}`);
-              // ここでトースト通知などを出しても良い
+                // 達成通知
+                if (mData.progress >= mission.target) {
+                  console.log(`ミッション達成！: ${mission.title}`);
+                }
+              }
             }
-          }
-        }
-      });
+          });
+      }
 
       if (updated) {
         transaction.update(userRef, { missions: currentMissions });
       }
     });
-    console.log(`Mission progress updated: type=${actionType}`);
+    // console.log(`Mission progress updated: type=${actionType}`);
   } catch (e) {
     console.error("Mission update error:", e);
   }
@@ -95,9 +97,11 @@ async function claimMissionReward(missionId) {
       transaction.update(userRef, updates);
     });
     
+    // 成功メッセージ
     alert(`報酬を受け取りました！\n${missionDef.rewardType === 'gold' ? missionDef.rewardValue + ' G' : missionDef.rewardName}`);
-    // 画面再描画（mission.htmlで定義する関数を呼ぶ）
-    if (typeof renderMissions === "function") renderMissions();
+
+    // ★★★ 修正点：ここで renderMissions() を呼ばないようにしました ★★★
+    // mission.html の onSnapshot が自動的に画面を更新してくれます
 
   } catch (e) {
     console.error("Claim error:", e);
