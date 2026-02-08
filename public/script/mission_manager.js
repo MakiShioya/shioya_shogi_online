@@ -55,10 +55,16 @@ async function updateMissionProgress(actionType, incrementAmount = 1) {
 }
 
 // 報酬を受け取る関数
+// script/mission_manager.js
+
+// ... (前半の updateMissionProgress はそのまま) ...
+
+// 報酬を受け取る関数（修正版：メールボックスへ送信）
 async function claimMissionReward(missionId) {
   const user = firebase.auth().currentUser;
   if (!user) return;
 
+  // 定義ファイルからミッション情報を取得
   const missionDef = GAME_MISSIONS.find(m => m.id === missionId);
   if (!missionDef) return;
 
@@ -73,38 +79,49 @@ async function claimMissionReward(missionId) {
       const userMissions = userData.missions || {};
       const mData = userMissions[missionId];
 
-      // チェック：データ存在、目標達成済み、未受け取り
+      // バリデーション：データ存在、目標達成済み、未受け取り
       if (!mData || mData.progress < missionDef.target || mData.collected) {
         throw "Cannot claim reward";
       }
 
-      // 1. 受け取り済みフラグを立てる
+      // 1. ミッション自体の「受取済」フラグを立てる
+      // (これでミッション画面では「受取済」になり、ボタンが押せなくなります)
       mData.collected = true;
       userMissions[missionId] = mData;
       
-      const updates = { missions: userMissions };
+      // 2. メールボックスに新しいメールを追加する
+      const rewardName = (missionDef.rewardType === 'gold') 
+                         ? `${missionDef.rewardValue} G` 
+                         : (missionDef.rewardName || "アイテム");
 
-      // 2. 報酬の付与
-      if (missionDef.rewardType === "gold") {
-        updates.gold = (userData.gold || 0) + missionDef.rewardValue;
-      } else if (missionDef.rewardType === "item") {
-        const currentInv = userData.inventory || [];
-        if (!currentInv.includes(missionDef.rewardValue)) {
-          updates.inventory = firebase.firestore.FieldValue.arrayUnion(missionDef.rewardValue);
-        }
-      }
+      const newMail = {
+          id: `mail_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, // ユニークID
+          subject: `ミッション達成：${missionDef.title}`,
+          body: `ミッション「${missionDef.title}」を達成しました！\n報酬を受け取ってください。\n\n内容：${missionDef.desc}`,
+          date: new Date(), // Firestore Timestampとして保存される
+          reward: {
+              type: missionDef.rewardType,
+              value: missionDef.rewardValue,
+              name: rewardName
+          }
+      };
 
-      transaction.update(userRef, updates);
+      // 既存のメールボックス配列に追加（なければ作成）
+      const currentMailbox = userData.mailbox || [];
+      const updatedMailbox = [...currentMailbox, newMail];
+
+      // 更新実行
+      transaction.update(userRef, { 
+          missions: userMissions,
+          mailbox: updatedMailbox
+      });
     });
     
     // 成功メッセージ
-    alert(`報酬を受け取りました！\n${missionDef.rewardType === 'gold' ? missionDef.rewardValue + ' G' : missionDef.rewardName}`);
-
-    // ★★★ 修正点：ここで renderMissions() を呼ばないようにしました ★★★
-    // mission.html の onSnapshot が自動的に画面を更新してくれます
+    alert("報酬がメールボックスに届きました！\nホーム画面のメールから受け取ってください。");
 
   } catch (e) {
     console.error("Claim error:", e);
-    alert("報酬の受け取りに失敗しました。");
+    alert("処理に失敗しました。");
   }
 }
