@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ミッション - しおや将棋</title>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <style>
+    body { background: #f0e68c; font-family: sans-serif; margin: 0; padding: 0; }
+    .header { background: #8b4513; color: white; padding: 15px; display: flex; align-items: center; }
+    .back-btn { background: #ccc; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; margin-right: 15px; }
+    .container { max-width: 600px; margin: 20px auto; padding: 10px; }
+    
+    .mission-card {
+      background: white; border: 2px solid #8b4513; border-radius: 8px;
+      padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .mission-info { flex: 1; }
+    .mission-title { font-weight: bold; font-size: 1.1em; color: #333; }
+    .mission-desc { font-size: 0.9em; color: #666; margin: 5px 0; }
+    .progress-bar { background: #eee; height: 10px; border-radius: 5px; width: 100%; margin-top: 5px; overflow: hidden; }
+    .progress-fill { background: #28a745; height: 100%; width: 0%; transition: width 0.3s; }
+    
+    .action-area { margin-left: 15px; text-align: center; min-width: 80px; }
+    .reward-tag { font-size: 0.8em; color: #d32f2f; font-weight: bold; margin-bottom: 5px; }
+    
+    .claim-btn { background: #d32f2f; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .claim-btn:disabled { background: #ccc; cursor: default; }
+    .status-text { font-size: 0.9em; font-weight: bold; color: #28a745; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='home.html'">戻る</button>
+  <h2>ミッション</h2>
+</div>
+
+<div class="container" id="missionList">
+  <p style="text-align:center;">読み込み中...</p>
+</div>
+
+<script src="script/auth.js"></script>
+<script src="script/missions.js"></script>
+<script src="script/mission_manager.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    firebase.auth().onAuthStateChanged((user) => {
+      if (user) {
+        // リアルタイムで監視して画面更新
+        db.collection("users").doc(user.uid).onSnapshot((doc) => {
+          if (doc.exists) renderMissions(doc.data().missions || {});
+        });
+      }
+    });
+  });
+
+  function renderMissions(userMissions) {
+    const container = document.getElementById("missionList");
+    container.innerHTML = "";
+
+    GAME_MISSIONS.forEach(mission => {
+      const uData = userMissions[mission.id] || { progress: 0, collected: false };
+      const isCompleted = uData.progress >= mission.target;
+      const progressPercent = Math.min(100, (uData.progress / mission.target) * 100);
+      
+      const card = document.createElement("div");
+      card.className = "mission-card";
+      
+      // 報酬テキストの作成
+      let rewardText = "";
+      if (mission.rewardType === "gold") rewardText = `${mission.rewardValue} G`;
+      else if (mission.rewardType === "item") rewardText = mission.rewardName || "アイテム";
+
+      // ボタン等の表示内容
+      let actionHTML = "";
+      if (uData.collected) {
+        actionHTML = `<div class="status-text">受取済</div>`;
+      } else if (isCompleted) {
+        actionHTML = `<button class="claim-btn" onclick="claimMissionReward('${mission.id}')">受取る</button>`;
+      } else {
+        actionHTML = `<div style="font-size:0.8em;">${uData.progress}/${mission.target}</div>`;
+      }
+
+      card.innerHTML = `
+        <div class="mission-info">
+          <div class="mission-title">${mission.title}</div>
+          <div class="mission-desc">${mission.desc}</div>
+          <div class="reward-tag">報酬: ${rewardText}</div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${progressPercent}%;"></div>
+          </div>
+        </div>
+        <div class="action-area">
+          ${actionHTML}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+</script>
+</body>
+</html>
