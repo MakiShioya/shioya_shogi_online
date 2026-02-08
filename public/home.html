@@ -443,6 +443,37 @@ input, textarea {
       display: none; /* JSで制御 */
     }
 
+    /* --- 新しいメールボタン（右メニュー用） --- */
+    .mail-main-btn {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(to bottom, #ffcc80, #ef6c00); /* オレンジのグラデーション */
+      border: 3px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      animation: float-btn 3s infinite ease-in-out;
+      animation-delay: 1.5s; /* 任務ボタンと動きのタイミングをズラす */
+    }
+    
+    .mail-main-btn:active {
+      transform: scale(0.95);
+    }
+
+    .mail-icon-emoji {
+      font-size: 1.5rem;
+      margin-bottom: 2px;
+      display: block;
+    }
+
     /* チャット吹き出し・アイコン関連 */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -484,11 +515,7 @@ input, textarea {
 
     <div>
       
-      <button class="top-btn news-btn" onclick="openModal('newsModal')"> 告知 </button>
-      <button class="top-btn mail-btn" onclick="openMailbox()">
-        メール
-        <span id="mailBadge" class="notification-badge">0</span>
-      </button>
+     
       <button class="top-btn" style="background: #e91e63;" onclick="switchModal('settingsMainMenu', 'characterSettingsMenu')">キャラ</button>
       <button class="top-btn stats-btn" onclick="showMyStats()"> 戦績 </button>
       <button class="top-btn" style="background: #17a2b8;" onclick="openModal('helpMainMenu')">ヘルプ</button>
@@ -497,6 +524,13 @@ input, textarea {
     </div>
   </div>
 
+  <div class="right-side-menu">
+    <button class="mail-main-btn" onclick="openMailbox()">
+      <span class="mail-icon-emoji">✉</span>
+      <div>メール</div>
+      <span id="mailBadge" class="notification-badge">0</span>
+    </button>
+    
   <div class="right-side-menu">
     <button class="mission-main-btn" onclick="window.location.href='mission.html'">
       <span class="mission-icon-emoji">📜</span>
@@ -1417,6 +1451,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
