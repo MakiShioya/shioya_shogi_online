@@ -1165,19 +1165,18 @@ input, textarea {
                 renderLobbyChat();
             }, 500); 
 
-            // ★★★ データのリアルタイム監視 ★★★
             db.collection("users").doc(user.uid).onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     
-                    // 1. 所持金の更新
+                    // 1. 所持金
                     const currentGold = data.gold || 0;
                     const goldEl = document.getElementById("userGoldDisplay");
                     if (goldEl) {
                         goldEl.textContent = currentGold.toLocaleString();
                     }
 
-                    // 2. メールの監視と更新
+                    // 2. メールボックス
                     const mailbox = data.mailbox || [];
                     updateMailBadge(mailbox);
                     if (document.getElementById("mailboxModal").style.display === "flex") {
@@ -1185,22 +1184,17 @@ input, textarea {
                     }
                     window.currentUserMailbox = mailbox;
 
-                    // 3. ★★★ ここに追加：ミッションバッジの更新 ★★★
+                    // 3. ミッションバッジ
                     const missions = data.missions || {};
                     let claimableCount = 0;
-
-                    // GAME_MISSIONS（定義ファイル）が読み込まれているか確認
                     if (typeof GAME_MISSIONS !== 'undefined') {
                         GAME_MISSIONS.forEach(m => {
                             const uData = missions[m.id];
-                            // 「進捗が目標以上」かつ「まだ受け取っていない」数をカウント
                             if (uData && uData.progress >= m.target && !uData.collected) {
                                 claimableCount++;
                             }
                         });
                     }
-
-                    // バッジの表示切り替え
                     const mBadge = document.getElementById("missionBadge");
                     if (mBadge) {
                         if (claimableCount > 0) {
@@ -1210,17 +1204,9 @@ input, textarea {
                             mBadge.style.display = "none";
                         }
                     }
-                    // ★★★ 追加ここまで ★★★
                 }
             });
         } else {
-            // 未ログイン時は 0 G に戻す
-            const goldEl = document.getElementById("userGoldDisplay");
-            if (goldEl) goldEl.textContent = "0";
-        }
-    });
-        } else {
-            // 未ログイン時は 0 G に戻す
             const goldEl = document.getElementById("userGoldDisplay");
             if (goldEl) goldEl.textContent = "0";
         }
@@ -1449,6 +1435,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
