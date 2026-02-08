@@ -283,6 +283,101 @@ input, textarea {
       margin-top: 8px;
     }
 
+    /* --- メールボックス用スタイル --- */
+    .mail-btn {
+      position: relative;
+      background: #ff9800; /* オレンジ */
+    }
+    
+    /* 未読バッジ（赤丸） */
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      border: 2px solid white;
+      z-index: 10;
+      display: none; /* 初期は非表示 */
+    }
+
+    /* メールリスト */
+    #mailList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      text-align: left;
+    }
+
+    .mail-item {
+      background: white;
+      border-bottom: 1px solid #ccc;
+      padding: 15px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    .mail-item:first-child { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .mail-item:last-child { border-bottom: none; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+    .mail-item:active { background: #f0f0f0; }
+    
+    .mail-item.unread {
+      background: #fff8dc; /* 未読は少し黄色く */
+      font-weight: bold;
+    }
+    .mail-item.unread::before {
+      content: '●';
+      color: #d35400;
+      margin-right: 8px;
+    }
+
+    .mail-subject { font-size: 1rem; color: #333; flex: 1; }
+    .mail-date { font-size: 0.8rem; color: #888; margin-left: 10px; }
+
+    /* メール詳細画面 */
+    #mailDetailView {
+      display: none; /* 初期非表示 */
+      flex-direction: column;
+      height: 100%;
+      text-align: left;
+    }
+    .mail-header {
+      border-bottom: 2px solid #8b4513;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .mail-detail-subject { font-size: 1.2rem; font-weight: bold; color: #8b4513; }
+    .mail-detail-date { font-size: 0.85rem; color: #666; margin-top: 5px; }
+    .mail-body {
+      flex: 1;
+      font-size: 1rem;
+      line-height: 1.6;
+      white-space: pre-wrap; /* 改行を反映 */
+      background: rgba(255,255,255,0.6);
+      padding: 10px;
+      border-radius: 5px;
+      overflow-y: auto;
+    }
+    .mail-reward-area {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff;
+      border: 2px dashed #ff9800;
+      border-radius: 10px;
+      text-align: center;
+    }
+
     /* チャット吹き出し・アイコン関連 */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
@@ -323,7 +418,12 @@ input, textarea {
     </div>
 
     <div>
+      
       <button class="top-btn news-btn" onclick="openModal('newsModal')"> 告知 </button>
+      <button class="top-btn mail-btn" onclick="openMailbox()">
+        メール
+        <span id="mailBadge" class="notification-badge">0</span>
+      </button>
       <button class="top-btn" style="background: #e91e63;" onclick="switchModal('settingsMainMenu', 'characterSettingsMenu')">キャラ</button>
       <button class="top-btn stats-btn" onclick="showMyStats()"> 戦績 </button>
       <button class="top-btn" style="background: #17a2b8;" onclick="openModal('helpMainMenu')">ヘルプ</button>
@@ -615,6 +715,41 @@ input, textarea {
     <button class="sub-btn" style="background:#666;" onclick="closeModal('characterSettingsMenu')">閉じる</button>
   </div>
 </div>
+
+  <div id="mailboxModal" class="overlay">
+    <div class="modal-box" style="height: 70vh;">
+      
+      <div id="mailListView" style="display: flex; flex-direction: column; height: 100%;">
+        <h3 style="color: #8b4513; margin-top: 0;">受信トレイ</h3>
+        <div class="modal-body" style="background: #eee; border-radius: 5px; padding: 0;">
+          <ul id="mailList">
+            <li style="padding:20px; color:#666;">読み込み中...</li>
+          </ul>
+          <div id="noMailMsg" style="display:none; padding:20px; color:#666;">メールはありません</div>
+        </div>
+        <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="closeModal('mailboxModal')">閉じる</button>
+      </div>
+
+      <div id="mailDetailView">
+        <div class="mail-header">
+          <div class="mail-detail-subject" id="detailSubject">件名</div>
+          <div class="mail-detail-date" id="detailDate">日付</div>
+        </div>
+        <div class="mail-body" id="detailBody">
+          本文
+        </div>
+        
+        <div id="rewardArea" class="mail-reward-area">
+          <div style="font-weight:bold; margin-bottom:5px;">🎁 添付アイテム</div>
+          <div id="rewardContent" style="color:#d35400; font-size:1.1rem; margin-bottom:10px;">1000 G</div>
+          <button id="claimRewardBtn" class="sub-btn" style="background: #28a745;">受け取る</button>
+        </div>
+
+        <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="backToMailList()">戻る</button>
+      </div>
+
+    </div>
+  </div>
   
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
@@ -926,15 +1061,28 @@ input, textarea {
 
             // ★★★ 追加：所持金 (gold) をリアルタイム監視して表示更新 ★★★
             db.collection("users").doc(user.uid).onSnapshot((doc) => {
-                if (doc.exists) {
-                    const data = doc.data();
-                    const currentGold = data.gold || 0;
-                    const goldEl = document.getElementById("userGoldDisplay");
-                    if (goldEl) {
-                        goldEl.textContent = currentGold.toLocaleString(); // カンマ区切りで表示 (例: 1,500)
-                    }
-                }
-            });
+    if (doc.exists) {
+        const data = doc.data();
+        
+        // 1. 所持金の更新
+        const currentGold = data.gold || 0;
+        const goldEl = document.getElementById("userGoldDisplay");
+        if (goldEl) {
+            goldEl.textContent = currentGold.toLocaleString();
+        }
+
+        // 2. ★★★ メールの監視と更新 ★★★
+        const mailbox = data.mailbox || [];
+        updateMailBadge(mailbox);
+        // メールボックスが開かれているならリストも更新
+        if (document.getElementById("mailboxModal").style.display === "flex") {
+             renderMailList(mailbox);
+        }
+        
+        // windowオブジェクトに現在のデータを保存（詳細表示などで使うため）
+        window.currentUserMailbox = mailbox;
+    }
+});
         } else {
             // 未ログイン時は 0 G に戻す
             const goldEl = document.getElementById("userGoldDisplay");
@@ -1003,10 +1151,169 @@ input, textarea {
             }
         }, { passive: false });
     });
+
+    // --- メールボックス機能 ---
+
+  // バッジ（赤丸）の更新
+  function updateMailBadge(mailbox) {
+      // 未読、かつ未受け取りの数をカウント（あるいは単に全件数でもOK）
+      const unreadCount = mailbox.length; 
+      const badge = document.getElementById("mailBadge");
+      
+      if (unreadCount > 0) {
+          badge.textContent = unreadCount;
+          badge.style.display = "flex";
+      } else {
+          badge.style.display = "none";
+      }
+  }
+
+  // メールボックスを開く
+  function openMailbox() {
+      openModal('mailboxModal');
+      backToMailList(); // 常にリスト画面から開始
+      // データがあれば描画
+      if (window.currentUserMailbox) {
+          renderMailList(window.currentUserMailbox);
+      }
+  }
+
+  // リスト描画
+  function renderMailList(mailbox) {
+      const listEl = document.getElementById("mailList");
+      const noMsg = document.getElementById("noMailMsg");
+      listEl.innerHTML = "";
+
+      // 新しい順にソート（作成日時があれば）
+      // ここでは配列の後ろに追加される想定なので、逆順にする
+      const sortedMail = [...mailbox].reverse();
+
+      if (sortedMail.length === 0) {
+          noMsg.style.display = "block";
+      } else {
+          noMsg.style.display = "none";
+          sortedMail.forEach((mail, index) => {
+              const li = document.createElement("li");
+              li.className = "mail-item";
+              // まだ詳細を見ていない等のフラグがあれば classList.add('unread')
+              
+              // 日付のフォーマット
+              let dateStr = "---";
+              if (mail.date && mail.date.toDate) {
+                  const d = mail.date.toDate();
+                  dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+              } else if (mail.date) {
+                  // Timestampでない場合
+                  dateStr = "日付不明"; 
+              }
+
+              li.innerHTML = `
+                  <div class="mail-subject">${mail.subject}</div>
+                  <div class="mail-date">${dateStr}</div>
+              `;
+              
+              // クリックで詳細へ。 IDを使うのが確実
+              li.onclick = () => showMailDetail(mail);
+              
+              listEl.appendChild(li);
+          });
+      }
+  }
+
+  // 詳細画面を表示
+  function showMailDetail(mail) {
+      document.getElementById("mailListView").style.display = "none";
+      document.getElementById("mailDetailView").style.display = "flex";
+
+      document.getElementById("detailSubject").textContent = mail.subject;
+      
+      let dateStr = "";
+      if (mail.date && mail.date.toDate) {
+           dateStr = mail.date.toDate().toLocaleString();
+      }
+      document.getElementById("detailDate").textContent = dateStr;
+      
+      document.getElementById("detailBody").textContent = mail.body;
+
+      // 報酬エリアの設定
+      const rewardArea = document.getElementById("rewardArea");
+      const rewardBtn = document.getElementById("claimRewardBtn");
+      
+      if (mail.reward) {
+          rewardArea.style.display = "block";
+          document.getElementById("rewardContent").textContent = mail.reward.name || "報酬あり";
+          
+          // ボタンに受け取り処理を紐付け
+          rewardBtn.onclick = () => claimMailReward(mail);
+      } else {
+          rewardArea.style.display = "none";
+      }
+  }
+
+  // リストに戻る
+  function backToMailList() {
+      document.getElementById("mailListView").style.display = "flex";
+      document.getElementById("mailDetailView").style.display = "none";
+  }
+
+  // ★★★ 報酬受け取り処理 ★★★
+  async function claimMailReward(mail) {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+      
+      if (!confirm("報酬を受け取りますか？")) return;
+
+      const userRef = db.collection("users").doc(user.uid);
+
+      try {
+          await db.runTransaction(async (transaction) => {
+              const doc = await transaction.get(userRef);
+              if (!doc.exists) throw "User not found";
+
+              const userData = doc.data();
+              const currentMailbox = userData.mailbox || [];
+              
+              // 1. 対象のメールが存在するか確認
+              const targetIndex = currentMailbox.findIndex(m => m.id === mail.id);
+              if (targetIndex === -1) {
+                   throw "このメールは既に存在しないか、受け取り済みです。";
+              }
+
+              // 2. 報酬を付与するための更新データ作成
+              const updates = {};
+
+              if (mail.reward.type === "gold") {
+                  updates.gold = (userData.gold || 0) + Number(mail.reward.value);
+              } else if (mail.reward.type === "item") {
+                  const currentInv = userData.inventory || [];
+                  if (!currentInv.includes(mail.reward.value)) {
+                      updates.inventory = firebase.firestore.FieldValue.arrayUnion(mail.reward.value);
+                  }
+              }
+
+              // 3. メールボックスからこのメールを削除
+              // (または既読/受取済フラグを立てる設計も可ですが、今回は削除します)
+              const newMailbox = currentMailbox.filter(m => m.id !== mail.id);
+              updates.mailbox = newMailbox;
+
+              transaction.update(userRef, updates);
+          });
+
+          // 成功時
+          alert(`受け取りました！\n${mail.reward.name}`);
+          backToMailList(); // 一覧に戻る
+
+      } catch (e) {
+          console.error(e);
+          alert("受け取りに失敗しました: " + e);
+      }
+  }
+    
 </script>
 
 </body>
 </html>
+
 
 
 
