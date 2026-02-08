@@ -12,6 +12,15 @@ const GAME_MISSIONS = [
     rewardValue: 100
   },
   {
+    id: "mission_win_1_copy",
+    title: "テスト１コピー",
+    desc: "対局で1回勝利する",
+    type: "win",      // 判定タイプ
+    target: 1,        // 目標回数
+    rewardType: "gold",
+    rewardValue: 100
+  },
+  {
     id: "mission_win_10",
     title: "テスト２",
     desc: "対局で累計10回勝利する",
@@ -41,4 +50,5 @@ const GAME_MISSIONS = [
     rewardValue: "board_isi",
     rewardName: "大理石の将棋盤" // 表示用
   }
+
 ];
