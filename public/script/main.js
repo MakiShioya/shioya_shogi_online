@@ -330,7 +330,7 @@ function executeMove(sel, x, y, doPromote) {
           cpuSkillUseCount++;
 
           // 演出
-          playSkillEffect(null, "skill.mp3", "red");
+          playSkillEffect("boss_cutin.png", ["boss.mp3", "skill.mp3"], "dark");
           statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
 
           // ★重要：演出のために、実際の指し手を少し遅らせる
