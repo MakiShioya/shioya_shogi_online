@@ -164,8 +164,8 @@ io.on('connection', (socket) => {
                 status: 'waiting',
                 blackCharId: 'default',
                 whiteCharId: 'default',
-                p1SkillCount: 0,
-                p2SkillCount: 0,
+                blackSkillPoint: 0, 
+                whiteSkillPoint: 0,
                 isGameOver: false,
                 // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
                 remainingTime: { black: 1200, white: 1200 }, // ★ここにカンマが必要でした
@@ -325,9 +325,8 @@ io.on('connection', (socket) => {
             serverGame.moveCount = clientGame.moveCount;
             serverGame.kifu = clientGame.kifu;
             
-            // スキル回数も同期
-            if (clientGame.p1SkillCount !== undefined) serverGame.p1SkillCount = clientGame.p1SkillCount;
-            if (clientGame.p2SkillCount !== undefined) serverGame.p2SkillCount = clientGame.p2SkillCount;
+            if (clientGame.blackSkillPoint !== undefined) serverGame.blackSkillPoint = clientGame.blackSkillPoint;
+            if (clientGame.whiteSkillPoint !== undefined) serverGame.whiteSkillPoint = clientGame.whiteSkillPoint;
 
             // remainingTimeのコピー処理は削除（上で計算済みのため）
             // lastMoveTimeの更新も削除（上で更新済みのため）
@@ -341,7 +340,16 @@ io.on('connection', (socket) => {
     socket.on('skill activate', (data) => {
         const roomId = socket.roomId;
         if (!roomId || !games[roomId]) return;
+        
+        // ★消費後のポイントをサーバーに保存
+        if (data.blackSkillPoint !== undefined) games[roomId].blackSkillPoint = data.blackSkillPoint;
+        if (data.whiteSkillPoint !== undefined) games[roomId].whiteSkillPoint = data.whiteSkillPoint;
+
+        // 相手に「技が使われたよ」と通知
         socket.to(roomId).emit('skill activate', data);
+        
+        // 手番交代（※技によっては交代しない場合もあるので、クライアントの指示に従うのがベストですが、
+        // ここでは一旦そのままにしておきます。クライアント側で厳密に制御します）
         if (games[roomId]) games[roomId].turn = (data.turn === 'black' ? 'white' : 'black');
     });
 
@@ -354,8 +362,8 @@ io.on('connection', (socket) => {
         games[roomId].turn = "black";
         games[roomId].moveCount = 0;
         games[roomId].kifu = [];
-        games[roomId].p1SkillCount = 0;
-        games[roomId].p2SkillCount = 0;
+        games[roomId].blackSkillPoint = 0;
+        games[roomId].whiteSkillPoint = 0;
         games[roomId].isGameOver = false;
         
         io.to(roomId).emit('game reset');
