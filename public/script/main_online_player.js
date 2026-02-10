@@ -42,8 +42,18 @@ cpuEnabled = false;
 // オンライン専用変数 (let必要)
 let p1Skill = null;      
 let p2Skill = null;      
-let p1SkillCount = 0;    
-let p2SkillCount = 0;    
+// ★Online PvP用：ゲージポイント管理
+let blackSkillPoint = 0; // 先手のポイント
+let whiteSkillPoint = 0; // 後手のポイント
+const MAX_SKILL_POINT = 1000;
+
+// ★ポイント設定
+const SP_CONFIG = {
+  MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
+  DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 10, "+P": 30, "L": 20, "+L": 40, "N": 20, "+N": 40, "S": 30, "+S": 50, "G": 40, "B": 60, "+B": 100, "R": 60, "+R": 100, "K": 1000 },
+  PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
+}; 
 
 let pendingMove = null; 
 let myRole = null;
@@ -187,8 +197,9 @@ function setupSocketListeners(myUserId) {
         
         lastMoveTo = savedState.lastMoveTo || null;
         lastMoveFrom = savedState.lastMoveFrom || null;
-        p1SkillCount = savedState.p1SkillCount || 0;
-        p2SkillCount = savedState.p2SkillCount || 0;
+        blackSkillPoint = savedState.blackSkillPoint || 0;
+        whiteSkillPoint = savedState.whiteSkillPoint || 0;
+        updatePvPGaugeUI();
 
         if (savedState.blackCharId && savedState.whiteCharId) {
             initSkills(savedState.blackCharId, savedState.whiteCharId);
@@ -222,6 +233,7 @@ function setupSocketListeners(myUserId) {
     });
 
     socket.on('shogi move', (data) => {
+        // ★パターン1：時戻し（TimeWarp）の場合
         if (data.isTimeWarp) {
             console.log("TimeWarp受信");
             const state = data.gameState;
@@ -234,21 +246,40 @@ function setupSocketListeners(myUserId) {
             turn = state.turn;
             moveCount = state.moveCount;
             kifu = state.kifu;
-            p1SkillCount = state.p1SkillCount;
-            p2SkillCount = state.p2SkillCount;
+
+            // ▼▼▼ 変更箇所A：回数ではなくポイントを同期 ▼▼▼
+            // p1SkillCount = state.p1SkillCount; // 削除
+            // p2SkillCount = state.p2SkillCount; // 削除
             
+            if (state.blackSkillPoint !== undefined) blackSkillPoint = state.blackSkillPoint;
+            if (state.whiteSkillPoint !== undefined) whiteSkillPoint = state.whiteSkillPoint;
+            updatePvPGaugeUI(); // ゲージの見た目を更新
+            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
             render();
             startTimer();
             statusDiv.textContent = "相手が時を戻しました！";
+        
+        // ★パターン2：通常の指し手の場合
         } else {
+            // 時間の同期
             if (data.gameState && data.gameState.remainingTime) {
                 remainingTime = data.gameState.remainingTime;
-                updateTimeDisplay(); // 画面の数字を即座に更新
+                updateTimeDisplay(); 
             }
+
+            // ▼▼▼ 変更箇所B：ポイント情報を同期 ▼▼▼
+            // 相手が計算した最新のポイント情報があれば、それを自分の画面にも反映させる
+            if (data.gameState) {
+                if (data.gameState.blackSkillPoint !== undefined) blackSkillPoint = data.gameState.blackSkillPoint;
+                if (data.gameState.whiteSkillPoint !== undefined) whiteSkillPoint = data.gameState.whiteSkillPoint;
+                updatePvPGaugeUI(); // ゲージの見た目を更新
+            }
+            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
             executeMove(data.sel, data.x, data.y, data.promote, true);
         }
     });
-
     socket.on('skill activate', (data) => {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
@@ -344,17 +375,11 @@ function initSkills(blackId, whiteId) {
 function syncGlobalSkillState() {
     if (turn === "black") {
         currentSkill = p1Skill;
-        skillUseCount = p1SkillCount; 
     } else {
         currentSkill = p2Skill;
-        skillUseCount = p2SkillCount; 
     }
-    if (currentSkill) {
-        const max = currentSkill.maxUses || 1;
-        window.skillUsed = (skillUseCount >= max);
-    } else {
-        window.skillUsed = true;
-    }
+    // ★ポイント制なので「使用済みロック」は常に解除しておく
+    window.skillUsed = false; 
     updateSkillButton();
 }
 
@@ -363,36 +388,50 @@ function updateSkillButton() {
     if (!skillBtn) return;
 
     let mySkill = null;
-    let myUseCount = 0;
-
-    if (myRole === "black") { mySkill = p1Skill; myUseCount = p1SkillCount; }
-    else if (myRole === "white") { mySkill = p2Skill; myUseCount = p2SkillCount; }
-    else { skillBtn.style.display = "none"; return; }
-
-    if (mySkill) {
-        skillBtn.style.display = "inline-block";
-        skillBtn.textContent = mySkill.name;
-        if (mySkill.buttonStyle) Object.assign(skillBtn.style, mySkill.buttonStyle);
-        else {
-            skillBtn.style.backgroundColor = "#ff4500";
-            skillBtn.style.color = "white";
-            skillBtn.style.border = "none";
-        }
-        const max = mySkill.maxUses || 1;
-        const isUsedUp = (myUseCount >= max);
-        if (turn !== myRole || isUsedUp) {
-            skillBtn.disabled = true;
-            skillBtn.style.opacity = 0.5;
-            if (isUsedUp) {
-                skillBtn.style.backgroundColor = "#ccc";
-                skillBtn.style.border = "1px solid #999";
-            }
-        } else {
-            skillBtn.disabled = false;
-            skillBtn.style.opacity = 1.0;
-        }
-    } else {
+    if (myRole === "black") mySkill = p1Skill;
+    else if (myRole === "white") mySkill = p2Skill;
+    
+    // 観戦者などはボタン非表示
+    if (!mySkill || (myRole !== "black" && myRole !== "white")) {
         skillBtn.style.display = "none";
+        return;
+    }
+
+    skillBtn.style.display = "inline-block";
+    skillBtn.textContent = mySkill.name;
+
+    // スタイル適用
+    if (mySkill.buttonStyle) {
+        Object.assign(skillBtn.style, mySkill.buttonStyle);
+    } else {
+        skillBtn.style.backgroundColor = "#ff4500";
+        skillBtn.style.color = "white";
+        skillBtn.style.border = "none";
+    }
+
+    // ★コスト判定
+    let cost = 0;
+    if (typeof mySkill.getCost === "function") {
+        cost = mySkill.getCost();
+    }
+
+    // 自分の持っているポイント
+    const currentPoint = (myRole === "black") ? blackSkillPoint : whiteSkillPoint;
+    
+    const canAfford = (currentPoint >= cost);
+    const isMyTurn = (turn === myRole);
+    const conditionMet = mySkill.canUse();
+
+    if (canAfford && isMyTurn && conditionMet) {
+        skillBtn.disabled = false;
+        skillBtn.style.opacity = 1.0;
+        skillBtn.style.filter = "none";
+    } else {
+        skillBtn.disabled = true;
+        skillBtn.style.opacity = 0.6;
+        // ポイント不足が原因ならグレーアウト
+        if (!canAfford) skillBtn.style.filter = "grayscale(100%)";
+        else skillBtn.style.filter = "none";
     }
 }
 
@@ -401,9 +440,22 @@ function toggleSkillMode() {
     if (myRole && turn !== myRole) return;
     if (!currentSkill) return;
     if (isSkillTargeting) return;
-    if (window.skillUsed) { alert("必殺技はもう使えません。"); return; }
-    if (!currentSkill.canUse()) { alert("発動条件を満たしていません。"); return; }
-    document.getElementById("skillModal").style.display = "flex";
+
+    // ★コストチェック
+    let cost = (typeof currentSkill.getCost === "function") ? currentSkill.getCost() : 0;
+    const currentPoint = (turn === "black") ? blackSkillPoint : whiteSkillPoint;
+
+    if (currentPoint < cost) {
+        alert(`ポイントが足りません (必要: ${cost}, 所持: ${Math.floor(currentPoint)})`);
+        return;
+    }
+
+    if (!currentSkill.canUse()) {
+        alert("現在は必殺技の発動条件を満たしていません。");
+        return;
+    }
+    const modal = document.getElementById("skillModal");
+    if (modal) modal.style.display = "flex";
 }
 
 function confirmSkillActivate() {
@@ -546,7 +598,7 @@ function onCellClick(x, y) {
         const isWhite = piece === piece.toLowerCase();
         if (turn === "black" && isWhite) return; 
         if (turn === "white" && !isWhite) return;
-        selected = { x, y, fromHand: false };
+        selected = { x, y, fromHand: false, player: turn };
         legalMoves = getLegalMoves(x, y);
         if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
         render();
@@ -593,6 +645,7 @@ function movePieceWithSelected(sel, x, y) {
 }
 
 function executeMove(sel, x, y, doPromote, fromNetwork = false) {
+    const boardBefore = boardState.map(r => r.slice());
     history.push(deepCopyState());
     if (sel.fromHand) lastMoveFrom = null; else lastMoveFrom = { x: sel.x, y: sel.y }; 
 
@@ -662,10 +715,10 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
             turn: turn,
             moveCount: moveCount,
             kifu: kifu,
-            p1SkillCount: p1SkillCount,
-            p2SkillCount: p2SkillCount,
+            blackSkillPoint: blackSkillPoint,
+            whiteSkillPoint: whiteSkillPoint,
             // ★★★ 【追加】現在の残り時間をパケットに含める ★★★
-            remainingTime: remainingTime, 
+            remainingTime: remainingTime,
             
             blackCharId: sessionStorage.getItem('online_black_char'),
             whiteCharId: sessionStorage.getItem('online_white_char')
@@ -673,6 +726,54 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
         // 変更なし
         socket.emit('shogi move', { sel: sel, x: x, y: y, promote: doPromote, gameState: newState });
     }
+
+    if (!gameOver) {
+        let gain = 0;
+        const getPoint = (configCategory, pieceCode) => {
+            const raw = pieceCode.toUpperCase();
+            const base = raw.replace("+", "");
+            if (configCategory[raw] !== undefined) return configCategory[raw];
+            if (configCategory[base] !== undefined) return configCategory[base];
+            return 10;
+        };
+
+        if (sel.fromHand) {
+            const piece = boardState[y][x]; 
+            gain += getPoint(SP_CONFIG.DROP, piece);
+        } else {
+            const piece = boardState[y][x];
+            gain += getPoint(SP_CONFIG.MOVE, piece);
+        }
+        if (sel.promoted) {
+            const piece = boardState[y][x].replace("+","");
+            gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
+        }
+        // 簡易判定：盤面更新前に相手の駒があった場所へ移動したか？
+        // (厳密な boardBefore がないため、簡易的に pieceBefore と boardState[y][x] の関係等では取れないので、
+        //  AI版と同じく executeMove の冒頭で const boardBefore = ... を宣言するのがベストですが、
+        //  ここでは「移動先に駒があったら捕獲」とみなすロジックが必要。
+        //  ただし executeMove内では既に boardState が更新されているため、
+        //  このままだと「捕獲」のポイントが入らない可能性があります。
+        //  ★修正案: executeMove の一番最初の行に const boardBefore = boardState.map(r => r.slice()); を追加してください)
+        
+        // ★後述の補足に従って boardBefore を定義済みとして書きます
+        const captured = (typeof boardBefore !== 'undefined') ? boardBefore[y][x] : "";
+        if (captured !== "") {
+            gain += getPoint(SP_CONFIG.CAPTURE, captured);
+        }
+        
+        // ポイント加算
+        if (sel.player === "black") {
+            blackSkillPoint += gain;
+            if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
+        } else if (sel.player === "white") {
+            whiteSkillPoint += gain;
+            if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+        }
+        
+        updatePvPGaugeUI();
+    }
+    // ▲▲▲ ここまで ▲▲▲
 
     if (moveCount >= 500) {
         gameOver = true; winner = null;
@@ -1258,4 +1359,39 @@ function applyUserSkin() {
             }
         }
     }).catch(console.error);
+}
+
+// ★★★ Online PvP用ゲージ更新関数 ★★★
+function updatePvPGaugeUI() {
+    // --- 先手(Black)用ゲージ ---
+    const bBar = document.getElementById("skillGaugeBar"); // 右側（自分用エリア）
+    const bText = document.getElementById("skillGaugeText");
+    const bCost = document.getElementById("nextCostText");
+
+    // もし自分が後手なら、右側には「後手ゲージ」を表示すべきかもしれないが、
+    // ここでは単純化のため「右＝先手、左＝後手」で固定するか、
+    // あるいは「右＝自分、左＝相手」にするなら myRole で判定が必要。
+    // 今回はAI戦と同じく「右＝Black(先手)、左＝White(後手)」の固定レイアウトと仮定します。
+    // (もし逆にするなら updateHandLayout のように入れ替えロジックが必要です)
+
+    if (bBar && bText) {
+        const pct = (blackSkillPoint / MAX_SKILL_POINT) * 100;
+        bBar.style.height = pct + "%";
+        bText.textContent = Math.floor(blackSkillPoint);
+    }
+    
+    // --- 後手(White)用ゲージ ---
+    const wBar = document.getElementById("cpuSkillGaugeBar"); // 左側（敵用エリア）
+    const wText = document.getElementById("cpuSkillGaugeText");
+    
+    if (wBar && wText) {
+        const pct = (whiteSkillPoint / MAX_SKILL_POINT) * 100;
+        wBar.style.height = pct + "%";
+        wText.textContent = Math.floor(whiteSkillPoint);
+        if (whiteSkillPoint >= MAX_SKILL_POINT) wBar.classList.add("gauge-max");
+        else wBar.classList.remove("gauge-max");
+    }
+    
+    // ボタンの再評価
+    updateSkillButton();
 }
