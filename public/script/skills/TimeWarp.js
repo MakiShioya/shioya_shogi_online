@@ -8,7 +8,7 @@ const TimeWarp = {
 
   // ★新しいコスト設定（最強技なので高コスト）
   baseCost: 300,     // 初回300pt（かなり溜めないと使えない）
-  costGrowth: 500,   // 2回目は800pt必要（実質連発不可能）
+  costGrowth: 200,   // 2回目は800pt必要（実質連発不可能）
 
   buttonStyle: {
     backgroundColor: "#DAA520",
@@ -80,3 +80,4 @@ const TimeWarp = {
     return "時を戻しました";
   }
 };
+
