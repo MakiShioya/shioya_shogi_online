@@ -648,7 +648,7 @@ input, textarea {
 
 
   
-
+  <div id="bg-image"></div>
 
   <div class="user-info-bar">
     <div>
@@ -1010,41 +1010,7 @@ input, textarea {
 
     </div>
   </div>
-  <script>
-  // 表示したいチップスのリスト（自由に追加してください！）
-const loadingTipsList = [
-    "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
-    "【tips】オンライン対局は、先に入室した方が先手になります。",
-    "【tips】棋譜からは自分のこれまでの棋譜を分析することもできます。",
-    "【tips】メニューボタンから設定やヘルプに素早くアクセス可能です。",
-    "【tips】ホーム画面のキャラや対局中のBGMはメニューから変更できます。"
-];
-
-function showRandomTips() {
-    const tipEl = document.getElementById('loading-tips');
-    if (!tipEl) return;
-    const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
-    tipEl.textContent = randomTip;
-}
-
-// ページ読み込み時の処理を更新
-window.addEventListener('load', () => {
-    // 最初に1つチップスを表示
-    showRandomTips();
-    
-    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
-    const tipsInterval = setInterval(showRandomTips, 3000);
-
-    const loader = document.getElementById('loading-screen');
-    setTimeout(() => {
-        clearInterval(tipsInterval); // 消去前にタイマーを止める
-        loader.style.opacity = '0';
-        setTimeout(() => {
-            loader.style.display = 'none';
-        }, 500);
-    }, 1500); // 演出のために最低1.5秒は見せる
-});
-    </script>
+  
   <script src="script/missions.js"></script>
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
@@ -1052,8 +1018,6 @@ window.addEventListener('load', () => {
 <script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
   <script>
-
-    
     // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
 
@@ -1749,7 +1713,41 @@ function addMessageToLobbyChatFirestore(data) {
     }
 
 
+// 表示したいチップスのリスト（自由に追加してください！）
+const loadingTipsList = [
+    "【ヒント】キャラクターにはそれぞれ固有の必殺技があります。",
+    "【豆知識】オンライン対局は、先に入室した方が先手になります。",
+    "【ヒント】戦績ボタンから自分のこれまでの勝敗を確認できます。",
+    "【豆知識】メニューボタンから設定やヘルプに素早くアクセス可能です。",
+    "【ヒント】チャットでは他のプレイヤーと交流を楽しめます。",
+    "【豆知識】瀬戸フォントが反映されない時はページを再読み込みしてください。"
+];
 
+function showRandomTips() {
+    const tipEl = document.getElementById('loading-tips');
+    if (!tipEl) return;
+    const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+    tipEl.textContent = randomTip;
+}
+
+// ページ読み込み時の処理を更新
+window.addEventListener('load', () => {
+    // 最初に1つチップスを表示
+    showRandomTips();
+    
+    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
+    const tipsInterval = setInterval(showRandomTips, 3000);
+
+    const loader = document.getElementById('loading-screen');
+    setTimeout(() => {
+        clearInterval(tipsInterval); // 消去前にタイマーを止める
+        loader.style.opacity = '0';
+        setTimeout(() => {
+            loader.style.display = 'none';
+        }, 500);
+    }, 1500); // 演出のために最低1.5秒は見せる
+});
+    
 </script>
 
 </body>
