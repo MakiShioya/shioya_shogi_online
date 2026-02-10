@@ -565,7 +565,7 @@ function onCellClick(x, y) {
                 // 1. まず時を戻す
                 undoMove(); 
 
-                // 2. ★修正：コスト消費（時を戻した後にポイントを減らす）
+                // 2. コスト消費
                 if (typeof currentSkill.getCost === "function") {
                     const cost = currentSkill.getCost();
                     if (turn === "black") {
@@ -573,20 +573,19 @@ function onCellClick(x, y) {
                     } else {
                         whiteSkillPoint = Math.max(0, whiteSkillPoint - cost);
                     }
-                    updatePvPGaugeUI(); // ゲージ更新
+                    updatePvPGaugeUI(); 
                 }
 
                 syncGlobalSkillState();
 
                 if (socket) {
-                    // 3. ★修正：発動通知にポイント情報を含める
+                    // ★修正：ポイント情報を含めて送信
                     socket.emit('skill activate', { 
                         x: 0, y: 0, turn: turn, isFinished: true,
                         blackSkillPoint: blackSkillPoint, 
                         whiteSkillPoint: whiteSkillPoint
                     });
 
-                    // 4. ★修正：盤面同期データもポイント制に書き換え
                     const newState = deepCopyState(); 
                     const sendState = {
                         boardState: newState.boardState, 
@@ -594,7 +593,7 @@ function onCellClick(x, y) {
                         turn: newState.turn,
                         moveCount: newState.moveCount, 
                         kifu: newState.kifu,
-                        // ここを修正
+                        // ★修正：カウントではなくポイントを送信
                         blackSkillPoint: blackSkillPoint,
                         whiteSkillPoint: whiteSkillPoint,
                         
@@ -615,7 +614,7 @@ function onCellClick(x, y) {
             // ---------------------------------------------------
             const result = currentSkill.execute(x, y);
 
-            // 1. ★追加：コスト消費処理
+            // 1. コスト消費処理
             if (typeof currentSkill.getCost === "function") {
                 const cost = currentSkill.getCost();
                 if (turn === "black") {
@@ -623,10 +622,10 @@ function onCellClick(x, y) {
                 } else {
                     whiteSkillPoint = Math.max(0, whiteSkillPoint - cost);
                 }
-                updatePvPGaugeUI(); // ゲージ更新
+                updatePvPGaugeUI(); 
             }
 
-            // 2. ★修正：発動通知にポイント情報を含める
+            // 2. ★修正：ポイント情報を含めて送信
             if (socket) {
                 socket.emit('skill activate', { 
                     x: x, y: y, turn: turn, isFinished: (result !== null),
@@ -647,7 +646,7 @@ function onCellClick(x, y) {
     }
     
     // ---------------------------------------------------
-    // 通常の駒選択処理（ここは前回の修正通り）
+    // 通常の駒選択処理
     // ---------------------------------------------------
     if (!selected) {
         const piece = boardState[y][x];
@@ -656,7 +655,6 @@ function onCellClick(x, y) {
         if (turn === "black" && isWhite) return; 
         if (turn === "white" && !isWhite) return;
         
-        // player: turn があることを確認
         selected = { x, y, fromHand: false, player: turn };
         
         legalMoves = getLegalMoves(x, y);
@@ -1259,12 +1257,12 @@ function processSkillAfterEffect(skillObj, result, playerColor) {
         if (endsTurn) {
             kifu.push(""); kifu[kifu.length - 1] = result;
             moveCount++; 
-            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
+            // 古いカウント処理を削除しました
             turn = (turn === "black" ? "white" : "black");
         } else {
             const movePart = result.split("：")[1] || result;
             lastSkillKifu = movePart; 
-            if (playerColor === "black") p1SkillCount++; else p2SkillCount++;
+            // 古いカウント処理を削除しました
         }
     }
     
