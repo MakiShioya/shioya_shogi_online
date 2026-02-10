@@ -704,7 +704,7 @@ if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleActio
           cpuSkillUseCount++;
 
           // 演出
-          playSkillEffect(null, "skill.mp3", "red");
+          playSkillEffect("boss_cutin.png", ["boss.mp3", "skill.mp3"], "dark"); 
           statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
 
           // 演出の時間分待ってから、本来の指し手を実行
