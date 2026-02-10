@@ -576,7 +576,7 @@ input, textarea {
   /* ★追加：最初は非表示にして、瀬戸フォントが来たら表示する */
   visibility: hidden; 
 }
-    #loading-screen.ready {
+#loading-screen.font-loaded {
   visibility: visible;
 }
 
@@ -651,7 +651,10 @@ input, textarea {
     ];
     
     // チップスを即座にセット
-    document.getElementById('loading-tips').textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+    const tipContainer = document.getElementById('loading-tips');
+if (tipContainer) {
+    tipContainer.textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+}
 
     // ★重要：フォントの読み込みを待ってからロード画面の内容を表示する
     document.fonts.ready.then(function() {
@@ -1745,6 +1748,7 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
+
 
 
 
