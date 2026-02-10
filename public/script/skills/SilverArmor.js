@@ -1,11 +1,15 @@
 const SilverArmor = {
-  name: "必殺技",
+  name: "SilverArmor",
   
-  // 状態管理用変数
-  step: 0,        // 0:駒選択待ち, 1:移動先選択待ち
-  sourcePos: null,// 選んだ駒の座標
+  // 状態管理用変数（そのまま）
+  step: 0,        
+  sourcePos: null,
 
-  // デザイン設定
+  // ★コスト設定（守りの技なので安めに）
+  baseCost: 30,
+  costGrowth: 30,
+
+  // デザイン設定（そのまま）
   buttonStyle: {
     backgroundColor: "#A9A9A9",
     color: "#FFFFFF",
@@ -16,10 +20,16 @@ const SilverArmor = {
     fontWeight: "bold"
   },
 
-  // リセット処理
+  // ★コスト計算（追加）
+  getCost: function() {
+    return this.baseCost + (skillUseCount * this.costGrowth);
+  },
+
+  // リセット処理（そのまま）
   reset: function() {
     this.step = 0;
     this.sourcePos = null;
+    // オレンジ色のハイライトを消す処理
     for(let y=0; y<9; y++) {
         for(let x=0; x<9; x++) {
             if(pieceStyles[y][x] === "orange") pieceStyles[y][x] = null;
@@ -27,46 +37,47 @@ const SilverArmor = {
     }
   },
 
-  // 発動条件
+  // 発動条件（修正）
   canUse: function() {
-    if (skillUsed) return false;
-
-    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
-    
-    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    // 1. 手番チェック
     if (typeof myRole !== 'undefined') {
         if (turn !== myRole) return false;
-    }
-    // 2. CPU対戦の場合 (cpuSide変数が存在する)
-    else if (typeof cpuSide !== 'undefined') {
+    } else if (typeof cpuSide !== 'undefined') {
         if (turn === cpuSide) return false;
     }
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
+    // ★2. コストチェック（ここを書き換え）
+    if (typeof playerSkillPoint !== 'undefined') {
+        if (playerSkillPoint < this.getCost()) return false;
+    }
     
-    // 30手目以降でないと使えない（例）
-    //if (moveCount < 30) return false;
-    
-    // 自分の銀系駒があるか
+    // 3. 自分の銀系駒があるか
     const allies = this.findAllies();
     return allies.length > 0;
   },
 
-  // ターゲット取得
+  // ターゲット取得（変更なし）
   getValidTargets: function() {
     // ステップ0：動かす駒（銀など）を選ばせる
     if (this.step === 0) {
-        // ★改良：移動後に「詰み」にならない駒だけを選べるようにする
-        // （すべての移動先が反則になる駒は、そもそも選ばせない）
         const allies = this.findAllies();
         const validAllies = [];
 
+        // 全ての銀について、動かした後に王手にならないかチェック
         allies.forEach(src => {
-            // この駒を動かしたとき、どこか1つでも安全な移動先があるか？
-            // 仮想的に this.sourcePos をセットして検証
+            // 現在の状態を保存
+            const originalStep = this.step;
             const originalSource = this.sourcePos;
+            
+            // 仮想的にこの駒を選んだことにしてチェック
+            this.step = 1; // getSafeKingSurroundings が sourcePos を使うため
             this.sourcePos = src;
+            
             const targets = this.getSafeKingSurroundings();
-            this.sourcePos = originalSource; // 戻す
+            
+            // 元に戻す
+            this.step = originalStep;
+            this.sourcePos = originalSource;
 
             if (targets.length > 0) {
                 validAllies.push(src);
@@ -76,20 +87,20 @@ const SilverArmor = {
     } 
     // ステップ1：移動先（玉の周り）を選ばせる
     else {
-        // ★改良：王手にならない場所だけを返す
         return this.getSafeKingSurroundings();
     }
   },
 
-  // 自分の銀・成銀・成桂・成香を探す
+  // 自分の銀・成銀・成桂・成香を探す（変更なし）
   findAllies: function() {
     const targets = [];
     const targetTypes = (turn === "black") 
       ? ["S", "+S", "+N", "+L"] 
-      : ["s", "+s", "+n", "+l"];
+      : ["s", "+s", "+n", "+l"]; // 後手の駒文字は小文字
 
     for (let y = 0; y < 9; y++) {
       for (let x = 0; x < 9; x++) {
+        // ※ boardStateの文字と比較（小文字変換などはしない）
         if (targetTypes.includes(boardState[y][x])) {
           targets.push({ x, y });
         }
@@ -98,14 +109,14 @@ const SilverArmor = {
     return targets;
   },
 
-  // ★新規追加：王手回避チェック付きの移動先取得
+  // 王手回避チェック付きの移動先取得（変更なし）
   getSafeKingSurroundings: function() {
     const targets = [];
-    const king = findKing(turn);
+    const king = (typeof findKing === 'function') ? findKing(turn) : null;
     if (!king) return [];
-    if (!this.sourcePos) return []; // 元の駒が決まってないと判定不可
+    if (!this.sourcePos) return []; 
 
-    // 1. まず単純な空きマス候補を取得
+    // 1. 玉の周囲の空きマス
     const candidates = [];
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -121,22 +132,19 @@ const SilverArmor = {
       }
     }
 
-    // 2. 候補ごとに「実際に動かしてみて王手にならないか」チェック
-    // 現在の盤面を一時保存（ディープコピーではない簡易退避）
+    // 2. 実際に動かして王手チェック
     const srcPiece = boardState[this.sourcePos.y][this.sourcePos.x];
 
     candidates.forEach(cand => {
-        // 仮に動かす
-        boardState[this.sourcePos.y][this.sourcePos.x] = ""; // 元を空に
-        boardState[cand.y][cand.x] = srcPiece;               // 先に置く
+        // 仮移動
+        boardState[this.sourcePos.y][this.sourcePos.x] = ""; 
+        boardState[cand.y][cand.x] = srcPiece;               
 
-        // 王手されていないかチェック
-        // ※ rules.js の isKingInCheck 関数を使用
         if (!isKingInCheck(turn)) {
             targets.push(cand);
         }
 
-        // 盤面を戻す
+        // 復元
         boardState[cand.y][cand.x] = "";
         boardState[this.sourcePos.y][this.sourcePos.x] = srcPiece;
     });
@@ -144,20 +152,18 @@ const SilverArmor = {
     return targets;
   },
 
-  // 玉の周囲の空きマスを探す（旧関数・念のため残す）
-  getKingSurroundings: function() {
-      // 内部的には安全版を呼ぶように変更
-      return this.getSafeKingSurroundings();
-  },
-
-  // 実行処理
+  // 実行処理（変更なし）
   execute: function(x, y) {
     // --- ステップ0：駒を選んだとき ---
     if (this.step === 0) {
         this.sourcePos = { x, y };
         this.step = 1; 
         
+        // 選択中の駒をオレンジ色に
         pieceStyles[y][x] = "orange";
+        
+        // ★重要：ステップ0の時点では技は完了していないので null を返す
+        // メイン処理側で null が返ってきたら「手番交代なし＆ポイント消費なし」とみなす
         return null; 
     }
 
@@ -165,32 +171,41 @@ const SilverArmor = {
     const src = this.sourcePos;
     const piece = boardState[src.y][src.x]; 
 
+    // 元の場所を消す
     boardState[src.y][src.x] = "";
     pieceStyles[src.y][src.x] = null; 
 
+    // 新しい場所に置く
     boardState[y][x] = piece;
+    
+    // エフェクト用スタイル（緑色）
     pieceStyles[y][x] = "green";
 
     if (typeof playSkillEffect === "function") {
       playSkillEffect("SilverArmor.PNG", ["SilverArmor.mp3", "skill.mp3"], "silver");
     }
 
+    // 完了処理
     this.step = 0;
     this.sourcePos = null;
 
+    // 棋譜用文字列生成
     const files = ["９","８","７","６","５","４","３","２","１"];
     const ranks = ["一","二","三","四","五","六","七","八","九"];
     const mark = (turn === "black") ? "▲" : "△";
     
+    // 駒名の日本語変換
     const pieceNames = {
         "S": "銀", "s": "銀", "+S": "成銀", "+s": "成銀",
         "+N": "成桂", "+n": "成桂", "+L": "成香", "+l": "成香"
     };
-    const pName = pieceNames[piece] || "銀";
+    // 万が一辞書になくてもそのまま表示
+    const pName = pieceNames[piece] || pieceNames[piece.toUpperCase()] || "銀";
+    
     const srcFile = 9 - src.x;
     const srcRank = src.y + 1;
 
-    // 手番は交代（endsTurn=true相当）
+    // 技完了の文字列を返す
     return `${moveCount + 1}手目：${mark}${files[x]}${ranks[y]}${pName}(${srcFile}${srcRank})★`;
   }
 };
