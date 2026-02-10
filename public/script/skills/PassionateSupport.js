@@ -1,11 +1,13 @@
-// script/skills/PassionateSupport.js
-
 const PassionateSupport = {
-  name: "必殺技",
+  name: "PassionateSupport",
   
   // ★設定
   endsTurn: false, // 技を使っても手番が終わらない
-  maxUses: 2,      // 1局に2回まで使える
+  // maxUses: 2,   <-- ★削除
+
+  // ★新しいコスト設定
+  baseCost: 40,      // 初回コスト（手頃な設定）
+  costGrowth: 40,    // 使うたびに40ずつ増える
 
   // ★デザイン
   buttonStyle: {
@@ -18,28 +20,31 @@ const PassionateSupport = {
     fontWeight: "bold"
   },
 
+  // ★コスト計算（必須）
+  getCost: function() {
+    return this.baseCost + (skillUseCount * this.costGrowth);
+  },
+
   // 発動条件
   canUse: function() {
-    if (skillUseCount >= this.maxUses) return false;
-
-    
-    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
-    
-    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    // 1. 手番チェック
     if (typeof myRole !== 'undefined') {
         if (turn !== myRole) return false;
-    }
-    // 2. CPU対戦の場合 (cpuSide変数が存在する)
-    else if (typeof cpuSide !== 'undefined') {
+    } else if (typeof cpuSide !== 'undefined') {
         if (turn === cpuSide) return false;
     }
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
     
+    // ★2. コストチェック（ここを変更）
+    if (typeof playerSkillPoint !== 'undefined') {
+        if (playerSkillPoint < this.getCost()) return false;
+    }
+    
+    // 3. ターゲットがあるか
     const targets = this.getValidTargets();
     return targets.length > 0;
   },
 
-  // ターゲット取得
+  // ターゲット取得（変更なし）
   getValidTargets: function() {
     const targets = [];
     const opponent = (turn === "black") ? "white" : "black";
@@ -55,10 +60,12 @@ const PassionateSupport = {
 
         const base = piece.replace("+", "").toUpperCase();
         
+        // 成っている駒は除外
         if (piece.includes("+")) continue; 
+        // 玉、金、飛車、角、歩は対象外（＝銀、桂、香のみ対象）
         if (["K", "G", "R", "B", "P"].includes(base)) continue; 
 
-        // 王手チェック
+        // 王手回避チェック（技を使った瞬間に王手になるなら禁止）
         const originalPiece = boardState[y][x];
         let promoted = "+" + base;
         if (turn === "white") promoted = promoted.toLowerCase();
@@ -77,7 +84,7 @@ const PassionateSupport = {
     return targets;
   },
 
-  // 実行処理
+  // 実行処理（変更なし）
   execute: function(x, y) {
     const piece = boardState[y][x];
     
@@ -93,20 +100,19 @@ const PassionateSupport = {
     // 2. 緑色にする
     pieceStyles[y][x] = "green";
 
-    // ★★★ 追加：このターン、相手の駒を取ることを禁止するフラグを立てる ★★★
+    // 3. 攻撃禁止フラグを立てる
     window.isCaptureRestricted = true;
 
-    // 3. 演出
+    // 4. 演出
     if (typeof playSkillEffect === "function") {
        playSkillEffect("PassionateSupport.PNG", ["PassionateSupport.mp3", "skill.mp3"], "red"); 
     }
 
-    // 4. 棋譜用文字列
+    // 5. 棋譜用文字列
     const files = ["９","８","７","６","５","４","３","２","１"];
     const ranks = ["一","二","三","四","五","六","七","八","九"];
     const mark = (turn === "black") ? "▲" : "△";
     
-    // ユーザーに制限を伝えるメッセージを含めるのも親切です
     return `${kifu.length + 1}手目：${mark}${files[x]}${ranks[y]}${pieceName[baseUpper]}成(応援)`;
   }
 };
