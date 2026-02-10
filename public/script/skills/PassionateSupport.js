@@ -6,8 +6,8 @@ const PassionateSupport = {
   // maxUses: 2,   <-- ★削除
 
   // ★新しいコスト設定
-  baseCost: 40,      // 初回コスト（手頃な設定）
-  costGrowth: 40,    // 使うたびに40ずつ増える
+  baseCost: 100,      // 初回コスト（手頃な設定）
+  costGrowth: 200,    // 使うたびに40ずつ増える
 
   // ★デザイン
   buttonStyle: {
