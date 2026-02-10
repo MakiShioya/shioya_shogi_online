@@ -260,14 +260,22 @@
   <div id="game">
 
     <div class="side left">
-  <div id="cpuSkillGaugeContainer">
-    <div class="gauge-label" style="color: #ff4500;">ENEMY</div>
-    <div class="gauge-box">
-      <div id="cpuSkillGaugeBar"></div> 
+      <div class="hand white-hand" id="whiteHandBox">
+        <h3>後手の持ち駒</h3>
+        <div id="whiteHand"></div>
+      </div>
+      <div id="status"></div>
+      <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #aaa;">
+        考慮時間: 0秒
+      </div>
+      <div id="cpuSkillGaugeContainer">
+        <div class="gauge-label" style="color: #ff4500;">ENEMY</div>
+        <div class="gauge-box">
+          <div id="cpuSkillGaugeBar"></div> 
+        </div>
+        <div id="cpuSkillGaugeText">0</div>
+      </div>
     </div>
-    <div id="cpuSkillGaugeText">0</div>
-  </div>
-  </div>
 
     <div id="center">
       <div id="checkStatus"></div>
@@ -284,15 +292,21 @@
     </div>
 
     <div class="side right">
-  <div id="skillGaugeContainer">
-    <div class="gauge-label">SP</div>
-    <div class="gauge-box">
-      <div id="skillGaugeBar"></div>
+      <button id="resignBtn" class="square-btn">投了</button>
+      <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
+      <div class="hand black-hand" id="blackHandBox">
+        <h3>先手の持ち駒</h3>
+        <div id="blackHand"></div>
+      </div>
+      <div id="skillGaugeContainer">
+        <div class="gauge-label">SP</div>
+        <div class="gauge-box">
+          <div id="skillGaugeBar"></div>
+        </div>
+        <div id="skillGaugeText">0</div>
+        <div id="nextCostText" style="font-size: 10px; color: #ffd700; margin-top: 2px;">Next: 50</div>
+      </div>
     </div>
-    <div id="skillGaugeText">0</div>
-    <div id="nextCostText" style="font-size: 10px; color: #ffd700; margin-top: 2px;">Next: 50</div>
-  </div>
-  </div>
 
   </div>
 </div>
