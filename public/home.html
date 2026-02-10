@@ -498,7 +498,31 @@ input, textarea {
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
     .icon-container { display: flex; flex-direction: column; align-items: center; width: 60px; }
-    .chat-name-badge { background: #fff; border: 1px solid #8b4513; border-radius: 10px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; z-index: 2; margin-bottom: -10px; white-space: nowrap; }
+    .chat-name-badge {
+    /* 枠自体のスタイル */
+    background: #fff;
+    border: 1px solid #8b4513;
+    border-radius: 10px;
+    z-index: 2;
+    margin-bottom: -10px;
+    
+    /* ★★★ ここが重要：サイズを固定する ★★★ */
+    width: 80px;        /* 幅を固定 */
+    height: 18px;       /* 高さを固定 */
+    display: flex;      /* 中身（SVG）を中央寄せ */
+    justify-content: center;
+    align-items: center;
+    padding: 0 4px;     /* 左右に少し余白 */
+    overflow: hidden;   /* はみ出し防止（念のため） */
+}
+
+    .chat-name-text {
+    font-size: 12px;       /* 基準の文字サイズ */
+    font-weight: bold;
+    fill: #333;            /* 文字色 */
+    text-anchor: middle;   /* 中央揃え */
+    dominant-baseline: central; /* 上下中央揃え */
+}
     .chat-icon-img { width: 50px; height: 50px; border: 3px solid #56ab2f; border-radius: 12px; background: #fff; object-fit: cover; }
     .chat-row.mine .chat-icon-img { border: 3px solid #FFA500; }
     .chat-bubble { position: relative; padding: 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; margin-top: 5px; word-break: break-all; }
@@ -674,7 +698,7 @@ input, textarea {
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">名前を変更</h3>
       <div style="margin: 20px 0;">
-        <input type="text" id="newNameInput" style="width: 80%; padding: 10px; font-size: 16px; border: 2px solid #8b4513; border-radius: 5px; text-align: center;">
+        <input type="text" maxlength="8" id="newNameInput" style="width: 80%; padding: 10px; font-size: 16px; border: 2px solid #8b4513; border-radius: 5px; text-align: center;">
       </div>
       <div style="display: flex; justify-content: space-around; gap: 10px;">
         <button onclick="saveNewName()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; flex: 1;">決定</button>
@@ -1193,7 +1217,21 @@ function addMessageToLobbyChatFirestore(data) {
 
     const nameDiv = document.createElement("div");
     nameDiv.className = "chat-name-badge";
-    nameDiv.textContent = data.name || "名無し";
+    
+    // 名前が長すぎた場合に備えて、SVGで描画する
+    // preserveAspectRatio="xMidYMid meet" が「縦横比を保って全体を収める」設定です
+    const safeName = data.name || "名無し";
+    
+    // 文字数に応じてviewBoxの幅を計算する（簡易的な自動調整）
+    // 全角文字なら幅12pxくらいと仮定して計算
+    // 最低でも80px（CSSのwidthと同じ）は確保する
+    const textWidth = Math.max(80, safeName.length * 12); 
+    
+    nameDiv.innerHTML = `
+        <svg viewBox="0 0 ${textWidth} 20" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+            <text x="50%" y="50%" class="chat-name-text">${safeName}</text>
+        </svg>
+    `;
 
     const iconImg = document.createElement("img");
     iconImg.src = data.icon || "script/image/test.icon.PNG";
@@ -1577,28 +1615,3 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
