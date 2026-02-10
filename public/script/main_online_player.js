@@ -283,6 +283,9 @@ function setupSocketListeners(myUserId) {
     socket.on('skill activate', (data) => {
         const skillToUse = (data.turn === "black") ? p1Skill : p2Skill;
         if (!skillToUse) return;
+    　  if (data.blackSkillPoint !== undefined) blackSkillPoint = data.blackSkillPoint;
+        if (data.whiteSkillPoint !== undefined) whiteSkillPoint = data.whiteSkillPoint;
+        updatePvPGaugeUI();
 
 
 
@@ -549,24 +552,52 @@ function onCellClick(x, y) {
     if (isSkillTargeting) {
         if (legalMoves.some(m => m.x === x && m.y === y)) {
             
-
-
-            // TimeWarp
+            // ---------------------------------------------------
+            // ★パターン1：TimeWarp（時戻し）の場合
+            // ---------------------------------------------------
             if (currentSkill && currentSkill.isSystemAction) {
                 currentSkill.execute(x, y);
-                isSkillTargeting = false; legalMoves = []; selected = null;
+                isSkillTargeting = false; 
+                legalMoves = []; 
+                selected = null;
                 document.getElementById("board").classList.remove("skill-targeting-mode");
+                
+                // 1. まず時を戻す
                 undoMove(); 
-                if (turn === "black") p1SkillCount++; else p2SkillCount++;
+
+                // 2. ★修正：コスト消費（時を戻した後にポイントを減らす）
+                if (typeof currentSkill.getCost === "function") {
+                    const cost = currentSkill.getCost();
+                    if (turn === "black") {
+                        blackSkillPoint = Math.max(0, blackSkillPoint - cost);
+                    } else {
+                        whiteSkillPoint = Math.max(0, whiteSkillPoint - cost);
+                    }
+                    updatePvPGaugeUI(); // ゲージ更新
+                }
+
                 syncGlobalSkillState();
 
                 if (socket) {
-                    socket.emit('skill activate', { x: 0, y: 0, turn: turn, isFinished: true });
+                    // 3. ★修正：発動通知にポイント情報を含める
+                    socket.emit('skill activate', { 
+                        x: 0, y: 0, turn: turn, isFinished: true,
+                        blackSkillPoint: blackSkillPoint, 
+                        whiteSkillPoint: whiteSkillPoint
+                    });
+
+                    // 4. ★修正：盤面同期データもポイント制に書き換え
                     const newState = deepCopyState(); 
                     const sendState = {
-                        boardState: newState.boardState, hands: newState.hands, turn: newState.turn,
-                        moveCount: newState.moveCount, kifu: newState.kifu,
-                        p1SkillCount: newState.p1SkillCount, p2SkillCount: newState.p2SkillCount,
+                        boardState: newState.boardState, 
+                        hands: newState.hands, 
+                        turn: newState.turn,
+                        moveCount: newState.moveCount, 
+                        kifu: newState.kifu,
+                        // ここを修正
+                        blackSkillPoint: blackSkillPoint,
+                        whiteSkillPoint: whiteSkillPoint,
+                        
                         blackCharId: sessionStorage.getItem('online_black_char'),
                         whiteCharId: sessionStorage.getItem('online_white_char')
                     };
@@ -578,9 +609,32 @@ function onCellClick(x, y) {
                 statusDiv.textContent = "必殺技発動！ 時を戻しました。";
                 return;
             }
-            // Normal Skill
+
+            // ---------------------------------------------------
+            // ★パターン2：通常の必殺技（Normal Skill）の場合
+            // ---------------------------------------------------
             const result = currentSkill.execute(x, y);
-            if (socket) socket.emit('skill activate', { x: x, y: y, turn: turn, isFinished: (result !== null) });
+
+            // 1. ★追加：コスト消費処理
+            if (typeof currentSkill.getCost === "function") {
+                const cost = currentSkill.getCost();
+                if (turn === "black") {
+                    blackSkillPoint = Math.max(0, blackSkillPoint - cost);
+                } else {
+                    whiteSkillPoint = Math.max(0, whiteSkillPoint - cost);
+                }
+                updatePvPGaugeUI(); // ゲージ更新
+            }
+
+            // 2. ★修正：発動通知にポイント情報を含める
+            if (socket) {
+                socket.emit('skill activate', { 
+                    x: x, y: y, turn: turn, isFinished: (result !== null),
+                    blackSkillPoint: blackSkillPoint, 
+                    whiteSkillPoint: whiteSkillPoint
+                });
+            }
+
             if (result === null) {
                 legalMoves = currentSkill.getValidTargets();
                 render();
@@ -592,13 +646,19 @@ function onCellClick(x, y) {
         return;
     }
     
+    // ---------------------------------------------------
+    // 通常の駒選択処理（ここは前回の修正通り）
+    // ---------------------------------------------------
     if (!selected) {
         const piece = boardState[y][x];
         if (!piece) return;
         const isWhite = piece === piece.toLowerCase();
         if (turn === "black" && isWhite) return; 
         if (turn === "white" && !isWhite) return;
+        
+        // player: turn があることを確認
         selected = { x, y, fromHand: false, player: turn };
+        
         legalMoves = getLegalMoves(x, y);
         if (window.isCaptureRestricted) legalMoves = legalMoves.filter(m => boardState[m.y][m.x] === "");
         render();
@@ -1153,9 +1213,15 @@ function resetGame() {
 }
 function deepCopyState() {
     return {
-        boardState: JSON.parse(JSON.stringify(boardState)), hands: JSON.parse(JSON.stringify(hands)),
-        turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)),
-        p1SkillCount: p1SkillCount, p2SkillCount: p2SkillCount,
+        boardState: JSON.parse(JSON.stringify(boardState)),
+        hands: JSON.parse(JSON.stringify(hands)),
+        turn: turn,
+        moveCount: moveCount,
+        kifu: JSON.parse(JSON.stringify(kifu)),
+        // ★ここを修正：カウントではなくポイントを保存
+        blackSkillPoint: blackSkillPoint,
+        whiteSkillPoint: whiteSkillPoint,
+        
         lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
         lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
     };
@@ -1163,14 +1229,23 @@ function deepCopyState() {
 function undoMove() {
     if (!history || history.length < 2) return;
     const prev = history[history.length - 2];
-    history.length -= 2; lastMoveFrom = null;
+    history.length -= 2; 
+    lastMoveFrom = null;
+    
     boardState = JSON.parse(JSON.stringify(prev.boardState));
     hands = JSON.parse(JSON.stringify(prev.hands));
-    turn = prev.turn; moveCount = prev.moveCount;
+    turn = prev.turn; 
+    moveCount = prev.moveCount;
     kifu = JSON.parse(JSON.stringify(prev.kifu));
-    if (prev.p1SkillCount !== undefined) p1SkillCount = prev.p1SkillCount;
-    if (prev.p2SkillCount !== undefined) p2SkillCount = prev.p2SkillCount;
+    
+    // ★ここを修正：ポイントを復元
+    if (prev.blackSkillPoint !== undefined) blackSkillPoint = prev.blackSkillPoint;
+    if (prev.whiteSkillPoint !== undefined) whiteSkillPoint = prev.whiteSkillPoint;
+    
     pieceStyles = Array(9).fill(null).map(() => Array(9).fill(null));
+    
+    // ゲージの見た目も戻す
+    updatePvPGaugeUI();
 }
 
 // ★★★ 追加した重要関数 1: 技を使った後の処理 ★★★
