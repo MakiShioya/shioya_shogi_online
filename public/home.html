@@ -1,43 +1,49 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-  <title>しおや将棋 - ホーム</title>
-  <link rel="icon" href="script/image/komiya_icon.png"> 
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
-  
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <title>しおや将棋 - ホーム</title>
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-      position: fixed; 
-      top: 0;
-      left: 0;
-      width: 100%;   /* vw, vh ではなく % を使うのがポイント */
-    height: 100%;
-    
-    background-color: #2c3e50;
-    background-size: cover;
-    background-position: center;
-    overflow: hidden; /* スクロールバーを出さない */
+  <style>
 
-    /* ★★★ ここが最重要：スワイプによる画面遷移（バウンス）を禁止する ★★★ */
-    overscroll-behavior-x: none; 
-    overscroll-behavior-y: none;
-    overscroll-behavior: none;
+    @font-face {
+      font-family: 'SetoFont';  /* 好きな名前でOK */
+      src: url('script/font/setofont.ttf') format('truetype'); /* ファイルの場所 */
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "SetoFont", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      position: fixed; 
+      top: 0;
+      left: 0;
+      width: 100%;   /* vw, vh ではなく % を使うのがポイント */
+    height: 100%;
+    
+    background-color: #2c3e50;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden; /* スクロールバーを出さない */
 
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    user-select: none;
-    touch-action: none; /* ピンチズームなども無効化 */
+    /* ★★★ ここが最重要：スワイプによる画面遷移（バウンス）を禁止する ★★★ */
+    overscroll-behavior-x: none; 
+    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: none; /* ピンチズームなども無効化 */
 }
 
 /* ★★★ 追加：htmlタグにも適用しないと効かない場合があります ★★★ */
@@ -1623,3 +1629,4 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
+
