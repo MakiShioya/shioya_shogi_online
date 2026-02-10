@@ -4,7 +4,11 @@ const TimeWarp = {
   name: "時戻し",
   isSystemAction: true, // システム介入型フラグ
   endsTurn: false,
-  maxUses: 1,
+  // maxUses: 1,  <-- ★削除
+
+  // ★新しいコスト設定（最強技なので高コスト）
+  baseCost: 300,     // 初回300pt（かなり溜めないと使えない）
+  costGrowth: 500,   // 2回目は800pt必要（実質連発不可能）
 
   buttonStyle: {
     backgroundColor: "#DAA520",
@@ -16,35 +20,34 @@ const TimeWarp = {
     fontWeight: "bold"
   },
 
+  // ★コスト計算（必須）
+  getCost: function() {
+    return this.baseCost + (skillUseCount * this.costGrowth);
+  },
+
   // 発動条件
   canUse: function() {
-    // 1. 回数制限チェック
-    if (skillUseCount >= this.maxUses) return false;
-
-    // ★★★ 追加：自分の手番でなければ使えないようにする ★★★
-    
-    // 1. オンライン対戦の場合 (myRole変数が存在する)
+    // 1. 手番チェック
     if (typeof myRole !== 'undefined') {
         if (turn !== myRole) return false;
-    }
-    // 2. CPU対戦の場合 (cpuSide変数が存在する)
-    else if (typeof cpuSide !== 'undefined') {
+    } else if (typeof cpuSide !== 'undefined') {
         if (turn === cpuSide) return false;
     }
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-    // 2. 履歴チェック（2手以上進んでいないと戻れない）
+    // ★2. コストチェック（ここを変更）
+    if (typeof playerSkillPoint !== 'undefined') {
+        if (playerSkillPoint < this.getCost()) return false;
+    }
+
+    // 3. 履歴チェック（2手以上進んでいないと戻れない）
     if (typeof history === 'undefined' || history.length < 2) return false;
 
-    // ★★★ 追加：直前の手が「必殺技」だった場合は使えないようにする ★★★
+    // 4. 直前の手が「必殺技」だった場合は使えないチェック
     if (typeof kifu !== 'undefined' && kifu.length > 0) {
         // 相手が指した最後の手（棋譜の末尾）を取得
         const lastMove = kifu[kifu.length - 1];
 
         // 必殺技特有の文字列が含まれているかチェック
-        // (計画) = BluePrint
-        // (応援) = PassionateSupport
-        // ★     = SilverArmor など（main.jsで技後に移動すると付くマーク）
         if (lastMove.includes("(計画)") || 
             lastMove.includes("(応援)") || 
             lastMove.includes("★")) {
@@ -57,6 +60,7 @@ const TimeWarp = {
 
   getValidTargets: function() {
     const targets = [];
+    // 盤面全体を選択可能にする（どこを押しても発動）
     for (let y = 0; y < 9; y++) {
       for (let x = 0; x < 9; x++) {
         targets.push({ x: x, y: y });
@@ -65,13 +69,10 @@ const TimeWarp = {
     return targets;
   },
 
-  // ★★★ ここを変更：演出を追加 ★★★
+  // 実行処理（変更なし）
   execute: function(x, y) {
-    // 演出を再生（画像と音声は適宜用意してください）
+    // 演出を再生
     if (typeof playSkillEffect === "function") {
-        // 画像: TimeWarp.PNG
-        // 音声: TimeWarp.mp3 と skill.mp3
-        // 色: ボタンに合わせて orange
         playSkillEffect("TimeWarp.PNG", ["TimeWarp.mp3", "skill.mp3"], "yellow");
     }
 
@@ -79,4 +80,3 @@ const TimeWarp = {
     return "時を戻しました";
   }
 };
-
