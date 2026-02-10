@@ -571,16 +571,20 @@ input, textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10000; /* 確実に一番手前 */
+  z-index: 10000;
   transition: opacity 0.5s ease;
-  visibility: visible; 
-}
-    
-#loading-screen.font-loaded {
-  visibility: visible;
+  visibility: visible; /* 最初は表示（背景色だけ見える） */
 }
 
-/* フォント読み込み完了後にこのクラスを付けて中身を出す */
+.loader-content {
+  text-align: center;
+  color: white;
+  visibility: hidden; /* ★フォントが来るまで中身を隠す */
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* ★クラス名を font-ready に統一 */
 #loading-screen.font-ready .loader-content {
   visibility: visible;
   opacity: 1;
@@ -642,44 +646,42 @@ input, textarea {
 <body>
 
   <div id="loading-screen">
-    <div class="loader-content">
-      <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading">
-      <div class="spinner"></div>
-      <div id="loading-tips"></div>
-      <p style="font-size: 0.7rem; opacity: 0.6;">LOADING...</p>
-    </div>
-  </div>
+    <div class="loader-content">
+      <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading">
+      <div class="spinner"></div>
+      <div id="loading-tips"></div>
+      <p style="font-size: 0.7rem; opacity: 0.6; margin-top:10px;">LOADING...</p>
+    </div>
+  </div>
 
-  <script>
-    // --- ロード画面専用スクリプト（最速で実行） ---
-    const loadingTipsList = [
-        "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
-        "【tips】オンライン対局は、先に入室した方が先手になります。",
-        "【tips】メニューからBGMの変更が可能です。"
-    ];
-    
-    // チップスを即座にセット
-    const tipContainer = document.getElementById('loading-tips');
-if (tipContainer) {
-    tipContainer.textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
-}
+  <script>
+    // --- ロード画面専用：HTMLの解析直後に実行 ---
+    (function() {
+        const tips = [
+            "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+            "【tips】オンライン対局は、先に入室した方が先手になります。",
+            "【tips】メニューからBGMの変更が可能です。"
+        ];
+        const tipEl = document.getElementById('loading-tips');
+        if (tipEl) tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
 
-    // ★重要：フォントの読み込みを待ってからロード画面の内容を表示する
-    document.fonts.ready.then(function() {
-        document.getElementById('loading-screen').classList.add('font-loaded');
-    });
+        // 瀬戸フォントが準備できたら「中身」をふわっと出す
+        document.fonts.ready.then(function() {
+            document.getElementById('loading-screen').classList.add('font-ready');
+        });
 
-    // ページ全体の読み込みが完了したらロード画面を消す
-    window.onload = function() {
-        const loader = document.getElementById('loading-screen');
-        setTimeout(() => {
-            loader.style.opacity = '0';
-            setTimeout(() => { loader.style.display = 'none'; }, 500);
-        }, 800); // 演出のため最低0.8秒だけ見せる
-    };
-  </script>
+        // 画面全体が読み終わったらロード画面を消す
+        window.addEventListener('load', function() {
+            const loader = document.getElementById('loading-screen');
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => { loader.style.display = 'none'; }, 500);
+            }, 800);
+        });
+    })();
+  </script>
 
-  <div id="bg-image"></div>
+  <div id="bg-image"></div>
 
 
 
@@ -1756,4 +1758,5 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
+
 
