@@ -351,6 +351,10 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
     function switchModal(c, o) { closeModal(c); openModal(o); }
+    // --- チャットモーダルを開く関数 ---
+function openLobbyChat() {
+    openModal('lobbyChatModal');
+}
 
     // --- チャット (Firestore版) ---
     let chatUnsubscribe = null;
@@ -452,3 +456,4 @@
   </script>
 </body>
 </html>
+
