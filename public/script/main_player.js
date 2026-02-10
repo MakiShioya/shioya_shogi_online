@@ -429,10 +429,10 @@ const MAX_SKILL_POINT = 1000;
 
 // ★ポイント設定
 const SP_CONFIG = {
-  MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
-  DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
-  CAPTURE: { "P": 10, "+P": 30, "L": 20, "+L": 40, "N": 20, "+N": 40, "S": 30, "+S": 50, "G": 40, "B": 60, "+B": 100, "R": 60, "+R": 100, "K": 1000 },
-  PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
+  MOVE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 20 },
+  DROP: { "P": 10, "L": 13, "N": 13, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 1000 },
+  PROMOTE: { "P": 5, "L": 5, "N": 5, "S": 5, "B": 5, "R": 5 }
 };
 // グローバル変数（main.jsと共通のものも、初期値設定のため記述）
 let lastSkillKifu = "";
@@ -609,28 +609,28 @@ function onCellClick(x, y) {
 
       // --- 完了処理 ---
       history.push(deepCopyState());
-      const boardTable = document.getElementById("board");
-      if (boardTable) boardTable.classList.remove("skill-targeting-mode");
+      const boardTable = document.getElementById("board");
+      if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
-      const endsTurn = (currentSkill.endsTurn !== false);
+      const endsTurn = (currentSkill.endsTurn !== false);
 
-      if (endsTurn) {
-          const kifuStr = result; 
-          kifu.push(""); 
-          kifu[kifu.length - 1] = kifuStr;
-          moveCount++; 
-          if (turn === "black") p1SkillCount++; else p2SkillCount++;
-          turn = (turn === "black" ? "white" : "black");
-      } 
-      else {
-          const movePart = result.split("：")[1] || result;
-          lastSkillKifu = movePart; 
-          if (turn === "black") p1SkillCount++; else p2SkillCount++;
-          
-          const max = currentSkill.maxUses || 1;
-          const currentCount = (turn === "black") ? p1SkillCount : p2SkillCount;
-          if (currentCount < max) statusDiv.textContent += " (必殺技完了！続けて指してください)";
-      }
+      if (endsTurn) {
+          const kifuStr = result; 
+          kifu.push(""); 
+          kifu[kifu.length - 1] = kifuStr;
+          moveCount++; 
+          // ★削除：p1SkillCount++; などのカウント処理を消す
+          turn = (turn === "black" ? "white" : "black");
+      } 
+      else {
+          const movePart = result.split("：")[1] || result;
+          lastSkillKifu = movePart; 
+          // ★削除：p1SkillCount++; などのカウント処理を消す
+          
+          // ★削除：回数によるメッセージ表示条件も消す（またはポイント制に合わせて書き換える）
+          // 単純にメッセージだけ残します
+          if (window.statusDiv) window.statusDiv.textContent += " (必殺技完了！続けて指してください)";
+      }
       
       lastMoveTo = null;
       if (moveSound) {
@@ -1015,5 +1015,6 @@ function updatePvPGaugeUI() {
         else wBar.classList.remove("gauge-max");
     }
 }
+
 
 
