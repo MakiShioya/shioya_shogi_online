@@ -14,7 +14,31 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
+/* キャラクターをふわふわ浮かせるアニメーション */
+.loading-char {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.5));
+  animation: float 2s infinite ease-in-out;
+}
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* チップスのテキスト表示エリア */
+#loading-tips {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  max-width: 250px;
+  line-height: 1.5;
+  min-height: 3em; /* 高さを確保してガタつきを防止 */
+}
 
        /* ★追加：ロード画面のスタイル */
 #loading-screen {
@@ -608,13 +632,18 @@ input, textarea {
 </head>
 <body>
 
-     <body>
-  <div id="loading-screen">
-    <div class="loader-content">
-      <div class="spinner"></div>
-      <p>読み込み中...</p>
-    </div>
+       
+<div id="loading-screen">
+  <div class="loader-content">
+    <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading Character">
+    
+    <div class="spinner"></div>
+    
+    <div id="loading-tips"></div>
+    
+    <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
   </div>
+</div>
 
   <div id="bg-image"></div>
 
@@ -981,7 +1010,25 @@ input, textarea {
 
     </div>
   </div>
-  
+
+  <script>
+       const loadingTipsList = [
+    "【ヒント】キャラクターにはそれぞれ固有の必殺技があります。",
+    "【豆知識】オンライン対局は、先に入室した方が先手になります。",
+    "【ヒント】戦績ボタンから自分のこれまでの勝敗を確認できます。",
+    "【豆知識】メニューボタンから設定やヘルプに素早くアクセス可能です。",
+    "【ヒント】チャットでは他のプレイヤーと交流を楽しめます。",
+    "【豆知識】瀬戸フォントが反映されない時はページを再読み込みしてください。"
+];
+
+function showRandomTips() {
+    const tipEl = document.getElementById('loading-tips');
+    if (!tipEl) return;
+    const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+    tipEl.textContent = randomTip;
+}
+</script>
+       
   <script src="script/missions.js"></script>
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
@@ -1685,20 +1732,27 @@ function addMessageToLobbyChatFirestore(data) {
 
        // ★追加：読み込み完了時にロード画面を消す
 window.addEventListener('load', () => {
+    // 最初に1つチップスを表示
+    showRandomTips();
+    
+    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
+    const tipsInterval = setInterval(showRandomTips, 3000);
+
     const loader = document.getElementById('loading-screen');
-    // 少し余裕を持ってから消すと滑らかです
     setTimeout(() => {
+        clearInterval(tipsInterval); // 消去前にタイマーを止める
         loader.style.opacity = '0';
         setTimeout(() => {
             loader.style.display = 'none';
-        }, 500); // transitionの時間に合わせて消去
-    }, 500);
+        }, 500);
+    }, 1500); // 演出のために最低1.5秒は見せる
 });
     
 </script>
 
 </body>
 </html>
+
 
 
 
