@@ -18,7 +18,6 @@
     @font-face {
       font-family: 'SetoFont';  /* 好きな名前でOK */
       src: url('script/font/setofont.ttf') format('truetype'); /* ファイルの場所 */
-      font-display: block;
     }
 
     * {
@@ -565,37 +564,23 @@ input, textarea {
 
     /* ★追加：ロード画面のスタイル */
 #loading-screen {
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background-color: #2c3e50;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-  transition: opacity 0.5s ease;
-  visibility: visible; /* 最初は表示（背景色だけ見える） */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #2c3e50; /* 背景と同じ色にすると自然です */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* 一番手前に表示 */
+  transition: opacity 0.5s ease; /* 消える時のアニメーション */
 }
 
 .loader-content {
-  text-align: center;
-  color: white;
-  visibility: hidden; /* ★フォントが来るまで中身を隠す */
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-/* ★クラス名を font-ready に統一 */
-#loading-screen.font-ready .loader-content {
-  visibility: visible;
-  opacity: 1;
-}
-
-.loader-content {
-  text-align: center;
-  color: white;
-  visibility: hidden; /* ★最初は隠す */
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  text-align: center;
+  color: white;
+  font-family: "SetoFont", sans-serif;
 }
 
 /* ぐるぐる回るアニメーション */
@@ -646,42 +631,19 @@ input, textarea {
 <body>
 
   <div id="loading-screen">
-    <div class="loader-content">
-      <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading">
-      <div class="spinner"></div>
-      <div id="loading-tips"></div>
-      <p style="font-size: 0.7rem; opacity: 0.6; margin-top:10px;">LOADING...</p>
-    </div>
-  </div>
+  <div class="loader-content">
+    <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading Character">
+    
+    <div class="spinner"></div>
+    
+    <div id="loading-tips"></div>
+    
+    <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+  </div>
+</div>
 
-  <script>
-    // --- ロード画面専用：HTMLの解析直後に実行 ---
-    (function() {
-        const tips = [
-            "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
-            "【tips】オンライン対局は、先に入室した方が先手になります。",
-            "【tips】メニューからBGMの変更が可能です。"
-        ];
-        const tipEl = document.getElementById('loading-tips');
-        if (tipEl) tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+  <div id="bg-image"></div>
 
-        // 瀬戸フォントが準備できたら「中身」をふわっと出す
-        document.fonts.ready.then(function() {
-            document.getElementById('loading-screen').classList.add('font-ready');
-        });
-
-        // 画面全体が読み終わったらロード画面を消す
-        window.addEventListener('load', function() {
-            const loader = document.getElementById('loading-screen');
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                setTimeout(() => { loader.style.display = 'none'; }, 500);
-            }, 800);
-        });
-    })();
-  </script>
-
-  <div id="bg-image"></div>
 
 
 
@@ -1048,7 +1010,41 @@ input, textarea {
 
     </div>
   </div>
+  <script>
+  // 表示したいチップスのリスト（自由に追加してください！）
+const loadingTipsList = [
+    "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+    "【tips】オンライン対局は、先に入室した方が先手になります。",
+    "【tips】棋譜からは自分のこれまでの棋譜を分析することもできます。",
+    "【tips】メニューボタンから設定やヘルプに素早くアクセス可能です。",
+    "【tips】ホーム画面のキャラや対局中のBGMはメニューから変更できます。"
+];
 
+function showRandomTips() {
+    const tipEl = document.getElementById('loading-tips');
+    if (!tipEl) return;
+    const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+    tipEl.textContent = randomTip;
+}
+
+// ページ読み込み時の処理を更新
+window.addEventListener('load', () => {
+    // 最初に1つチップスを表示
+    showRandomTips();
+    
+    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
+    const tipsInterval = setInterval(showRandomTips, 3000);
+
+    const loader = document.getElementById('loading-screen');
+    setTimeout(() => {
+        clearInterval(tipsInterval); // 消去前にタイマーを止める
+        loader.style.opacity = '0';
+        setTimeout(() => {
+            loader.style.display = 'none';
+        }, 500);
+    }, 1500); // 演出のために最低1.5秒は見せる
+});
+    </script>
   <script src="script/missions.js"></script>
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
@@ -1758,5 +1754,3 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
-
-
