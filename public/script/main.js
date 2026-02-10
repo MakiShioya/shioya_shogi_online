@@ -14,8 +14,66 @@ let pendingMove = null;
 let hasShownEndEffect = false;
 window.skillUsed = false;
 window.isCaptureRestricted = false;
+let isCpuDoubleAction = false;
+let cpuSkillUseCount = 0;
 
-// script/main.js
+
+let playerSkillPoint = 0; // 現在の所持ポイント
+let cpuSkillPoint = 0;
+const MAX_SKILL_POINT = 1000; // ポイントの上限（任意）
+
+
+
+const SP_CONFIG = {
+
+  // 1. 【移動】 
+  MOVE: {
+    "P": 5,    // 歩
+    "+P": 15,  // と金
+    
+    "L": 8,    // 香
+    "+L": 15,  // 成香
+
+    "N": 8,    // 桂
+    "+N": 15,  // 成桂
+
+    "S": 10,   // 銀
+    "+S": 15,  // 成銀
+
+    "G": 10,   // 金
+    
+    "B": 15,   // 角
+    "+B": 30,  // 馬
+
+    "R": 15,   // 飛
+    "+R": 30,  // 龍
+
+    "K": 20    // 玉
+  },
+
+  // 2. 【打つ】
+  DROP: {
+    "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20
+  },
+
+  // 3. 【捕獲】 
+  CAPTURE: {
+    "P": 10,  "+P": 30,  // と金を取ったらおいしい
+    "L": 20,  "+L": 40,
+    "N": 20,  "+N": 40,
+    "S": 30,  "+S": 50,
+    "G": 40,
+    "B": 60,  "+B": 100, // 馬を取る＝大戦果
+    "R": 60,  "+R": 100, // 龍を取る＝大戦果
+    "K": 1000
+  },
+
+  // 4. 【成り】
+  PROMOTE: {
+    "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50
+  }
+};
+
 
 // --- 初期化処理 ---
 window.addEventListener("load", () => {
@@ -250,17 +308,51 @@ function renderHands() {
   hands.white.forEach((p, i) => whiteHandDiv.appendChild(createHandPiece("white", p, i)));
 }
 
-// --- 移動実行 (executeMove) ---
+// script/main.js の executeMove 関数
+
+// ★グローバル変数（まだ追加していなければファイルの先頭に追加してください）
+
+
 function executeMove(sel, x, y, doPromote) {
+  // ▼▼▼ 【追加】CPUの必殺技発動チェック（指す直前） ▼▼▼
+  // 条件：
+  // 1. CPUの手番である（turn === cpuSide）
+  // 2. まだ技を使っていない（!isCpuDoubleAction）
+  // 3. 技ファイルが読み込まれている
+  // 4. ゲーム中で、ポイントが足りている
+  if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
+      const cost = CpuDoubleAction.getCost();
+      
+      if (cpuSkillPoint >= cost) {
+          // 発動処理
+          consumeCpuSkillPoint(cost);
+          isCpuDoubleAction = true; // フラグON
+          cpuSkillUseCount++;
+
+          // 演出
+          playSkillEffect(null, "skill.mp3", "red");
+          statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
+
+          // ★重要：演出のために、実際の指し手を少し遅らせる
+          // ここで一旦 return して、1.5秒後に「必殺技フラグが立った状態」で再度この関数を呼び直す
+          setTimeout(() => {
+              executeMove(sel, x, y, doPromote); 
+          }, 1500);
+          
+          return; // 今回の処理はここで中断（演出待ち）
+      }
+  }
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+  // --- 以下、元の executeMove の処理 ---
+
   history.push(deepCopyState());
 
-// ★★★ 追加：移動元の座標を記録 ★★★
   if (sel.fromHand) {
-      lastMoveFrom = null; // 持ち駒からの場合は「移動元」なし
+      lastMoveFrom = null;
   } else {
-      lastMoveFrom = { x: sel.x, y: sel.y }; // 盤上の移動元を記録
+      lastMoveFrom = { x: sel.x, y: sel.y };
   }
-  // ★★★★★★★★★★★★★★★★★★★★★
 
   const pieceBefore = sel.fromHand
     ? hands[sel.player][sel.index]
@@ -274,19 +366,16 @@ function executeMove(sel, x, y, doPromote) {
     moveSound.play().catch(() => {});
   }
 
-  // 盤面更新処理
+  // 盤面更新
   if (sel.fromHand) {
-    // 打ち駒
     const piece = hands[sel.player][sel.index];
     boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
     hands[sel.player].splice(sel.index, 1);
     pieceStyles[y][x] = null;
   } else {
-    // 盤上の移動
     let piece = boardState[sel.y][sel.x];
     const target = boardState[y][x];
     
-    // ★相手の駒を取って持ち駒に追加
     if (target) {
         hands[turn].push(target.replace("+","").toUpperCase());
     }
@@ -304,7 +393,6 @@ function executeMove(sel, x, y, doPromote) {
         promoteSound.currentTime = 0;
         promoteSound.play().catch(() => {});
       }
-      // 派手な演出（飛車・角の成り）
       if (board) {
         board.classList.remove("flash-green", "flash-orange");
         void board.offsetWidth;
@@ -317,7 +405,6 @@ function executeMove(sel, x, y, doPromote) {
         }
       }
     } else {
-      // 不成のフラグ
       if (!piece.includes("+") && canPromote(base) && 
          (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
          sel.unpromoted = true;
@@ -351,74 +438,185 @@ function executeMove(sel, x, y, doPromote) {
     };
   }
 
-  turn = turn === "black" ? "white" : "black";
-  window.isCaptureRestricted = false;
-  
-  // リセット
-  selected = null;
-  legalMoves = [];
+  // ▼▼▼ 【変更】手番交代の制御（2回行動用） ▼▼▼
+  if (isCpuDoubleAction) {
+      // 必殺技発動中なら、手番を交代せず、相手をパスさせる
+      isCpuDoubleAction = false; // フラグ回収
 
-  render(); 
-  if (typeof showKifu === "function") showKifu();
+      // 棋譜にパスを記録
+      // 次の相手（プレイヤー）
+      const playerRole = (turn === "black") ? "white" : "black";
+      const mark = (playerRole === "black") ? "▲" : "△";
+      kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
+      moveCount++; // パスも1手
 
-  if (!gameOver) startTimer();
-  else stopTimer();
-  moveCount++;
+      statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
+      
+      // turn（手番）を入れ替えない！ = ずっとCPUのターン
+
+      // 画面更新
+      selected = null;
+      legalMoves = [];
+      render(); 
+      if (typeof showKifu === "function") showKifu();
+
+      // ★2回目の思考を開始
+      if (!gameOver) {
+          // 少し待ってから次の手を考えさせる
+          setTimeout(() => {
+             // 元々のCPU思考開始ロジック（executeMoveの最後にあるやつ）と同じことをする
+             // ただし、もし cpuMove がないなら、AI呼び出し処理をここに書く必要があるかもしれません。
+             // 通常は executeMove の最後にある setTimeout(() => cpuMove(), 1000); が走ればOKですが、
+             // turn が変わっていないので、下の判定ブロックに入ってくれるはずです。
+          }, 100);
+      }
+
+  } else {
+      // --- 通常の手番交代 ---
+      turn = turn === "black" ? "white" : "black";
+      window.isCaptureRestricted = false;
+      
+      selected = null;
+      legalMoves = [];
+
+      render(); 
+      if (typeof showKifu === "function") showKifu();
+
+      if (!gameOver) startTimer();
+      else stopTimer();
+      moveCount++;
+  }
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+  // ポイント加算（既存コード）
+  if (!gameOver) {
+      let gain = 0;
+      // ...（省略：SP_CONFIGを使った加算ロジックはそのまま）...
+      const getPoint = (configCategory, pieceCode) => {
+          const raw = pieceCode.toUpperCase();
+          const base = raw.replace("+", "");
+          if (configCategory[raw] !== undefined) return configCategory[raw];
+          if (configCategory[base] !== undefined) return configCategory[base];
+          return 10;
+      };
+      if (sel.fromHand) {
+          const piece = boardState[y][x]; 
+          gain += getPoint(SP_CONFIG.DROP, piece);
+      } else {
+          const piece = boardState[y][x];
+          gain += getPoint(SP_CONFIG.MOVE, piece);
+      }
+      if (sel.promoted) {
+          const piece = boardState[y][x].replace("+","");
+          gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
+      }
+      const captured = boardBefore[y][x];
+      if (captured !== "") {
+          gain += getPoint(SP_CONFIG.CAPTURE, captured);
+      }
+      const isPlayerAction = (sel.player === "black" && cpuSide === "white") || (sel.player === "white" && cpuSide === "black");
+      if (isPlayerAction) {
+          addSkillPoint(gain);
+      } else {
+          addCpuSkillPoint(gain);
+      }
+  }
 
   checkGameOver();
 
-  // CPUの思考開始トリガー
+  // ▼▼▼ CPU思考開始トリガー（ここも少し調整） ▼▼▼
+  // cpuMove がない場合、AIスクリプト側が独自に動いている可能性がありますが、
+  // もし main.js から呼び出しているならここを通ります。
   if (!isSimulating && cpuEnabled && turn === cpuSide && !gameOver) {
-      setTimeout(() => cpuMove(), 1000);
+      // 2回行動直後の場合はウェイトを長めに、通常は1秒
+      const delay = isCpuDoubleAction ? 1500 : 1000;
+      
+      // もし cpuMove が見つからない場合、ここでAIの思考関数を呼ぶ必要があります。
+      // 既存のコードで `setTimeout(() => cpuMove(), 1000);` となっていた箇所です。
+      // もし cpuMove が未定義エラーになる場合は、AIスクリプト内の関数名（例: aiThink()）に書き換えてください。
+      if (typeof cpuMove === 'function') {
+          setTimeout(() => cpuMove(), delay);
+      } else if (typeof aiThink === 'function') {
+          // ai_Lv1.js などを使っている場合
+          setTimeout(() => aiThink(), delay);
+      }
   }
 }
 
-// --- クリックイベント ---
+// script/main.js
+
 function onCellClick(x, y) {
   if (gameOver) return;
 
   // 必殺技ターゲット選択中
   if (typeof isSkillTargeting !== 'undefined' && isSkillTargeting) {
+    // クリックした場所が有効なターゲット（legalMoves）に含まれているか確認
     if (legalMoves.some(m => m.x === x && m.y === y)) {
 
-// ★★★ 追加：システム介入型（待った等）の分岐 ★★★
+      // システム介入型（待った等）の分岐
       if (currentSkill.isSystemAction) {
         currentSkill.execute(x, y);
-        // 1. 先にターゲットモードを確実に解除する（変数を直接操作）
+        
         isSkillTargeting = false;
         legalMoves = [];
         selected = null;
         
-        // 2. 盤面の光る演出を消す
         const boardTable = document.getElementById("board");
         if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
-        // 3. ここで「待った」を実行！
-        // モードが解除されているので、今度はちゃんと盤面が戻ります。
         if (typeof undoMove === "function") {
              undoMove();
         }
 
-        // 4. 重要：「待った」で過去の状態に戻ると「スキル使用回数」も
-        // 戻ってしまう可能性があるため、ここで再度「使用済み」を強制します。
         window.skillUsed = true;
-        skillUseCount = 1;
+        skillUseCount = 1; // コスト消費は別途行われるが、使用フラグは立てる
         
         updateSkillButton();
-        render(); // 再描画
+        render(); 
         statusDiv.textContent = "必殺技発動！ 時を戻しました。";
         return; 
       }
-      // ★★★ 修正箇所：ここまで ★★★
 
+      // ★技を実行（1段階目かもしれないし、完了かもしれない）
       const result = currentSkill.execute(x, y);
+
+      // ▼▼▼ 【重要修正】技がまだ続いている場合（SilverArmorの1段階目など） ▼▼▼
       if (result === null) {
-          legalMoves = currentSkill.getValidTargets();
-          render();
-          statusDiv.textContent = "移動させる場所を選んでください";
-          return; 
+          // ステップが進んだので、次の有効なターゲット（移動先）を取得しなおす
+          const nextTargets = currentSkill.getValidTargets();
+          
+          if (nextTargets && nextTargets.length > 0) {
+              // 有効な移動先がある場合、ターゲット情報を更新して待機
+              legalMoves = nextTargets;
+              
+              // 盤面を再描画して、移動先（黄色）や選択中の駒（オレンジ）を表示
+              render();
+              statusDiv.textContent = `必殺技【${currentSkill.name}】：移動先を選んでください`;
+          } else {
+              // 万が一、移動先がない場合
+              alert("有効な移動先がありません。");
+              // リセットして終了
+              if (currentSkill.reset) currentSkill.reset();
+              isSkillTargeting = false;
+              legalMoves = [];
+              selected = null;
+              render();
+              statusDiv.textContent = "移動できませんでした。";
+          }
+          return; // ここで処理を終える（ポイント消費や手番交代はまだしない）
       }
+      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+      
+      // --- 以下は「技が完全に完了した」場合の処理 ---
+
+      // ★ ポイント消費（完了時のみ消費）
+      if (typeof currentSkill.getCost === "function") {
+          consumeSkillPoint(currentSkill.getCost());
+      }
+
       history.push(deepCopyState());
+
       const boardTable = document.getElementById("board");
       if (boardTable) boardTable.classList.remove("skill-targeting-mode");
 
@@ -457,16 +655,17 @@ function onCellClick(x, y) {
     return;
   }
 
-  // CPUの手番なら無視
+  // --- 通常の移動処理（変更なし） ---
   if (cpuEnabled && turn === cpuSide) return;
 
-  // 駒選択
   if (!selected) {
     const piece = boardState[y][x];
     if (!piece) return;
     const isWhite = piece === piece.toLowerCase();
     if ((turn === "black" && isWhite) || (turn === "white" && !isWhite)) return;
-    selected = { x, y, fromHand: false };
+    
+    // player情報を付与（ポイント計算用）
+    selected = { x, y, fromHand: false, player: turn }; 
     legalMoves = getLegalMoves(x, y);
     
     if (window.isCaptureRestricted) {
@@ -477,7 +676,6 @@ function onCellClick(x, y) {
     return;
   }
 
-  // 移動
   const sel = selected;
   if (legalMoves.some(m => m.x === x && m.y === y)) {
     movePieceWithSelected(sel, x, y);
@@ -687,6 +885,7 @@ function closeSkillModal() {
   if (modal) modal.style.display = "none";
 }
 
+
 function updateSkillButton() {
   const skillBtn = document.getElementById("skillBtn");
   if (!skillBtn) return;
@@ -695,25 +894,31 @@ function updateSkillButton() {
     skillBtn.style.display = "inline-block";
     skillBtn.textContent = currentSkill.name;
 
-    // デザイン適用
     if (currentSkill.buttonStyle) {
       Object.assign(skillBtn.style, currentSkill.buttonStyle);
-    } else {
-      skillBtn.style.backgroundColor = "#ff4500";
-      skillBtn.style.color = "white";
-      skillBtn.style.border = "none";
     }
 
-    // ★★★ 修正箇所：単純な skillUsed フラグではなく、使用回数と上限を比較して判定する ★★★
-    const max = currentSkill.maxUses || 1;
-    const isMaxedOut = (skillUseCount >= max);
+    // ★★★ 変更箇所：コスト判定 ★★★
+    let cost = 0;
+    if (typeof currentSkill.getCost === "function") {
+        cost = currentSkill.getCost();
+    }
+    
+    // ポイントが足りているか？
+    const canAfford = (playerSkillPoint >= cost);
+    // 発動条件を満たしているか？（盤面条件など）
+    const conditionMet = currentSkill.canUse();
 
-    skillBtn.disabled = isMaxedOut;
-    skillBtn.style.opacity = isMaxedOut ? 0.5 : 1.0;
-
-    if (isMaxedOut) {
-      skillBtn.style.backgroundColor = "#ccc";
-      skillBtn.style.border = "1px solid #999";
+    // 両方OKなら押せる
+    if (canAfford && conditionMet) {
+       skillBtn.disabled = false;
+       skillBtn.style.opacity = 1.0;
+       skillBtn.style.filter = "none";
+    } else {
+       skillBtn.disabled = true;
+       skillBtn.style.opacity = 0.6;
+       // お金が足りない時は白黒にするなど
+       if (!canAfford) skillBtn.style.filter = "grayscale(100%)";
     }
   } else {
     skillBtn.style.display = "none";
@@ -1008,4 +1213,76 @@ function applyUserSkin() {
             }
         }
     }).catch(console.error);
+}
+
+// script/main.js の末尾に追加
+
+function addSkillPoint(amount) {
+    playerSkillPoint += amount;
+    if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
+    updateSkillGaugeUI();
+    updateSkillButton(); // ボタンの有効/無効を更新
+}
+
+function consumeSkillPoint(amount) {
+    playerSkillPoint -= amount;
+    if (playerSkillPoint < 0) playerSkillPoint = 0;
+    updateSkillGaugeUI();
+    updateSkillButton();
+}
+
+function updateSkillGaugeUI() {
+    const bar = document.getElementById("skillGaugeBar");
+    const text = document.getElementById("skillGaugeText");
+    const costText = document.getElementById("nextCostText");
+
+    if (bar && text) {
+        // ゲージの長さ（最大値を基準に％計算。ここでは仮に300をMAX表示幅とするか、上限1000にするか）
+        // 視覚的にわかりやすくするため、一旦「次のコスト」に対してどれくらい溜まったか？を表示する手もありますが、
+        // ここでは単純に上限1000に対する割合で表示します。
+        const percentage = (playerSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%"; 
+        text.textContent = Math.floor(playerSkillPoint);
+    }
+    
+    if (costText && currentSkill && typeof currentSkill.getCost === "function") {
+        const cost = currentSkill.getCost();
+        costText.textContent = `Next: ${cost}pt`;
+        
+        // ポイントが足りていればコスト表示を黄色、足りなければ赤にするなど
+        costText.style.color = (playerSkillPoint >= cost) ? "#ffd700" : "#ff4500";
+    }
+}
+
+// main.js の末尾に追加
+
+function addCpuSkillPoint(amount) {
+    cpuSkillPoint += amount;
+    if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
+    updateCpuSkillGaugeUI();
+    
+    // ※将来的に、ここで「CPUが必殺技を使うか？」の判定を入れることができます
+}
+
+function updateCpuSkillGaugeUI() {
+    const bar = document.getElementById("cpuSkillGaugeBar");
+    const text = document.getElementById("cpuSkillGaugeText");
+
+    if (bar && text) {
+        const percentage = (cpuSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%";
+        text.textContent = Math.floor(cpuSkillPoint);
+        
+        if (cpuSkillPoint >= MAX_SKILL_POINT) {
+             bar.classList.add("gauge-max"); // 光らせる場合
+        } else {
+             bar.classList.remove("gauge-max");
+        }
+    }
+}
+
+function consumeCpuSkillPoint(amount) {
+    cpuSkillPoint -= amount;
+    if (cpuSkillPoint < 0) cpuSkillPoint = 0;
+    updateCpuSkillGaugeUI();
 }
