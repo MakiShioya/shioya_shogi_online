@@ -1,14 +1,14 @@
 // script/yaneuraou_main.js
-// やねうら王専用メインスクリプト（必殺技ゲージ・CPU神速・完全修正版）
+// やねうら王専用メインスクリプト（必殺技ゲージ・CPU神速・グラフ機能完全統合版）
 
 // --- ★やねうら王用 設定変数 ---
-let usiHistory = []; // 棋譜（USI形式）
-let isEngineReady = false; // エンジン準備完了フラグ
-let evalHistory = [0]; // 評価値履歴
-let evalChart = null;  // グラフ
-let isPondering = false; // 先読み中
-let ponderTimer = null;
-let isStoppingPonder = false;
+let usiHistory = []; // 棋譜（USI形式）を記録する配列
+let isEngineReady = false; // エンジンの準備ができているか
+let evalHistory = [0]; // 評価値の履歴（初期値0）
+let evalChart = null;  // グラフのインスタンス
+let isPondering = false; // 先読み中かどうか
+let ponderTimer = null;  // 休憩用のタイマー
+let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 
 // --- ★必殺技・ゲージ関連の設定変数 ---
@@ -17,7 +17,7 @@ window.isCaptureRestricted = false;
 let lastSkillKifu = ""; 
 let pendingMove = null;
 
-// ★【重要】これが抜けていました：プレイヤーのスキル使用回数
+// ★重要：これがないと動きません（新機能用）
 let skillUseCount = 0; 
 
 // ★CPU 2回行動用
@@ -29,7 +29,7 @@ let playerSkillPoint = 0;
 let cpuSkillPoint = 0;
 const MAX_SKILL_POINT = 1000;
 
-// ★ポイント設定
+// ★ポイント設定（SP_CONFIG）
 const SP_CONFIG = {
   MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
   DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
@@ -37,7 +37,7 @@ const SP_CONFIG = {
   PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
 };
 
-// DOM要素
+// DOM要素の参照
 const board = document.getElementById("board");
 const blackHandDiv = document.getElementById("blackHand");
 const whiteHandDiv = document.getElementById("whiteHand");
@@ -56,19 +56,22 @@ window.addEventListener("load", () => {
     resignBtn.addEventListener("click", resignGame);
   }
 
-  // 1. 先手・後手のランダム決定
+  // ★★★ 1. 先手・後手のランダム決定 ★★★
   const isPlayerBlack = Math.random() < 0.5;
 
   if (isPlayerBlack) {
+      // プレイヤーが先手
       cpuSide = "white"; // AIは後手
       document.body.classList.remove("view-white");
-      updateHandLayout("black");
+      updateHandLayout("black"); // 駒台配置：標準
   } else {
+      // プレイヤーが後手
       cpuSide = "black"; // AIは先手
-      document.body.classList.add("view-white");
-      updateHandLayout("white");
+      document.body.classList.add("view-white"); // 盤面反転
+      updateHandLayout("white"); // 駒台配置：反転
   }
 
+  // 画像反映
   applyPlayerImage();
 
   // キャラのスキル設定
@@ -89,27 +92,37 @@ window.addEventListener("load", () => {
   const key = getPositionKey();
   positionHistory[key] = 1;
   
+  // グラフ初期化
   initChart();
 
   // エンジン起動
   if (typeof initEngine === 'function') {
+      console.log("ロードちゅう…");
       statusDiv.textContent = "ロードちゅう…";
       initEngine(); 
+      
       setTimeout(() => {
-          if(!isEngineReady) sendToEngine("usi");
+          if(!isEngineReady) {
+            sendToEngine("usi");
+          }
       }, 1000);
   } else {
+      console.error("engine_bridge.js が読み込まれていません！");
       statusDiv.textContent = "エラー: エンジンが見つかりません";
   }
   
   firebase.auth().onAuthStateChanged(function(user) {
-        if (user) applyUserSkin();
+        if (user) {
+            applyUserSkin();
+        }
     });
 });
 
 function sendToEngine(msg) {
     if (typeof engineWorker !== 'undefined' && engineWorker) {
         engineWorker.postMessage(msg);
+    } else {
+        console.error("Workerが見つかりません:", msg);
     }
 }
 
@@ -119,7 +132,10 @@ function handleEngineMessage(msg) {
         const parts = msg.split(" ");
         const scoreIdx = parts.indexOf("cp") + 1;
         let score = parseInt(parts[scoreIdx]);
-        if (turn === "white") score = -score;
+
+        if (turn === "white") {
+            score = -score;
+        }
         
         evalHistory[moveCount] = score;
         for(let i = 0; i < moveCount; i++) {
@@ -129,12 +145,18 @@ function handleEngineMessage(msg) {
     }
 
     if (msg === "usiok") {
+        console.log("USI OK! -> isready");
         sendToEngine("isready");
     }
     else if (msg === "readyok") {
         isEngineReady = true;
-        if (cpuSide === "white") statusDiv.textContent = "対局開始！ あなたは【先手】です。";
-        else statusDiv.textContent = "対局開始！ あなたは【後手】です。";
+        
+        if (cpuSide === "white") {
+             statusDiv.textContent = "対局開始！ あなたは【先手】です。";
+        } else {
+             statusDiv.textContent = "対局開始！ あなたは【後手】です。";
+        }
+        console.log("Ready OK!");
 
         // AIが先手の場合、思考開始
         if (turn === cpuSide) {
@@ -146,10 +168,15 @@ function handleEngineMessage(msg) {
         const bestMove = parts[1];
         
         if (isStoppingPonder) {
+             console.log("Ponder停止によるbestmoveを無視");
              isStoppingPonder = false;
              return;
         }
-        if (turn !== cpuSide) return;
+
+        // 自分の手番でないなら無視
+        if (turn !== cpuSide) {
+             return;
+        }
         
         if (bestMove === "resign") {
             resignGame(); 
@@ -158,7 +185,9 @@ function handleEngineMessage(msg) {
             gameOver = true;
         } else {
             applyUsiMove(bestMove);
-            // 手番がプレイヤーに移ったらPonder開始
+            
+            // ★重要：2回行動の途中（手番がまだCPU）ならPonderせず、次の思考へ
+            // そうでない（手番がプレイヤーに移った）ならPonderする
             if (!gameOver && turn !== cpuSide) {
                 setTimeout(startPondering, 500); 
             }
@@ -178,6 +207,7 @@ function cpuMove() {
     statusDiv.textContent = "考え中...";
 
     let positionCmd = "";
+    // 必殺技後・2回行動中・履歴なしの場合はSFEN
     if ((typeof skillUsed !== 'undefined' && skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
         const sfen = generateSfen();
         positionCmd = "position sfen " + sfen;
@@ -193,6 +223,7 @@ function cpuMove() {
     sendToEngine("go byoyomi " + thinkTime);
 }
 
+// AIの指し手反映
 function applyUsiMove(usiMove) {
     if (usiMove === "resign") return;
 
@@ -224,14 +255,16 @@ function applyUsiMove(usiMove) {
         sel = { x: fromX, y: fromY, fromHand: false };
         doPromote = isPromote;
     }
+    // AIはexecuteMoveを直接呼ぶ
+    // ※ここで executeMove 冒頭の「割り込み」が発動する可能性がある
     executeMove(sel, toX, toY, doPromote);
 }
 
-// 実際の移動処理
+// 実際の移動処理（メインロジック）
 function executeMove(sel, x, y, doPromote) {
   if (typeof stopPondering === "function") stopPondering();
 
-  // ▼ CPU必殺技発動チェック ▼
+  // ▼▼▼ 【追加】CPUの必殺技発動チェック（指す直前） ▼▼▼
   if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
       const cost = CpuDoubleAction.getCost();
       if (cpuSkillPoint >= cost) {
@@ -248,10 +281,14 @@ function executeMove(sel, x, y, doPromote) {
           return; 
       }
   }
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
   // 移動元の記録
-  if (sel.fromHand) lastMoveFrom = null;
-  else lastMoveFrom = { x: sel.x, y: sel.y };
+  if (sel.fromHand) {
+      lastMoveFrom = null;
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y };
+  }
 
   const pieceBefore = sel.fromHand
     ? hands[sel.player][sel.index]
@@ -267,6 +304,7 @@ function executeMove(sel, x, y, doPromote) {
     moveSound.play().catch(() => {});
   }
 
+  // 盤面更新
   if (sel.fromHand) {
     const piece = hands[sel.player][sel.index];
     boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
@@ -287,11 +325,12 @@ function executeMove(sel, x, y, doPromote) {
       sel.promoted = true;
       if (promoteSound) {
         promoteSound.currentTime = 0;
+        promoteSound.volume = 0.8;
         promoteSound.play().catch(() => {});
       }
       const boardTable = document.getElementById("board");
       if (boardTable) {
-        boardTable.classList.remove("flash-green", "flash-orange");
+        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
         void boardTable.offsetWidth;
         if (base === "R") {
             boardTable.classList.add("flash-green");
@@ -313,8 +352,9 @@ function executeMove(sel, x, y, doPromote) {
     pieceStyles[sel.y][sel.x] = null;
   }
 
-  // USI履歴への記録
+  // ★USI履歴への記録
   const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
+  // 【修正】必殺技使用済みフラグが立っている場合は、履歴に追加しない！
   if (!window.skillUsed) {
       usiHistory.push(usiMove);
   }
@@ -338,13 +378,15 @@ function executeMove(sel, x, y, doPromote) {
     };
   }
 
-  // ▼▼▼ 手番交代制御（2回行動） ▼▼▼
+  // ▼▼▼ 【変更】手番交代の制御（2回行動用） ▼▼▼
   if (isCpuDoubleAction) {
-      isCpuDoubleAction = false; 
+      isCpuDoubleAction = false; // フラグ回収
+
       const playerRole = (turn === "black") ? "white" : "black";
       const mark = (playerRole === "black") ? "▲" : "△";
       kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
       moveCount++; 
+
       statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
       
       selected = null;
@@ -352,22 +394,34 @@ function executeMove(sel, x, y, doPromote) {
       render(); 
       if (typeof showKifu === "function") showKifu();
 
+      // ★2回目の思考を開始
       if (!gameOver) {
           setTimeout(() => { cpuMove(); }, 100);
       }
+
   } else {
+      // --- 通常の手番交代 ---
       turn = turn === "black" ? "white" : "black";
       window.isCaptureRestricted = false;
+      
       selected = null;
       legalMoves = [];
+
       render(); 
       if (typeof showKifu === "function") showKifu();
+
       if (!gameOver) startTimer();
       else stopTimer();
       moveCount++;
+      
+      // ★CPU思考開始（1秒後）
+      if (turn === cpuSide && !gameOver) {
+          setTimeout(() => cpuMove(), 1000);
+      }
   }
+  // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-  // ★★★ ポイント加算 ★★★
+  // ★★★ ポイント加算 (main.jsと同じロジック) ★★★
   if (!gameOver) {
       let gain = 0;
       const getPoint = (configCategory, pieceCode) => {
@@ -411,7 +465,7 @@ function onCellClick(x, y) {
   if (isSkillTargeting) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
       
-      // システム介入型（TimeWarp）
+      // システム介入型（待った等）
       if (currentSkill.isSystemAction) {
         if (typeof stopPondering === "function") stopPondering();
         currentSkill.execute(x, y);
@@ -422,7 +476,7 @@ function onCellClick(x, y) {
         if (boardTable) boardTable.classList.remove("skill-targeting-mode");
         if (typeof undoMove === "function") undoMove();
         
-        skillUseCount++; 
+        skillUseCount++; // 回数のみ消費
         updateSkillButton();
         render();
         statusDiv.textContent = "必殺技発動！ 時を戻しました。";
@@ -433,7 +487,7 @@ function onCellClick(x, y) {
       if (typeof stopPondering === "function") stopPondering();
       const result = currentSkill.execute(x, y);
 
-      // ★2段階スキル対応
+      // ★2段階スキルの対応
       if (result === null) {
           const nextTargets = currentSkill.getValidTargets();
           if (nextTargets && nextTargets.length > 0) {
@@ -463,7 +517,7 @@ function onCellClick(x, y) {
       const endsTurn = (currentSkill.endsTurn !== false);
       window.skillUsed = true; 
       skillUseCount++;
-      usiHistory = []; 
+      usiHistory = []; // USIリセット
 
       if (endsTurn) {
           const kifuStr = result; 
@@ -482,7 +536,9 @@ function onCellClick(x, y) {
         moveSound.play().catch(() => {});
       }
 
+      // SFEN送信
       const sfen = generateSfen();
+      console.log("必殺技発動！SFEN送信:", sfen);
       sendToEngine("position sfen " + sfen);
 
       if(currentSkill.reset) currentSkill.reset();
@@ -509,6 +565,7 @@ function onCellClick(x, y) {
     const isWhite = piece === piece.toLowerCase();
     if ((turn === "black" && isWhite) || (turn === "white" && !isWhite)) return;
     
+    // ★修正：player情報を付与
     selected = { x, y, fromHand: false, player: turn };
     legalMoves = getLegalMoves(x, y);
 
@@ -602,7 +659,7 @@ function confirmSkillActivate() {
   const targets = currentSkill.getValidTargets();
 
   if (!targets || targets.length === 0) {
-      alert("この必殺技で動かせる有効な場所がありません。");
+      alert("この必殺技で動かせる有効な場所がありません。\n（王手放置になる、または動かせる駒がないなど）");
       isSkillTargeting = false;
       return; 
   }
@@ -621,7 +678,6 @@ function closeSkillModal() {
   if (modal) modal.style.display = "none";
 }
 
-// ボタン更新 (コストチェックに修正)
 function updateSkillButton() {
   const skillBtn = document.getElementById("skillBtn");
   if (!skillBtn) return;
@@ -631,6 +687,11 @@ function updateSkillButton() {
     skillBtn.textContent = currentSkill.name;
     
     if (currentSkill.buttonStyle) Object.assign(skillBtn.style, currentSkill.buttonStyle);
+    else {
+      skillBtn.style.backgroundColor = "#ff4500";
+      skillBtn.style.color = "white";
+      skillBtn.style.border = "none";
+    }
 
     let cost = 0;
     if (typeof currentSkill.getCost === "function") {
@@ -652,15 +713,6 @@ function updateSkillButton() {
     }
   } else {
     skillBtn.style.display = "none";
-  }
-}
-
-function resolvePromotion(doPromote) {
-  const modal = document.getElementById("promoteModal");
-  if (modal) modal.style.display = "none";
-  if (pendingMove) {
-    executeMove(pendingMove.sel, pendingMove.x, pendingMove.y, doPromote);
-    pendingMove = null;
   }
 }
 
@@ -721,7 +773,10 @@ function updateCpuSkillGaugeUI() {
     }
 }
 
-// ユーティリティ
+// ==========================================
+// グラフ機能・SFEN生成・保存ロジック（ユーザ提供コードの復元）
+// ==========================================
+
 function generateSfen() {
     let sfen = "";
     for (let y = 0; y < 9; y++) {
@@ -756,242 +811,6 @@ function generateSfen() {
     return sfen;
 }
 
-// 描画・演出
-function render() {
-  if (!board) return;
-  if (gameOver) {
-    if (winner === "black") statusDiv.textContent = "あなたの勝ちです！";
-    else if (winner === "white") statusDiv.textContent = "AI（試験実装）の勝ちです！";
-    else statusDiv.textContent = "引き分けです。";
-    checkStatusDiv.textContent = "";
-
-    if (!hasShownEndEffect) {
-        if (winner === "black") playSkillEffect("shori.PNG", "shori.mp3", null);
-        else if (winner === "white") playSkillEffect("haiboku.PNG", "haiboku.mp3", null);
-        hasShownEndEffect = true; 
-    }
-    if (!document.getElementById("resetBtn")) {
-       const btn = document.createElement("button");
-       btn.id = "resetBtn";
-       btn.textContent = "ホームに戻る"; 
-       Object.assign(btn.style, {
-           padding: "10px 20px", marginTop: "15px", fontSize: "16px",
-           backgroundColor: "#d32f2f", color: "white", border: "none",
-           borderRadius: "5px", cursor: "pointer", fontWeight: "bold"
-       });
-       btn.onclick = () => { window.location.href = "home.html"; };
-       statusDiv.appendChild(document.createElement("br"));
-       statusDiv.appendChild(btn);
-    }
-  } else {
-    if (!isSkillTargeting) {
-      let msg = "現在の手番：" + (turn === "black" ? "先手" : "後手") + " / 手数：" + moveCount;
-      if (window.isCaptureRestricted) msg += " 【攻撃禁止中】";
-      msg += (isKingInCheck(turn) ? "　王手！" : "");
-      statusDiv.textContent = msg;
-    }
-  }
-
-  board.innerHTML = "";
-  for (let y = 0; y < 9; y++) {
-    const tr = document.createElement("tr");
-    for (let x = 0; x < 9; x++) {
-      const td = document.createElement("td");
-      const piece = boardState[y][x];
-      
-      if (piece) {
-        const isWhite = piece === piece.toLowerCase();
-        const key = piece.startsWith("+") ? "+" + piece.replace("+","").toUpperCase() : piece.toUpperCase();
-        
-        const container = document.createElement("div");
-        container.className = "piece-container";
-        if (isWhite) container.classList.add("gote");
-        const baseType = piece.replace("+", "").toUpperCase();
-        container.classList.add("size-" + baseType);
-        
-        const textSpan = document.createElement("span");
-        textSpan.className = "piece-text";
-        if (key.startsWith("+")) textSpan.classList.add("promoted");
-        
-        const name = (typeof pieceName !== 'undefined') ? pieceName[key] : key;
-        textSpan.textContent = name.length > 1 ? name[name.length - 1] : name;
-
-        if (pieceStyles[y][x] === "green") {
-          textSpan.style.color = "#32CD32";
-          textSpan.style.fontWeight = "bold";
-          textSpan.style.textShadow = "1px 1px 0px #000";
-        } else if (pieceStyles[y][x] === "blue") {
-          textSpan.style.color = "#1E90FF";
-          textSpan.style.fontWeight = "bold";
-          textSpan.style.textShadow = "1px 1px 0px #000";
-        } else if (pieceStyles[y][x] === "silver") {
-          textSpan.style.color = "#C0C0C0";
-          textSpan.style.fontWeight = "bold";
-          textSpan.style.textShadow = "1px 1px 0px #000";
-        } else if (pieceStyles[y][x] === "orange") {
-          textSpan.style.color = "#FFA500";
-          textSpan.style.fontWeight = "bold";
-          textSpan.style.textShadow = "1px 1px 0px #000";
-        }
-
-        container.appendChild(textSpan);
-        td.appendChild(container);
-        if (isWhite) td.style.transform = "rotate(180deg)";
-        if (lastMoveTo && lastMoveTo.x === x && lastMoveTo.y === y) td.classList.add("moved");
-      }
-      if (lastMoveFrom && lastMoveFrom.x === x && lastMoveFrom.y === y) td.classList.add("move-from");
-      if (selected && !selected.fromHand && selected.x === x && selected.y === y) td.classList.add("selected");
-      if (legalMoves.some(m => m.x === x && m.y === y)) td.classList.add("move");
-      
-      td.onclick = () => onCellClick(x, y);
-      tr.appendChild(td);
-    }
-    board.appendChild(tr);
-  }
-  renderHands();
-  
-  const blackBox = document.getElementById("blackHandBox");
-  const whiteBox = document.getElementById("whiteHandBox");
-  if (blackBox) blackBox.classList.remove("active");
-  if (whiteBox) whiteBox.classList.remove("active");
-  if (!gameOver) {
-    if (turn === "black" && blackBox) blackBox.classList.add("active");
-    else if (turn === "white" && whiteBox) whiteBox.classList.add("active");
-  }
-  updateSkillButton();
-}
-
-function renderHands() {
-  const order = ["P", "L", "N", "S", "G", "B", "R"];
-  hands.black.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-  hands.white.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-
-  blackHandDiv.innerHTML = "";
-  whiteHandDiv.innerHTML = "";
-
-  const createHandPiece = (player, p, i) => {
-      const container = document.createElement("div");
-      container.className = "hand-piece-container";
-      if (player === "white") container.classList.add("gote");
-      const textSpan = document.createElement("span");
-      textSpan.className = "piece-text";
-      textSpan.textContent = (typeof pieceName !== 'undefined') ? pieceName[p] : p;
-      container.appendChild(textSpan);
-
-      if (selected && selected.fromHand && selected.player === player && selected.index === i) {
-          container.classList.add("selected");
-      }
-      container.onclick = () => selectFromHand(player, i);
-      if (player === cpuSide) container.style.transform = "rotate(180deg)";
-      return container;
-  };
-
-  hands.black.forEach((p, i) => blackHandDiv.appendChild(createHandPiece("black", p, i)));
-  hands.white.forEach((p, i) => whiteHandDiv.appendChild(createHandPiece("white", p, i)));
-}
-
-function playSkillEffect(imageName, soundName, flashColor) {
-  const img = document.getElementById("skillCutIn");
-  if (img && imageName) {
-    img.src = "script/image/" + imageName;
-    img.classList.remove("cut-in-active");
-    void img.offsetWidth; 
-    img.classList.add("cut-in-active");
-  }
-  if (soundName) {
-    if (Array.isArray(soundName)) {
-      soundName.forEach(name => {
-        const a = new Audio("script/audio/" + name);
-        a.volume = 1.0;
-        a.play().catch(e => {});
-      });
-    } else {
-      const audio = document.getElementById("skillSound");
-      if (audio) {
-        audio.src = "script/audio/" + soundName;
-        audio.volume = 1.0;
-        audio.play().catch(e => {});
-      }
-    }
-  }
-  const boardTable = document.getElementById("board");
-  if (boardTable && flashColor) {
-    boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
-    void boardTable.offsetWidth; 
-    if (flashColor) boardTable.classList.add("flash-" + flashColor);
-  }
-}
-
-function updateHandLayout(playerRole) {
-    const leftSide = document.querySelector(".side.left");
-    const rightSide = document.querySelector(".side.right");
-    const blackBox = document.getElementById("blackHandBox");
-    const whiteBox = document.getElementById("whiteHandBox");
-    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
-
-    if (playerRole === "white") {
-        blackBox.classList.remove("black-hand"); blackBox.classList.add("white-hand"); 
-        whiteBox.classList.remove("white-hand"); whiteBox.classList.add("black-hand"); 
-        leftSide.prepend(blackBox); rightSide.appendChild(whiteBox);
-    } else {
-        blackBox.classList.remove("white-hand"); blackBox.classList.add("black-hand");
-        whiteBox.classList.remove("black-hand"); whiteBox.classList.add("white-hand");
-        leftSide.prepend(whiteBox); rightSide.appendChild(blackBox);
-    }
-}
-
-function deepCopyState() {
-    return {
-        boardState: JSON.parse(JSON.stringify(boardState)),
-        hands: JSON.parse(JSON.stringify(hands)),
-        turn: turn,
-        moveCount: moveCount,
-        kifu: JSON.parse(JSON.stringify(kifu)),
-        lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null,
-        lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null
-    };
-}
-
-function applyUserSkin() {
-    const user = firebase.auth().currentUser;
-    if (!user) return;
-    db.collection("users").doc(user.uid).get().then((doc) => {
-        if (doc.exists) {
-            const data = doc.data();
-            const equipped = data.equipped || {};
-            if (typeof GAME_ITEMS !== 'undefined') {
-                if (equipped.piece) {
-                    const item = GAME_ITEMS.find(i => i.id === equipped.piece);
-                    if (item && item.image) document.documentElement.style.setProperty('--piece-img', `url('${item.image}')`);
-                }
-                if (equipped.board) {
-                    const item = GAME_ITEMS.find(i => i.id === equipped.board);
-                    if (item && item.image) document.documentElement.style.setProperty('--board-img', `url('${item.image}')`);
-                }
-                if (equipped.bgm) {
-                    const item = GAME_ITEMS.find(i => i.id === equipped.bgm);
-                    if (item && item.src) {
-                        const bgmEl = document.getElementById("bgm");
-                        if (bgmEl) bgmEl.src = item.src;
-                    }
-                }
-            }
-        }
-    }).catch(console.error);
-}
-
-// その他メニュー・グラフ操作
-function toggleMenu() { const p = document.getElementById('menuPanel'); if(p) p.style.display=(p.style.display==='none')?'block':'none'; }
-function toggleVolume() { const m = document.getElementById("volumeModal"); if(m) m.style.display="flex"; }
-function updateVolume() { const b=document.getElementById("bgm"), r=document.getElementById("bgmRange"); if(b&&r){ b.volume=r.value; b.muted=false; } }
-function closeVolumeModal() { document.getElementById("volumeModal").style.display="none"; }
-function showRules() { document.getElementById("rulesModal").style.display="flex"; }
-function closeRulesModal() { document.getElementById("rulesModal").style.display="none"; }
-function toggleKifu() { const a=document.getElementById("kifuArea"); if(a.style.display==="none"){ a.style.display="flex"; const s=document.getElementById("kifu"); if(s) setTimeout(()=>{s.scrollTop=s.scrollHeight},50); }else{ a.style.display="none"; } }
-function copyKifuText() { const d=document.getElementById("kifu"); if(d) navigator.clipboard.writeText(d.innerText).then(()=>alert("棋譜をコピーしました！")); }
-window.onclick=function(e){ if(!e.target.matches('#menuTrigger')){ const p=document.getElementById('menuPanel'); if(p&&p.style.display==='block') p.style.display='none'; }};
-
-// グラフ初期化・更新（簡略化して末尾に配置）
 function initChart() {
     const ctx = document.getElementById('evalChart').getContext('2d');
     if (typeof evalChart !== 'undefined' && evalChart) evalChart.destroy();
@@ -1002,11 +821,110 @@ function initChart() {
     evalChart = new Chart(ctx, {
         type: 'line',
         data: { labels: [], datasets: [{ label: '評価値', data: evalHistory, borderColor: '#ff4500', backgroundColor: 'rgba(255, 69, 0, 0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2, showLine: true }] },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: -parseInt(initialScale), max: parseInt(initialScale), ticks: { stepSize: step, autoSkip: false, maxTicksLimit: 100 } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: -parseInt(initialScale), max: parseInt(initialScale), grid: { color: c=>c.tick&&(Math.abs(c.tick.value)<0.1?'#333':'#eee'), lineWidth: c=>c.tick&&(Math.abs(c.tick.value)<0.1?2:1) }, ticks: { stepSize: step, autoSkip: false, maxTicksLimit: 100 } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
     });
 }
-function updateChart() { if(!evalChart) return; while(evalChart.data.labels.length < evalHistory.length) evalChart.data.labels.push(evalChart.data.labels.length.toString()); while(evalChart.data.labels.length > evalHistory.length) evalChart.data.labels.pop(); const mode = document.getElementById("modeSelect").value; const dataset = evalChart.data.datasets[0]; if(mode === "winrate") dataset.data = evalHistory.map(score => calculateWinRate(score)); else dataset.data = [...evalHistory]; evalChart.update(); }
-function updateChartSettings() { if(!evalChart) return; const mode = document.getElementById("modeSelect").value; const scaleVal = document.getElementById("scaleSelect").value; if(mode === "winrate") { evalChart.options.scales.y.min = 0; evalChart.options.scales.y.max = 100; evalChart.options.scales.y.ticks.stepSize = 25; } else { const yAxis = evalChart.options.scales.y; if(scaleVal === "auto") { delete yAxis.min; delete yAxis.max; delete yAxis.ticks.stepSize; } else { const num = parseInt(scaleVal, 10); yAxis.min = -num; yAxis.max = num; yAxis.ticks.stepSize = getStepSize(scaleVal); } } updateChart(); }
-function toggleGraph() { const area = document.getElementById("graphArea"); if(!area) return; if(area.style.display === "none") { area.style.display = "flex"; if(evalChart) setTimeout(() => { evalChart.resize(); updateChart(); }, 50); } else { area.style.display = "none"; } }
+
+function updateChart() {
+    if(!evalChart) return; 
+    while(evalChart.data.labels.length < evalHistory.length) evalChart.data.labels.push(evalChart.data.labels.length.toString()); 
+    while(evalChart.data.labels.length > evalHistory.length) evalChart.data.labels.pop(); 
+    const mode = document.getElementById("modeSelect").value; 
+    const dataset = evalChart.data.datasets[0]; 
+    if(mode === "winrate") dataset.data = evalHistory.map(score => calculateWinRate(score)); 
+    else dataset.data = [...evalHistory]; 
+    evalChart.update();
+    const latestScore = evalHistory[evalHistory.length - 1] || 0;
+    const winRate = calculateWinRate(latestScore).toFixed(1);
+    const scoreStr = (latestScore > 0 ? "+" : "") + latestScore;
+    const evalElem = document.getElementById("numericEval");
+    if (evalElem) {
+        evalElem.textContent = `評価値: ${scoreStr} / 勝率: ${winRate}%`;
+        if (latestScore > 200) evalElem.style.color = "red";
+        else if (latestScore < -200) evalElem.style.color = "blue";
+        else evalElem.style.color = "#333";
+    }
+}
+
+function updateChartSettings() { 
+    if(!evalChart) return; 
+    const mode = document.getElementById("modeSelect").value; 
+    const scaleVal = document.getElementById("scaleSelect").value; 
+    const scaleSelectParams = document.getElementById("scaleSelect");
+    if(mode === "winrate") { 
+        evalChart.options.scales.y.min = 0; evalChart.options.scales.y.max = 100; evalChart.options.scales.y.ticks.stepSize = 25; scaleSelectParams.disabled = true; 
+    } else { 
+        const yAxis = evalChart.options.scales.y; 
+        if(scaleVal === "auto") { delete yAxis.min; delete yAxis.max; delete yAxis.ticks.stepSize; } 
+        else { const num = parseInt(scaleVal, 10); yAxis.min = -num; yAxis.max = num; yAxis.ticks.stepSize = getStepSize(scaleVal); } 
+        scaleSelectParams.disabled = false; 
+    } 
+    updateChart(); 
+}
+
+function toggleGraph() { 
+    const area = document.getElementById("graphArea"); 
+    if(!area) return; 
+    if(area.style.display === "none") { 
+        area.style.display = "flex"; 
+        if(evalChart) setTimeout(() => { evalChart.resize(); updateChart(); }, 50); 
+    } else { area.style.display = "none"; } 
+}
+
 function calculateWinRate(s) { return 1/(1+Math.exp(-s/1200))*100; }
 function getStepSize(s) { if(s==="auto") return undefined; const r=parseInt(s,10); if(r<=500)return 100; if(r<=1000)return 200; if(r<=2000)return 500; if(r<=5000)return 1000; return 2000; }
+
+function saveGameResult(res) {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+    const opponentDisplayName = window.opponentName || "試験実装AI (最強)";
+    const playerColor = (cpuSide === "white" ? "black" : "white");
+    const isWin = (res === playerColor);
+    const gameRecord = { date: new Date(), opponent: opponentDisplayName, moves: moveCount, result: isWin ? "WIN" : "LOSE", mode: "yaneuraou", kifuData: kifu };
+    if (typeof updateMissionProgress === "function") { updateMissionProgress("play", 1); if(isWin) updateMissionProgress("win", 1); }
+    db.collection("users").doc(user.uid).update({ win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0), lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1), history: firebase.firestore.FieldValue.arrayUnion(gameRecord) }).then(() => console.log("保存完了")).catch(e => console.error(e));
+}
+
+// ユーティリティ
+function updateHandLayout(playerRole) {
+    const leftSide = document.querySelector(".side.left");
+    const rightSide = document.querySelector(".side.right");
+    const blackBox = document.getElementById("blackHandBox");
+    const whiteBox = document.getElementById("whiteHandBox");
+    if (!leftSide || !rightSide || !blackBox || !whiteBox) return;
+    if (playerRole === "white") {
+        blackBox.classList.remove("black-hand"); blackBox.classList.add("white-hand"); 
+        whiteBox.classList.remove("white-hand"); whiteBox.classList.add("black-hand"); 
+        leftSide.prepend(blackBox); rightSide.appendChild(whiteBox);
+    } else {
+        blackBox.classList.remove("white-hand"); blackBox.classList.add("black-hand");
+        whiteBox.classList.remove("black-hand"); whiteBox.classList.add("white-hand");
+        leftSide.prepend(whiteBox); rightSide.appendChild(blackBox);
+    }
+}
+function deepCopyState() {
+    return { boardState: JSON.parse(JSON.stringify(boardState)), hands: JSON.parse(JSON.stringify(hands)), turn: turn, moveCount: moveCount, kifu: JSON.parse(JSON.stringify(kifu)), lastMoveTo: lastMoveTo ? { ...lastMoveTo } : null, lastMoveFrom: lastMoveFrom ? { ...lastMoveFrom } : null };
+}
+function applyUserSkin() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+    db.collection("users").doc(user.uid).get().then((doc) => {
+        if (doc.exists) {
+            const data = doc.data(); const equipped = data.equipped || {};
+            if (typeof GAME_ITEMS !== 'undefined') {
+                if (equipped.piece) { const item = GAME_ITEMS.find(i => i.id === equipped.piece); if (item && item.image) document.documentElement.style.setProperty('--piece-img', `url('${item.image}')`); }
+                if (equipped.board) { const item = GAME_ITEMS.find(i => i.id === equipped.board); if (item && item.image) document.documentElement.style.setProperty('--board-img', `url('${item.image}')`); }
+                if (equipped.bgm) { const item = GAME_ITEMS.find(i => i.id === equipped.bgm); if (item && item.src) { const bgmEl = document.getElementById("bgm"); if (bgmEl) bgmEl.src = item.src; } }
+            }
+        }
+    }).catch(console.error);
+}
+function toggleMenu() { const p = document.getElementById('menuPanel'); if(p) p.style.display=(p.style.display==='none')?'block':'none'; }
+function toggleVolume() { const m = document.getElementById("volumeModal"); if(m) m.style.display="flex"; }
+function updateVolume() { const b=document.getElementById("bgm"), r=document.getElementById("bgmRange"); if(b&&r){ b.volume=r.value; b.muted=false; } }
+function closeVolumeModal() { document.getElementById("volumeModal").style.display="none"; }
+function showRules() { document.getElementById("rulesModal").style.display="flex"; }
+function closeRulesModal() { document.getElementById("rulesModal").style.display="none"; }
+function toggleKifu() { const a=document.getElementById("kifuArea"); if(a.style.display==="none"){ a.style.display="flex"; const s=document.getElementById("kifu"); if(s) setTimeout(()=>{s.scrollTop=s.scrollHeight},50); }else{ a.style.display="none"; } }
+function copyKifuText() { const d=document.getElementById("kifu"); if(d) navigator.clipboard.writeText(d.innerText).then(()=>alert("棋譜をコピーしました！")); }
+window.onclick=function(e){ if(!e.target.matches('#menuTrigger')){ const p=document.getElementById('menuPanel'); if(p&&p.style.display==='block') p.style.display='none'; }};
