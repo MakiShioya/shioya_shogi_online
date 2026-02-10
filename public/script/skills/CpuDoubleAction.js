@@ -11,4 +11,5 @@ const CpuDoubleAction = {
     const count = (typeof window.cpuSkillUseCount !== 'undefined') ? window.cpuSkillUseCount : 0;
     return this.baseCost + (count * this.costGrowth);
   }
+
 };
