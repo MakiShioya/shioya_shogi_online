@@ -378,7 +378,7 @@ input, textarea {
       text-align: center;
     }
 
-    /* --- 右側の浮遊ボタンエリア（だったけど左に変更） --- */
+    /* --- 左側の浮遊ボタンエリア --- */
     .right-side-menu {
       position: absolute;
       left: 15px;
@@ -540,8 +540,8 @@ input, textarea {
     #lobbyChatModal .modal-box,
     #mailboxModal .modal-box {
  
-      height: 85vh;      /* 縦幅いっぱい（画面の85%） */
-      max-width: 800px;  /* PCで見ても広がりすぎないように制限 */
+      height: 85vh;       /* 縦幅いっぱい（画面の85%） */
+      max-width: 800px;   /* PCで見ても広がりすぎないように制限 */
       display: flex;
       flex-direction: column;
     }
@@ -567,15 +567,7 @@ input, textarea {
       </span>
     </div>
 
-    <div>
-      
-     
-      <button class="top-btn" style="background: #e91e63;" onclick="switchModal('settingsMainMenu', 'characterSettingsMenu')">キャラ</button>
-      <button class="top-btn stats-btn" onclick="showMyStats()"> 戦績 </button>
-      <button class="top-btn" style="background: #17a2b8;" onclick="openModal('helpMainMenu')">ヘルプ</button>
-      <button class="top-btn" style="background: #6f42c1;" onclick="openModal('helpContact')">不具合</button>
-      <button class="top-btn" style="background: #6c757d;" onclick="openModal('settingsMainMenu')"> 設定 </button>
-    </div>
+    <div></div>
   </div>
 
   <div class="right-side-menu">
@@ -607,7 +599,23 @@ input, textarea {
     
     
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
-    <button class="menu-btn" style="background: linear-gradient(to bottom, #FF9800 0%, #F57C00 100%);" onclick="window.location.href='inventory.html'">所持品</button>
+    
+    <button class="menu-btn" style="background: linear-gradient(to bottom, #607d8b 0%, #455a64 100%);" onclick="openModal('unifiedMenuModal')">メニュー</button>
+  </div>
+
+  <div id="unifiedMenuModal" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">メニュー</h3>
+      <div class="modal-grid">
+        <button class="sub-btn" style="background: linear-gradient(to bottom, #FF9800 0%, #F57C00 100%);" onclick="window.location.href='inventory.html'">🎒 所持品</button>
+        <button class="sub-btn" style="background: #e91e63;" onclick="switchModal('unifiedMenuModal', 'characterSettingsMenu')">👤 キャラ</button>
+        <button class="sub-btn" style="background: #ff9800;" onclick="showMyStats()">📊 戦績</button>
+        <button class="sub-btn" style="background: #17a2b8;" onclick="switchModal('unifiedMenuModal', 'helpMainMenu')">❓ ヘルプ</button>
+        <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('unifiedMenuModal', 'helpContact')">🔧 不具合</button>
+        <button class="sub-btn" style="background: #6c757d;" onclick="switchModal('unifiedMenuModal', 'settingsMainMenu')">⚙️ 設定</button>
+      </div>
+      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('unifiedMenuModal')">閉じる</button>
+    </div>
   </div>
 
   <div id="newsModal" class="overlay">
@@ -1570,7 +1578,7 @@ function addMessageToLobbyChatFirestore(data) {
                 // 対象のメールを探す
                 const targetIndex = currentMailbox.findIndex(m => m.id === mail.id);
                 if (targetIndex === -1) {
-                     throw "このメールは見つかりませんでした。";
+                      throw "このメールは見つかりませんでした。";
                 }
                 
                 // 既に受け取っていないか念のためチェック
@@ -1615,7 +1623,3 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
-
-
-
-
