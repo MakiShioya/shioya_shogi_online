@@ -1,5 +1,5 @@
 // script/yaneuraou_main.js
-// やねうら王専用メインスクリプト（必殺技ゲージ・CPU神速・グラフ機能完全統合版）
+// やねうら王専用メインスクリプト（必殺技ゲージ・CPU神速・バグ修正版）
 
 // --- ★やねうら王用 設定変数 ---
 let usiHistory = []; // 棋譜（USI形式）を記録する配列
@@ -17,8 +17,8 @@ window.isCaptureRestricted = false;
 let lastSkillKifu = ""; 
 let pendingMove = null;
 
-// ★重要：これがないと動きません（新機能用）
-let skillUseCount = 0; 
+// ★修正：重複していた宣言(let skillUseCount)を削除
+// skillUseCount は globals.js で定義済みのため、ここでは宣言せず利用のみ行う
 
 // ★CPU 2回行動用
 let isCpuDoubleAction = false;
@@ -48,6 +48,9 @@ const resignBtn = document.getElementById("resignBtn");
 
 // --- 初期化処理 ---
 window.addEventListener("load", () => {
+  // ★変数のリセット（ここで行う）
+  skillUseCount = 0;
+  
   bgm = document.getElementById("bgm");
   moveSound = document.getElementById("moveSound");
   promoteSound = document.getElementById("promoteSound");
@@ -330,7 +333,7 @@ function executeMove(sel, x, y, doPromote) {
       }
       const boardTable = document.getElementById("board");
       if (boardTable) {
-        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
+        boardTable.classList.remove("flash-green", "flash-orange");
         void boardTable.offsetWidth;
         if (base === "R") {
             boardTable.classList.add("flash-green");
@@ -354,7 +357,6 @@ function executeMove(sel, x, y, doPromote) {
 
   // ★USI履歴への記録
   const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
-  // 【修正】必殺技使用済みフラグが立っている場合は、履歴に追加しない！
   if (!window.skillUsed) {
       usiHistory.push(usiMove);
   }
@@ -380,8 +382,10 @@ function executeMove(sel, x, y, doPromote) {
 
   // ▼▼▼ 【変更】手番交代の制御（2回行動用） ▼▼▼
   if (isCpuDoubleAction) {
-      isCpuDoubleAction = false; // フラグ回収
+      // 必殺技発動中
+      isCpuDoubleAction = false; 
 
+      // パス記録
       const playerRole = (turn === "black") ? "white" : "black";
       const mark = (playerRole === "black") ? "▲" : "△";
       kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
@@ -389,6 +393,8 @@ function executeMove(sel, x, y, doPromote) {
 
       statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
       
+      // turn（手番）を入れ替えない！ = ずっとCPUのターン
+
       selected = null;
       legalMoves = [];
       render(); 
@@ -413,11 +419,6 @@ function executeMove(sel, x, y, doPromote) {
       if (!gameOver) startTimer();
       else stopTimer();
       moveCount++;
-      
-      // ★CPU思考開始（1秒後）
-      if (turn === cpuSide && !gameOver) {
-          setTimeout(() => cpuMove(), 1000);
-      }
   }
   // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
