@@ -1060,17 +1060,20 @@ function cpuMove() {
         return;
     }
 
-    statusDiv.textContent = "考え中...";
+    statusDiv.textContent = "考え中…";
 
     let positionCmd = "";
-    // 必殺技後や履歴なしの場合はSFEN
-    if ((typeof skillUsed !== 'undefined' && skillUsed) || usiHistory.length === 0) {
+    
+    // ▼▼▼ 修正： isCpuDoubleAction を条件に追加 ▼▼▼
+    // 必殺技後、履歴なし、または「2回行動中」の場合はSFENを使う
+    if ((typeof skillUsed !== 'undefined' && skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
         const sfen = generateSfen();
         positionCmd = "position sfen " + sfen;
     } 
     else {
         positionCmd = "position startpos moves " + usiHistory.join(" ");
     }
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     sendToEngine(positionCmd);
 
