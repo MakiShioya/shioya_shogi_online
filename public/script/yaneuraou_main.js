@@ -1744,4 +1744,3 @@ function updateCpuSkillGaugeUI() {
         else bar.classList.remove("gauge-max");
     }
 }
-// ▲▲▲ ここまで ▲▲▲
