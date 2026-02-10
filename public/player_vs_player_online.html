@@ -143,6 +143,39 @@
       align-items: center;
     }
 
+    /* ▼▼▼ 追加：必殺技ゲージのスタイル ▼▼▼ */
+    .skill-gauge-wrapper {
+      width: 100%;
+      margin: 5px 0;
+      text-align: center;
+    }
+    .skill-gauge-container {
+      width: 100%;
+      height: 12px;
+      background-color: #444;
+      border: 1px solid #fff;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+      margin: 2px 0;
+    }
+    .skill-gauge-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff8c00, #ff4500);
+      transition: width 0.3s ease-out;
+    }
+    .gauge-max {
+      background: linear-gradient(90deg, #00d2ff, #3a7bd5) !important; /* 満タン時は青く光る */
+      box-shadow: 0 0 8px #00d2ff;
+    }
+    .gauge-text {
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      text-shadow: 1px 1px 0 #000;
+    }
+
 
 /* メニューボタンの微調整 */
     .menu-item {
@@ -159,6 +192,8 @@
       font-weight: bold;
     }
     .sub-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+    
 
 /* ▼▼▼ 必殺技カットイン画像の配置設定 ▼▼▼ */
     #skillCutIn {
@@ -278,13 +313,19 @@
             <div id="whiteHand"></div>
           </div>
 
+          <div class="skill-gauge-wrapper">
+             <div class="skill-gauge-container">
+               <div id="cpuSkillGaugeBar" class="skill-gauge-bar"></div>
+             </div>
+             <div id="cpuSkillGaugeText" class="gauge-text">0</div>
+          </div>
           <div id="status"></div>
           
           <div id="timeContainer" style="margin-top: 10px; font-weight: bold; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 5px;">
              <div id="whiteTimer" style="color: #333; margin-bottom: 5px;">△後手: 20:00</div>
              <div id="blackTimer" style="color: #333;">▲先手: 20:00</div>
           </div>
-          </div>
+        </div>
 
         <div id="center">
 
@@ -303,6 +344,17 @@
 
         <div class="side right">
           <button id="resignBtn" class="square-btn">投了</button>
+
+          <div class="skill-gauge-wrapper">
+             <div style="display:flex; justify-content:space-between; color:white; font-size:10px;">
+                <span>Skill Pt</span>
+                <span id="nextCostText"></span>
+             </div>
+             <div class="skill-gauge-container">
+               <div id="skillGaugeBar" class="skill-gauge-bar"></div>
+             </div>
+             <div id="skillGaugeText" class="gauge-text">0</div>
+          </div>
           <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
           <div class="hand black-hand" id="blackHandBox">
             <h3>先手の持ち駒</h3>
