@@ -895,7 +895,7 @@ input, textarea {
   <script>
     // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
-    let globalChatHistory = [];
+
     try {
         socket = io();
     } catch(e) {
@@ -1083,126 +1083,150 @@ input, textarea {
     }
 
     // 【修正版】メッセージ送信関数
+// 【修正版】メッセージ送信関数 (Firestore版)
 function sendLobbyMessage() {
-    if (!socket) {
-        showSystemAlert("チャットサーバーに接続されていません");
-        return;
-    }
     const input = document.getElementById("lobbyChatInput");
     const text = input.value.trim();
     if (!text) return;
 
-    // --- ★★★ 変更点：IDと名前の決定ロジック ★★★ ---
     const user = firebase.auth().currentUser;
     
-    let myName, myId;
+    // ユーザー情報の取得
+    let myName = "ゲスト";
+    let myId = "guest"; // ゲストも識別したい場合は指紋IDなどが必要ですが一旦簡易化
+    let iconUrl = "script/image/test.icon.PNG"; // デフォルトアイコン
 
     if (user) {
-        // ログインしている場合
-        // ID: FirebaseのUIDを使う（他人と絶対被らない）
-        myId = user.uid; 
-        // 名前: 画面の表示名を使う
+        myId = user.uid;
         myName = document.getElementById("userNameDisplay").textContent || "名無し";
-    } else {
-        // ゲストの場合
-        // ID: socket.id を使う（ブラウザを閉じると変わるが、その場では他人と区別できる）
-        // ※もし本当に「全ゲストを同一人物（自分）」として扱いたい場合は、ここを "guest_id_common" などの固定文字にしてください
-        myId = socket.id; 
-        // 名前: 強制的に「ゲスト」にする
-        myName = "ゲスト";
+        // ★将来的にuserデータからアイコンを取得する場合はここで設定
     }
 
-    // サーバーへ送信（userIdを追加）
-    socket.emit('chat message', {
-        userId: myId,   // ★追加：本人確認用のID
-        name: myName,   // 表示用の名前
+    // ★Socket.ioではなく、Firestoreに保存する
+    // コレクション名: "lobby_chat" (自由につけてOK)
+    db.collection("lobby_chat").add({
         text: text,
-        role: 'lobby' 
+        name: myName,
+        userId: myId,
+        icon: iconUrl,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), // サーバー時間
+        role: 'lobby'
+    })
+    .then(() => {
+        console.log("送信成功");
+        input.value = ""; // 入力欄を空にする
+    })
+    .catch((error) => {
+        console.error("送信エラー: ", error);
+        alert("送信できませんでした");
     });
-    
-    input.value = "";
 }
-    // チャット受信処理
-    if (socket) {
-        socket.on('chat history', (history) => {
-            globalChatHistory = history; 
-            renderLobbyChat();            
-        });
-        socket.on('chat message', (data) => {
-            globalChatHistory.push(data); 
-            addMessageToLobbyChat(data); 
-        });
-    }
+    
 
-    function renderLobbyChat() {
-        const historyDiv = document.getElementById("lobbyChatHistory");
-        if (!historyDiv) return;
-        historyDiv.innerHTML = ""; 
-        globalChatHistory.forEach(data => {
-            addMessageToLobbyChat(data);
-        });
-    }
+// --- ★★★ 新しいチャット機能 (Firestore版) ★★★ ---
 
-    // 【修正版】メッセージ表示関数
-function addMessageToLobbyChat(data) {
+let chatUnsubscribe = null; // 監視解除用の変数
+
+// チャットの初期化・監視開始
+function initLobbyChat() {
     const historyDiv = document.getElementById("lobbyChatHistory");
     if (!historyDiv) return;
 
-    // --- ★★★ 変更点：本人判定ロジック ★★★ ---
+    // 二重監視を防ぐため、既に監視中なら解除
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+    }
+
+    console.log("チャット接続開始...");
+
+    // Firestoreの "lobby_chat" コレクションを監視
+    chatUnsubscribe = db.collection("lobby_chat")
+        .orderBy("createdAt", "desc") // 新しい順に取得
+        .limit(50)                    // 最新50件
+        .onSnapshot((snapshot) => {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            // データ変更があるたびにここが動く
+            
+            // データを配列にまとめる
+            let messages = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                data.id = doc.id;
+                messages.push(data);
+            });
+
+            // 新しい順(desc)で取得したので、表示のために古い順に直す
+            messages.reverse();
+
+            // 画面を一度クリアして再描画
+            historyDiv.innerHTML = "";
+            messages.forEach(msg => {
+                addMessageToLobbyChatFirestore(msg);
+            });
+
+            // 一番下へスクロール
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        });
+}
+
+// 1件分のメッセージを表示する関数
+function addMessageToLobbyChatFirestore(data) {
+    const historyDiv = document.getElementById("lobbyChatHistory");
     const user = firebase.auth().currentUser;
     
-    // 自分のIDを取得（送信時と同じロジック）
-    let currentMyId;
-    if (user) {
-        currentMyId = user.uid;
-    } else {
-        // ゲストの時は自分のsocket.idと比較
-        // socketが未接続の場合はnullになるので注意
-        currentMyId = socket ? socket.id : null;
+    // 自分のIDかどうかの判定
+    // ログインしていない場合は null と比較
+    const currentMyId = user ? user.uid : null;
+    
+    // データにuserIdがない場合（古いログなど）への対策
+    const msgUserId = data.userId || "unknown";
+
+    const isMe = (msgUserId === currentMyId);
+
+    // --- ここからはデザイン生成（以前と同じ） ---
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "chat-row";
+    if (isMe) rowDiv.classList.add("mine");
+
+    const iconCol = document.createElement("div");
+    iconCol.className = "icon-container";
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "chat-name-badge";
+    nameDiv.textContent = data.name || "名無し";
+
+    const iconImg = document.createElement("img");
+    iconImg.src = data.icon || "script/image/test.icon.PNG";
+    iconImg.className = "chat-icon-img";
+    // 画像エラー時はグレーに
+    iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
+
+    iconCol.appendChild(nameDiv);
+    iconCol.appendChild(iconImg);
+
+    const bubbleDiv = document.createElement("div");
+    bubbleDiv.className = "chat-bubble";
+    bubbleDiv.textContent = data.text;
+
+    // 日付を表示したい場合は以下を追加
+    /*
+    if (data.createdAt) {
+        const d = data.createdAt.toDate();
+        const timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const timeSpan = document.createElement("div");
+        timeSpan.style.fontSize = "0.6rem";
+        timeSpan.style.textAlign = "right";
+        timeSpan.style.opacity = "0.6";
+        timeSpan.textContent = timeStr;
+        bubbleDiv.appendChild(timeSpan);
     }
+    */
 
-    // ★ IDが一致すれば「自分」とみなす
-    // (data.userId が無い古いメッセージ対策として、念のため名前チェックも残すか、あるいはID必須にする)
-    const isMe = (data.userId === currentMyId);
-
-    // --- 以下、表示処理（既存コードとほぼ同じ） ---
-
-    if (data.isSystem) {
-        const sysDiv = document.createElement("div");
-        sysDiv.className = "chat-system-box";
-        sysDiv.textContent = data.text;
-        historyDiv.appendChild(sysDiv);
-    } else {
-        const rowDiv = document.createElement("div");
-        rowDiv.className = "chat-row";
-        if (isMe) rowDiv.classList.add("mine"); // 自分の場合、右寄せクラス付与
-
-        const iconCol = document.createElement("div");
-        iconCol.className = "icon-container";
-
-        const nameDiv = document.createElement("div");
-        nameDiv.className = "chat-name-badge";
-        nameDiv.textContent = data.name; // IDに関わらず、送られてきた名前を表示
-
-        const iconImg = document.createElement("img");
-        // ★ 将来的にアイコンもIDによって変えるならここで判定できます
-        iconImg.src = "script/image/test.icon.PNG"; 
-        iconImg.className = "chat-icon-img";
-        iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
-
-        iconCol.appendChild(nameDiv);
-        iconCol.appendChild(iconImg);
-
-        const bubbleDiv = document.createElement("div");
-        bubbleDiv.className = "chat-bubble";
-        bubbleDiv.textContent = data.text;
-
-        rowDiv.appendChild(iconCol);
-        rowDiv.appendChild(bubbleDiv);
-        historyDiv.appendChild(rowDiv);
-    }
-    historyDiv.scrollTop = historyDiv.scrollHeight;
+    rowDiv.appendChild(iconCol);
+    rowDiv.appendChild(bubbleDiv);
+    historyDiv.appendChild(rowDiv);
 }
+    
     document.addEventListener("DOMContentLoaded", () => {
         const lobbyInput = document.getElementById("lobbyChatInput");
         if (lobbyInput) {
@@ -1227,11 +1251,13 @@ function addMessageToLobbyChat(data) {
     };
 
     firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            setTimeout(() => {
-                renderLobbyChat();
-            }, 500); 
+        // ★修正：ログイン・未ログインに関わらず、チャットを読み込み開始する
+        setTimeout(() => {
+            initLobbyChat();
+        }, 500);
 
+        if (user) {
+            // ここは「ログインしている人だけ」に必要な処理（所持金データの取得など）
             db.collection("users").doc(user.uid).onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -1551,6 +1577,7 @@ function addMessageToLobbyChat(data) {
 
 </body>
 </html>
+
 
 
 
