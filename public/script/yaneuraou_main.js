@@ -10,11 +10,7 @@ let isPondering = false; // 先読み中かどうか
 let ponderTimer = null;  // 休憩用のタイマー
 let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
-// ★追加：必殺技を使用したかどうかのフラグ
-window.skillUsed = false;
-// ★追加：このターン、駒取りを禁止するかどうかのフラグ
-window.isCaptureRestricted = false;
-// -----------------------------
+
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
 // ★必殺技・ゲージ関連の変数
@@ -49,12 +45,7 @@ const statusDiv = document.getElementById("status");
 const checkStatusDiv = document.getElementById("checkStatus");
 const resignBtn = document.getElementById("resignBtn");
 
-// ★★★ 手番消費なし必殺技の棋譜を一時保存する変数 ★★★
-let lastSkillKifu = ""; 
-// ★★★ 成り・不成の保留用変数 ★★★
-let pendingMove = null;
 
-// 初期化処理
 
 window.addEventListener("load", () => {
   bgm = document.getElementById("bgm");
