@@ -1105,18 +1105,23 @@ function applyUsiMove(usiMove) {
     let toY = -1;
     let doPromote = false;
 
+    // ★持ち駒を打つ場合
     if (usiMove.includes("*")) {
         const pieceChar = usiMove[0];
         const fileTo = parseInt(usiMove[2]);
         const rankToChar = usiMove[3];
         toX = 9 - fileTo;
         toY = rankToChar.charCodeAt(0) - 97;
-     　 sel = { x: fromX, y: fromY, fromHand: false, player: turn };
         const handIndex = hands[turn].findIndex(p => p === pieceChar);
         if (handIndex === -1) return;
+        
+        // player情報を付与
         sel = { fromHand: true, player: turn, index: handIndex };
+        
         doPromote = false;
-    } else {
+    } 
+    // ★盤上の駒を動かす場合
+    else {
         const fileFrom = parseInt(usiMove[0]);
         const rankFromChar = usiMove[1];
         const fileTo = parseInt(usiMove[2]);
@@ -1126,13 +1131,16 @@ function applyUsiMove(usiMove) {
         const fromY = rankFromChar.charCodeAt(0) - 97;
         toX = 9 - fileTo;
         toY = rankToChar.charCodeAt(0) - 97;
-        sel = { x: fromX, y: fromY, fromHand: false };
+        
+        // ★ここに player: turn を入れます（盤上の移動用）
+        sel = { x: fromX, y: fromY, fromHand: false, player: turn };
+        
         doPromote = isPromote;
     }
+    
     // AIはexecuteMoveを直接呼ぶ
     executeMove(sel, toX, toY, doPromote);
 }
-
 // ★★★ SFEN生成（後手の持ち駒バグ修正版） ★★★
 function generateSfen() {
     let sfen = "";
