@@ -14,10 +14,16 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
+
+    @font-face {
+      font-family: 'SetoFont';  /* 好きな名前でOK */
+      src: url('script/font/setofont-ex.ttf') format('truetype'); /* ファイルの場所 */
+    }
+    
     body {
       margin: 0;
       padding: 0;
-      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      font-family: "SetoFont", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
       position: fixed; 
       top: 0;
       left: 0;
@@ -1623,3 +1629,4 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
+
