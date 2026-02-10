@@ -6,8 +6,8 @@ const SilverArmor = {
   sourcePos: null,
 
   // ★コスト設定（守りの技なので安めに）
-  baseCost: 30,
-  costGrowth: 30,
+  baseCost: 100,
+  costGrowth: 300,
 
   // デザイン設定（そのまま）
   buttonStyle: {
