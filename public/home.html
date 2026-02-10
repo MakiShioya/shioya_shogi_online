@@ -18,6 +18,7 @@
     @font-face {
       font-family: 'SetoFont';  /* 好きな名前でOK */
       src: url('script/font/setofont.ttf') format('truetype'); /* ファイルの場所 */
+      font-display: block;
     }
 
     * {
@@ -565,16 +566,18 @@ input, textarea {
     /* ★追加：ロード画面のスタイル */
 #loading-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #2c3e50; /* 背景と同じ色にすると自然です */
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-color: #2c3e50;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999; /* 一番手前に表示 */
-  transition: opacity 0.5s ease; /* 消える時のアニメーション */
+  z-index: 9999;
+  transition: opacity 0.5s ease;
+  /* ★追加：最初は非表示にして、瀬戸フォントが来たら表示する */
+  visibility: hidden; 
+}
+    #loading-screen.ready {
+  visibility: visible;
 }
 
 .loader-content {
@@ -631,19 +634,41 @@ input, textarea {
 <body>
 
   <div id="loading-screen">
-  <div class="loader-content">
-    <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading Character">
-    
-    <div class="spinner"></div>
-    
-    <div id="loading-tips"></div>
-    
-    <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+    <div class="loader-content">
+      <img src="script/image/komiya_icon.png" class="loading-char" alt="Loading">
+      <div class="spinner"></div>
+      <div id="loading-tips"></div>
+      <p style="font-size: 0.7rem; opacity: 0.6;">LOADING...</p>
+    </div>
   </div>
-</div>
+
+  <script>
+    // --- ロード画面専用スクリプト（最速で実行） ---
+    const loadingTipsList = [
+        "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+        "【tips】オンライン対局は、先に入室した方が先手になります。",
+        "【tips】メニューからBGMの変更が可能です。"
+    ];
+    
+    // チップスを即座にセット
+    document.getElementById('loading-tips').textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+
+    // ★重要：フォントの読み込みを待ってからロード画面の内容を表示する
+    document.fonts.ready.then(function() {
+        document.getElementById('loading-screen').classList.add('font-loaded');
+    });
+
+    // ページ全体の読み込みが完了したらロード画面を消す
+    window.onload = function() {
+        const loader = document.getElementById('loading-screen');
+        setTimeout(() => {
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; }, 500);
+        }, 800); // 演出のため最低0.8秒だけ見せる
+    };
+  </script>
 
   <div id="bg-image"></div>
-
 
 
 
@@ -1010,7 +1035,7 @@ input, textarea {
 
     </div>
   </div>
-  
+
   <script src="script/missions.js"></script>
   <script src="script/serifu/komiya.js"></script>
 <script src="script/serifu/a.js"></script>
@@ -1018,6 +1043,8 @@ input, textarea {
 <script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
   <script>
+
+    
     // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
 
@@ -1713,44 +1740,12 @@ function addMessageToLobbyChatFirestore(data) {
     }
 
 
-// 表示したいチップスのリスト（自由に追加してください！）
-const loadingTipsList = [
-    "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
-    "【tips】オンライン対局は、先に入室した方が先手になります。",
-    "【tips】棋譜からは自分のこれまでの棋譜を分析することもできます。",
-    "【tips】メニューボタンから設定やヘルプに素早くアクセス可能です。",
-    "【tips】ホーム画面のキャラや対局中のBGMはメニューから変更できます。"
-];
 
-function showRandomTips() {
-    const tipEl = document.getElementById('loading-tips');
-    if (!tipEl) return;
-    const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
-    tipEl.textContent = randomTip;
-}
-
-// ページ読み込み時の処理を更新
-window.addEventListener('load', () => {
-    // 最初に1つチップスを表示
-    showRandomTips();
-    
-    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
-    const tipsInterval = setInterval(showRandomTips, 3000);
-
-    const loader = document.getElementById('loading-screen');
-    setTimeout(() => {
-        clearInterval(tipsInterval); // 消去前にタイマーを止める
-        loader.style.opacity = '0';
-        setTimeout(() => {
-            loader.style.display = 'none';
-        }, 500);
-    }, 1500); // 演出のために最低1.5秒は見せる
-});
-    
 </script>
 
 </body>
 </html>
+
 
 
 
