@@ -15,10 +15,16 @@
 
   <style>
 
+      * {
+  font-family: "SetoFont", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif !important;
+}
+      
+
     @font-face {
-      font-family: 'SetoFont';  /* 好きな名前でOK */
-      src: url('script/font/setofont.ttf') format('truetype'); /* ファイルの場所 */
-    }
+  font-family: 'SetoFont';
+  src: url('script/font/setofont.ttf') format('truetype');
+  font-display: swap; /* ★これを入れると文字消えを防げます */
+}
     
     body {
       margin: 0;
@@ -1629,4 +1635,5 @@ function addMessageToLobbyChatFirestore(data) {
 
 </body>
 </html>
+
 
