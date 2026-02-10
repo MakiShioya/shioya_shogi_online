@@ -29,9 +29,25 @@ let lastSkillKifu = "";
 // ★★★ 成り・不成の保留用変数 ★★★
 let pendingMove = null;
 
+let isCpuDoubleAction = false;
+let cpuSkillUseCount = 0;
+
+// ★ゲージ用ポイント
+let playerSkillPoint = 0;
+let cpuSkillPoint = 0;
+const MAX_SKILL_POINT = 1000;
+
+// ★ポイント設定
+const SP_CONFIG = {
+  MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
+  DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 10, "+P": 30, "L": 20, "+L": 40, "N": 20, "+N": 40, "S": 30, "+S": 50, "G": 40, "B": 60, "+B": 100, "R": 60, "+R": 100, "K": 1000 },
+  PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
+};
 // 初期化処理
 
 window.addEventListener("load", () => {
+  if (typeof skillUseCount !== 'undefined') skillUseCount = 0;
   bgm = document.getElementById("bgm");
   moveSound = document.getElementById("moveSound");
   promoteSound = document.getElementById("promoteSound");
@@ -526,11 +542,28 @@ function onCellClick(x, y) {
       const result = currentSkill.execute(x, y);
 
       if (result === null) {
-          legalMoves = currentSkill.getValidTargets();
-          render();
-          statusDiv.textContent = "移動させる場所を選んでください";
+          const nextTargets = currentSkill.getValidTargets();
+          if (nextTargets && nextTargets.length > 0) {
+              legalMoves = nextTargets;
+              render();
+              statusDiv.textContent = `必殺技【${currentSkill.name}】：移動先を選んでください`;
+          } else {
+              alert("有効な移動先がありません。");
+              if (currentSkill.reset) currentSkill.reset();
+              isSkillTargeting = false;
+              legalMoves = [];
+              selected = null;
+              render();
+          }
           return; 
       }
+      // ▲▲▲ ここまで ▲▲▲
+
+      // ▼▼▼ 追加：コスト消費 ▼▼▼
+      if (typeof currentSkill.getCost === "function") {
+          consumeSkillPoint(currentSkill.getCost());
+      }
+      // ▲▲▲ ここまで ▲▲▲
 
       history.push(deepCopyState());
 
@@ -591,7 +624,7 @@ function onCellClick(x, y) {
     if (!piece) return;
     const isWhite = piece === piece.toLowerCase();
     if ((turn === "black" && isWhite) || (turn === "white" && !isWhite)) return;
-    selected = { x, y, fromHand: false };
+    selected = { x, y, fromHand: false, player: turn };
     legalMoves = getLegalMoves(x, y);
 
     if (window.isCaptureRestricted) {
@@ -658,6 +691,23 @@ function movePieceWithSelected(sel, x, y) {
 // 実際の移動処理（USI記録・AI思考トリガー含む）
 function executeMove(sel, x, y, doPromote) {
   if (typeof stopPondering === "function") stopPondering();
+  if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
+      const cost = CpuDoubleAction.getCost();
+      if (cpuSkillPoint >= cost) {
+          consumeCpuSkillPoint(cost);
+          isCpuDoubleAction = true;
+          cpuSkillUseCount++;
+
+          playSkillEffect(null, "skill.mp3", "red");
+          statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
+
+          // 演出後、再実行
+          setTimeout(() => {
+              executeMove(sel, x, y, doPromote); 
+          }, 1500);
+          return; // ★ここで処理を一旦切る
+      }
+  }
 
   // ★★★ ここを追加（移動元を記録） ★★★
   if (sel.fromHand) {
@@ -756,24 +806,82 @@ function executeMove(sel, x, y, doPromote) {
     };
   }
 
-  turn = turn === "black" ? "white" : "black";
+  // ▼▼▼ 変更：手番交代制御 ▼▼▼
+  // 元の「turn = ...」や「window.isCaptureRestricted = ...」の部分をこれに置き換える
+  if (isCpuDoubleAction) {
+      isCpuDoubleAction = false; 
+      const playerRole = (turn === "black") ? "white" : "black";
+      const mark = (playerRole === "black") ? "▲" : "△";
+      kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
+      moveCount++; 
+      statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
+      
+      selected = null;
+      legalMoves = [];
+      render(); 
+      if (typeof showKifu === "function") showKifu();
 
-  // ★★★ 手番交代のタイミングで、攻撃禁止フラグを解除 ★★★
-  window.isCaptureRestricted = false;
+      // ★2回目の思考を開始
+      if (!gameOver) {
+          setTimeout(() => { cpuMove(); }, 100);
+      }
+  } else {
+      // 通常の手番交代
+      turn = turn === "black" ? "white" : "black";
+      window.isCaptureRestricted = false;
+      
+      selected = null;
+      legalMoves = [];
+      render(); 
+      if (typeof showKifu === "function") showKifu();
 
-  if (typeof showKifu === "function") showKifu();
-
-  render();
-
-  if (!gameOver) startTimer();
-  else stopTimer();
-
-  moveCount++;
-
-  // ★CPU思考開始（1秒後）
-  if (turn === cpuSide && !gameOver) {
-    setTimeout(() => cpuMove(), 1000);
+      if (!gameOver) startTimer();
+      else stopTimer();
+      moveCount++;
+      
+      // CPU思考開始
+      if (turn === cpuSide && !gameOver) {
+          setTimeout(() => cpuMove(), 1000);
+      }
   }
+  // ▲▲▲ ここまで ▲▲▲
+
+  // checkGameOver(); の直前あたり
+
+  // ▼▼▼ 追加：ポイント加算ロジック ▼▼▼
+  if (!gameOver) {
+      let gain = 0;
+      const getPoint = (configCategory, pieceCode) => {
+          const raw = pieceCode.toUpperCase();
+          const base = raw.replace("+", "");
+          if (configCategory[raw] !== undefined) return configCategory[raw];
+          if (configCategory[base] !== undefined) return configCategory[base];
+          return 10;
+      };
+      if (sel.fromHand) {
+          const piece = boardState[y][x]; 
+          gain += getPoint(SP_CONFIG.DROP, piece);
+      } else {
+          const piece = boardState[y][x];
+          gain += getPoint(SP_CONFIG.MOVE, piece);
+      }
+      if (sel.promoted) {
+          const piece = boardState[y][x].replace("+","");
+          gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
+      }
+      const captured = boardBefore[y][x];
+      if (captured !== "") {
+          gain += getPoint(SP_CONFIG.CAPTURE, captured);
+      }
+      
+      const isPlayerAction = (sel.player === "black" && cpuSide === "white") || (sel.player === "white" && cpuSide === "black");
+      if (isPlayerAction) {
+          addSkillPoint(gain);
+      } else {
+          addCpuSkillPoint(gain);
+      }
+  }
+  // ▲▲▲ ここまで ▲▲▲
 
   checkGameOver();
 }
@@ -828,10 +936,10 @@ function toggleSkillMode() {
   if (isSkillTargeting) return;
 
   // ★修正：回数上限チェックを優先
-  const max = currentSkill.maxUses || 1;
-  if (skillUseCount >= max) {
-    alert("この対局では、必殺技はもう使えません。");
-    return;
+  const cost = (typeof currentSkill.getCost === "function") ? currentSkill.getCost() : 0;
+  if (playerSkillPoint < cost) {
+      alert(`ポイントが足りません (必要: ${cost}, 所持: ${Math.floor(playerSkillPoint)})`);
+      return;
   }
 
   if (!currentSkill.canUse()) {
@@ -891,20 +999,24 @@ function updateSkillButton() {
     }
 
     // ★修正：回数上限 または 相手の手番なら無効化
-    const max = currentSkill.maxUses || 1;
-    const isMaxedOut = (skillUseCount >= max);
-    const isMyTurn = (typeof cpuSide === 'undefined') || (turn !== cpuSide);
-
-    skillBtn.disabled = isMaxedOut || !isMyTurn;
-    skillBtn.style.opacity = (isMaxedOut || !isMyTurn) ? 0.5 : 1.0;
-    
-    if (isMaxedOut) {
-        skillBtn.style.backgroundColor = "#ccc";
-        skillBtn.style.border = "1px solid #999";
+    let cost = 0;
+    if (typeof currentSkill.getCost === "function") {
+        cost = currentSkill.getCost();
     }
-  } else {
-    skillBtn.style.display = "none";
-  }
+    
+    const canAfford = (playerSkillPoint >= cost);
+    const isMyTurn = (typeof cpuSide === 'undefined') || (turn !== cpuSide);
+    const conditionMet = currentSkill.canUse();
+
+    if (canAfford && isMyTurn && conditionMet) {
+       skillBtn.disabled = false;
+       skillBtn.style.opacity = 1.0;
+       skillBtn.style.filter = "none";
+    } else {
+       skillBtn.disabled = true;
+       skillBtn.style.opacity = 0.6;
+       if (!canAfford) skillBtn.style.filter = "grayscale(100%)";
+    }
 }
 
 function playSkillEffect(imageName, soundName, flashColor) {
@@ -999,6 +1111,7 @@ function applyUsiMove(usiMove) {
         const rankToChar = usiMove[3];
         toX = 9 - fileTo;
         toY = rankToChar.charCodeAt(0) - 97;
+     　 sel = { x: fromX, y: fromY, fromHand: false, player: turn };
         const handIndex = hands[turn].findIndex(p => p === pieceChar);
         if (handIndex === -1) return;
         sel = { fromHand: true, player: turn, index: handIndex };
@@ -1565,3 +1678,62 @@ function applyUserSkin() {
         }
     }).catch(console.error);
 }
+
+  // ▼▼▼ 新規追加関数 ▼▼▼
+
+function addSkillPoint(amount) {
+    playerSkillPoint += amount;
+    if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
+    updateSkillGaugeUI();
+    updateSkillButton(); 
+}
+
+function consumeSkillPoint(amount) {
+    playerSkillPoint -= amount;
+    if (playerSkillPoint < 0) playerSkillPoint = 0;
+    updateSkillGaugeUI();
+    updateSkillButton();
+}
+
+function updateSkillGaugeUI() {
+    const bar = document.getElementById("skillGaugeBar");
+    const text = document.getElementById("skillGaugeText");
+    const costText = document.getElementById("nextCostText");
+
+    if (bar && text) {
+        const percentage = (playerSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%"; 
+        text.textContent = Math.floor(playerSkillPoint);
+    }
+    if (costText && currentSkill && typeof currentSkill.getCost === "function") {
+        const cost = currentSkill.getCost();
+        costText.textContent = `Next: ${cost}pt`;
+        costText.style.color = (playerSkillPoint >= cost) ? "#ffd700" : "#ff4500";
+    }
+}
+
+function addCpuSkillPoint(amount) {
+    cpuSkillPoint += amount;
+    if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
+    updateCpuSkillGaugeUI();
+}
+
+function consumeCpuSkillPoint(amount) {
+    cpuSkillPoint -= amount;
+    if (cpuSkillPoint < 0) cpuSkillPoint = 0;
+    updateCpuSkillGaugeUI();
+}
+
+function updateCpuSkillGaugeUI() {
+    const bar = document.getElementById("cpuSkillGaugeBar");
+    const text = document.getElementById("cpuSkillGaugeText");
+
+    if (bar && text) {
+        const percentage = (cpuSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%";
+        text.textContent = Math.floor(cpuSkillPoint);
+        if (cpuSkillPoint >= MAX_SKILL_POINT) bar.classList.add("gauge-max"); 
+        else bar.classList.remove("gauge-max");
+    }
+}
+// ▲▲▲ ここまで ▲▲▲
