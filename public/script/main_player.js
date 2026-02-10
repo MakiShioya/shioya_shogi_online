@@ -14,6 +14,31 @@ window.onTurnComplete = null;
 // --- 描画関連 (render) ---
 window.render = function() {
 
+  // ★ PvP用：個別の必殺技管理変数
+let p1Skill = null;      // 先手の技オブジェクト
+let p2Skill = null;      // 後手の技オブジェクト
+//let p1SkillCount = 0;    // 先手の使用回数
+//let p2SkillCount = 0;    // 後手の使用回数
+// ★PvP用：ゲージポイント管理
+let blackSkillPoint = 0; // 先手のポイント
+let whiteSkillPoint = 0; // 後手のポイント
+const MAX_SKILL_POINT = 1000;
+
+// ★ポイント設定
+const SP_CONFIG = {
+  MOVE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 20 },
+  DROP: { "P": 10, "L": 13, "N": 13, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 1000 },
+  PROMOTE: { "P": 5, "L": 5, "N": 5, "S": 5, "B": 5, "R": 5 }
+};
+// グローバル変数（main.jsと共通のものも、初期値設定のため記述）
+let lastSkillKifu = "";
+let pendingMove = null;
+let hasShownEndEffect = false;
+window.skillUsed = false;
+window.isCaptureRestricted = false;
+
+
   if (!window.board) return;
 
   if (gameOver) {
@@ -417,29 +442,6 @@ window.updateTimerDisplay = function() {
 
 const resignBtn = document.getElementById("resignBtn");
 
-// ★ PvP用：個別の必殺技管理変数
-let p1Skill = null;      // 先手の技オブジェクト
-let p2Skill = null;      // 後手の技オブジェクト
-//let p1SkillCount = 0;    // 先手の使用回数
-//let p2SkillCount = 0;    // 後手の使用回数
-// ★PvP用：ゲージポイント管理
-let blackSkillPoint = 0; // 先手のポイント
-let whiteSkillPoint = 0; // 後手のポイント
-const MAX_SKILL_POINT = 1000;
-
-// ★ポイント設定
-const SP_CONFIG = {
-  MOVE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 20 },
-  DROP: { "P": 10, "L": 13, "N": 13, "S": 15, "G": 15, "B": 20, "R": 20 },
-  CAPTURE: { "P": 5, "+P": 10, "L": 8, "+L": 13, "N": 8, "+N": 13, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 20, "R": 15, "+R": 20, "K": 1000 },
-  PROMOTE: { "P": 5, "L": 5, "N": 5, "S": 5, "B": 5, "R": 5 }
-};
-// グローバル変数（main.jsと共通のものも、初期値設定のため記述）
-let lastSkillKifu = "";
-let pendingMove = null;
-let hasShownEndEffect = false;
-window.skillUsed = false;
-window.isCaptureRestricted = false;
 
 // 初期化処理
 window.addEventListener("load", () => {
@@ -1015,6 +1017,7 @@ function updatePvPGaugeUI() {
         else wBar.classList.remove("gauge-max");
     }
 }
+
 
 
 
