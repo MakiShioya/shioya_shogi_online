@@ -285,6 +285,46 @@ window.executeMove = function(sel, x, y, doPromote) {
   else window.stopTimer();
   moveCount++;
 
+  // ★★★ ポイント加算ロジック (PvP版) ★★★
+  if (!gameOver) {
+      let gain = 0;
+      const getPoint = (configCategory, pieceCode) => {
+          const raw = pieceCode.toUpperCase();
+          const base = raw.replace("+", "");
+          if (configCategory[raw] !== undefined) return configCategory[raw];
+          if (configCategory[base] !== undefined) return configCategory[base];
+          return 10;
+      };
+
+      // 移動/打つ/成り/捕獲 の計算
+      if (sel.fromHand) {
+          const piece = boardState[y][x]; 
+          gain += getPoint(SP_CONFIG.DROP, piece);
+      } else {
+          const piece = boardState[y][x];
+          gain += getPoint(SP_CONFIG.MOVE, piece);
+      }
+      if (sel.promoted) {
+          const piece = boardState[y][x].replace("+","");
+          gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
+      }
+      const captured = boardBefore[y][x];
+      if (captured !== "") {
+          gain += getPoint(SP_CONFIG.CAPTURE, captured);
+      }
+      
+      // ★動かしたプレイヤーにポイントを加算
+      if (sel.player === "black") {
+          blackSkillPoint += gain;
+          if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
+      } else {
+          whiteSkillPoint += gain;
+          if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+      }
+      
+      updatePvPGaugeUI(); // UI更新
+  }
+
   window.checkGameOver();
 
   if (typeof window.onTurnComplete === "function") {
@@ -380,9 +420,20 @@ const resignBtn = document.getElementById("resignBtn");
 // ★ PvP用：個別の必殺技管理変数
 let p1Skill = null;      // 先手の技オブジェクト
 let p2Skill = null;      // 後手の技オブジェクト
-let p1SkillCount = 0;    // 先手の使用回数
-let p2SkillCount = 0;    // 後手の使用回数
+//let p1SkillCount = 0;    // 先手の使用回数
+//let p2SkillCount = 0;    // 後手の使用回数
+// ★PvP用：ゲージポイント管理
+let blackSkillPoint = 0; // 先手のポイント
+let whiteSkillPoint = 0; // 後手のポイント
+const MAX_SKILL_POINT = 1000;
 
+// ★ポイント設定
+const SP_CONFIG = {
+  MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
+  DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 10, "+P": 30, "L": 20, "+L": 40, "N": 20, "+N": 40, "S": 30, "+S": 50, "G": 40, "B": 60, "+B": 100, "R": 60, "+R": 100, "K": 1000 },
+  PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
+};
 // グローバル変数（main.jsと共通のものも、初期値設定のため記述）
 let lastSkillKifu = "";
 let pendingMove = null;
@@ -448,28 +499,13 @@ window.onTurnComplete = function() {
 
 // ★★★ 手番ごとのスキル状態同期 ★★★
 function syncGlobalSkillState() {
-  if (turn === "black") {
-    currentSkill = p1Skill;
-    skillUseCount = p1SkillCount; 
-    
-    if (currentSkill) {
-      const max = currentSkill.maxUses || 1;
-      window.skillUsed = (skillUseCount >= max);
-    } else {
-      window.skillUsed = true;
-    }
-  } else {
-    currentSkill = p2Skill;
-    skillUseCount = p2SkillCount; 
-    
-    if (currentSkill) {
-      const max = currentSkill.maxUses || 1;
-      window.skillUsed = (skillUseCount >= max);
-    } else {
-      window.skillUsed = true;
-    }
-  }
-  updateSkillButton();
+  if (turn === "black") {
+    currentSkill = p1Skill;
+  } else {
+    currentSkill = p2Skill;
+  }
+  // ※ここでは「使用済みかどうか」の判定はしません（ポイント不足＝押せない、で制御するため）
+  updateSkillButton();
 }
 
 // --- 以下、入力処理や固有UI ---
@@ -552,6 +588,17 @@ function onCellClick(x, y) {
     if (legalMoves.some(m => m.x === x && m.y === y)) {
       
       const result = currentSkill.execute(x, y);
+      if (typeof currentSkill.getCost === "function") {
+          const cost = currentSkill.getCost();
+          if (turn === "black") {
+              blackSkillPoint -= cost;
+              if(blackSkillPoint < 0) blackSkillPoint = 0;
+          } else {
+              whiteSkillPoint -= cost;
+              if(whiteSkillPoint < 0) whiteSkillPoint = 0;
+          }
+          updatePvPGaugeUI(); // ゲージ更新
+      }
 
       if (result === null) {
           legalMoves = currentSkill.getValidTargets();
@@ -698,48 +745,71 @@ function closeResignModal() {
 }
 
 function updateSkillButton() {
-  const skillBtn = document.getElementById("skillBtn");
-  if (!skillBtn) return;
-  
-  if (currentSkill) {
-    skillBtn.style.display = "inline-block";
-    skillBtn.textContent = currentSkill.name;
+  const skillBtn = document.getElementById("skillBtn");
+  if (!skillBtn) return;
+  
+  if (currentSkill) {
+    skillBtn.style.display = "inline-block";
+    skillBtn.textContent = currentSkill.name;
 
-    if (currentSkill.buttonStyle) {
-      Object.assign(skillBtn.style, currentSkill.buttonStyle);
-    } else {
-      skillBtn.style.backgroundColor = "#ff4500";
-      skillBtn.style.color = "white";
-      skillBtn.style.border = "none";
-    }
+    // スタイルの適用
+    if (currentSkill.buttonStyle) {
+      Object.assign(skillBtn.style, currentSkill.buttonStyle);
+    } else {
+      skillBtn.style.backgroundColor = "#ff4500";
+      skillBtn.style.color = "white";
+      skillBtn.style.border = "none";
+    }
 
-    skillBtn.disabled = window.skillUsed; 
-    skillBtn.style.opacity = window.skillUsed ? 0.5 : 1.0;
-    
-    if (window.skillUsed) {
-        skillBtn.style.backgroundColor = "#ccc";
-        skillBtn.style.border = "1px solid #999";
-    }
+    // ★コスト判定
+    let cost = 0;
+    if (typeof currentSkill.getCost === "function") {
+        cost = currentSkill.getCost();
+    }
 
-  } else {
-    skillBtn.style.display = "none";
-  }
+    // 現在の手番の持ちポイントを参照
+    const currentPoint = (turn === "black") ? blackSkillPoint : whiteSkillPoint;
+    
+    // ポイントが足りているか？
+    const canAfford = (currentPoint >= cost);
+    const conditionMet = currentSkill.canUse();
+
+    if (canAfford && conditionMet) {
+       skillBtn.disabled = false;
+       skillBtn.style.opacity = 1.0;
+       skillBtn.style.filter = "none";
+    } else {
+       skillBtn.disabled = true;
+       skillBtn.style.opacity = 0.6;
+       // ポイント不足ならグレーアウト
+       if (!canAfford) skillBtn.style.filter = "grayscale(100%)";
+       else skillBtn.style.filter = "none";
+    }
+  } else {
+    skillBtn.style.display = "none";
+  }
 }
 
 function toggleSkillMode() {
-  if (gameOver) return;
-  if (!currentSkill) return;
-  if (isSkillTargeting) return;
-  if (window.skillUsed) {
-    alert("この対局では、必殺技はもう使えません。");
-    return;
-  }
-  if (!currentSkill.canUse()) {
-    alert("現在は必殺技の発動条件を満たしていません。");
-    return;
-  }
-  const modal = document.getElementById("skillModal");
-  if (modal) modal.style.display = "flex";
+  if (gameOver) return;
+  if (!currentSkill) return;
+  if (isSkillTargeting) return;
+
+  // ★コストチェック
+  let cost = (typeof currentSkill.getCost === "function") ? currentSkill.getCost() : 0;
+  const currentPoint = (turn === "black") ? blackSkillPoint : whiteSkillPoint;
+
+  if (currentPoint < cost) {
+      alert(`ポイントが足りません (必要: ${cost}, 所持: ${Math.floor(currentPoint)})`);
+      return;
+  }
+
+  if (!currentSkill.canUse()) {
+    alert("現在は必殺技の発動条件を満たしていません。");
+    return;
+  }
+  const modal = document.getElementById("skillModal");
+  if (modal) modal.style.display = "flex";
 }
 
 function confirmSkillActivate() {
@@ -910,3 +980,39 @@ function applyUserSkin() {
         }
     }).catch(console.error);
 }
+
+// ★★★ PvP用ゲージ更新関数 ★★★
+function updatePvPGaugeUI() {
+    // --- 先手(Black)用ゲージ [右側] ---
+    const bBar = document.getElementById("skillGaugeBar");
+    const bText = document.getElementById("skillGaugeText");
+    const bCost = document.getElementById("nextCostText");
+
+    if (bBar && bText) {
+        const pct = (blackSkillPoint / MAX_SKILL_POINT) * 100;
+        bBar.style.height = pct + "%";
+        bText.textContent = Math.floor(blackSkillPoint);
+    }
+    // 先手スキルのコスト表示
+    if (bCost && p1Skill && typeof p1Skill.getCost === "function") {
+        const cost = p1Skill.getCost();
+        bCost.textContent = `Next: ${cost}`;
+        bCost.style.color = (blackSkillPoint >= cost) ? "#ffd700" : "#ff4500";
+    }
+
+    // --- 後手(White)用ゲージ [左側] ---
+    // ※IDはAI戦のものを流用 (cpuSkillGauge...)
+    const wBar = document.getElementById("cpuSkillGaugeBar");
+    const wText = document.getElementById("cpuSkillGaugeText");
+    
+    if (wBar && wText) {
+        const pct = (whiteSkillPoint / MAX_SKILL_POINT) * 100;
+        wBar.style.height = pct + "%";
+        wText.textContent = Math.floor(whiteSkillPoint);
+        
+        // 後手が満タンになった時の演出など（お好みで）
+        if (whiteSkillPoint >= MAX_SKILL_POINT) wBar.classList.add("gauge-max");
+        else wBar.classList.remove("gauge-max");
+    }
+}
+
