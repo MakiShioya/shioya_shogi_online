@@ -1688,3 +1688,62 @@ function applyUserSkin() {
     }).catch(console.error);
 }
 
+// ▼▼▼ このコードをファイルの「一番最後」に追加してください ▼▼▼
+
+// --- ゲージ管理用の関数群 ---
+
+function addSkillPoint(amount) {
+    playerSkillPoint += amount;
+    if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
+    updateSkillGaugeUI();
+    updateSkillButton(); 
+}
+
+function consumeSkillPoint(amount) {
+    playerSkillPoint -= amount;
+    if (playerSkillPoint < 0) playerSkillPoint = 0;
+    updateSkillGaugeUI();
+    updateSkillButton();
+}
+
+function updateSkillGaugeUI() {
+    const bar = document.getElementById("skillGaugeBar");
+    const text = document.getElementById("skillGaugeText");
+    const costText = document.getElementById("nextCostText");
+
+    if (bar && text) {
+        const percentage = (playerSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%"; 
+        text.textContent = Math.floor(playerSkillPoint);
+    }
+    if (costText && currentSkill && typeof currentSkill.getCost === "function") {
+        const cost = currentSkill.getCost();
+        costText.textContent = `Next: ${cost}pt`;
+        costText.style.color = (playerSkillPoint >= cost) ? "#ffd700" : "#ff4500";
+    }
+}
+
+function addCpuSkillPoint(amount) {
+    cpuSkillPoint += amount;
+    if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
+    updateCpuSkillGaugeUI();
+}
+
+function consumeCpuSkillPoint(amount) {
+    cpuSkillPoint -= amount;
+    if (cpuSkillPoint < 0) cpuSkillPoint = 0;
+    updateCpuSkillGaugeUI();
+}
+
+function updateCpuSkillGaugeUI() {
+    const bar = document.getElementById("cpuSkillGaugeBar");
+    const text = document.getElementById("cpuSkillGaugeText");
+
+    if (bar && text) {
+        const percentage = (cpuSkillPoint / MAX_SKILL_POINT) * 100;
+        bar.style.height = percentage + "%";
+        text.textContent = Math.floor(cpuSkillPoint);
+        if (cpuSkillPoint >= MAX_SKILL_POINT) bar.classList.add("gauge-max"); 
+        else bar.classList.remove("gauge-max");
+    }
+}
