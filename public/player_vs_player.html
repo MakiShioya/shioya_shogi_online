@@ -136,6 +136,112 @@
       animation: popIn 2s forwards;
     }
 
+    /* --- まず、サイドバー自体を「基準点」にします --- */
+.side.right {
+  position: relative; /* これにより、この内部の absolute 配置の基準になります */
+  overflow: visible;  /* 枠からはみ出して表示することを許可します */
+}
+
+/* --- ゲージ全体のコンテナ（絶対配置） --- */
+#skillGaugeContainer {
+  position: absolute;   /* 既存のレイアウトから独立させる */
+  
+  /* 位置の調整：サイドバーの右端(100%)からさらに10px右へ */
+  left: 105%;           
+  
+  /* 上下の位置調整：サイドバーの上下中央に配置 */
+  top: 50%;
+  transform: translateY(-50%); 
+  
+  /* ゲージエリアのサイズ */
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10; /* 他の要素より手前に表示 */
+}
+
+/* --- ゲージのデザイン（前回と同じ） --- */
+.gauge-label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd700;
+  margin-bottom: 5px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.gauge-box {
+  width: 100%;
+  height: 250px; /* 高さはここで調整してください */
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse; /* 下から上に伸びるように */
+}
+
+#skillGaugeBar {
+  width: 100%;
+  height: 0%; /* JSで制御 */
+  background: linear-gradient(to top, #ff4500, #ff8c00, #ffd700);
+  transition: height 0.3s ease-out;
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.6);
+}
+
+#skillGaugeText {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* --- 左サイドバーも基準点にする --- */
+.side.left {
+  position: relative; /* 子要素のabsolute配置の基準にする */
+  overflow: visible;  /* はみ出し表示を許可 */
+}
+
+/* --- 敵ゲージのコンテナ（絶対配置：レイアウト干渉なし） --- */
+#cpuSkillGaugeContainer {
+  position: absolute;
+  
+  /* ★重要：右側のゲージとは逆、「右端から105%離す」＝左の外側へ配置 */
+  right: 105%; 
+  
+  /* 上下中央揃え */
+  top: 50%;
+  transform: translateY(-50%);
+  
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10; /* 最前面へ */
+}
+
+/* --- 敵ゲージのバー（不吉な紫色に設定） --- */
+#cpuSkillGaugeBar {
+  width: 100%;
+  height: 0%; /* JSで制御 */
+  
+  /* 紫～赤へのグラデーション */
+  background: linear-gradient(to top, #4b0082, #800080, #ff00ff);
+  
+  transition: height 0.3s ease-out;
+  box-shadow: 0 0 8px rgba(128, 0, 128, 0.6);
+}
+
+/* --- 文字色の調整 --- */
+#cpuSkillGaugeText {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 1px 1px 0 #000;
+}
+
     /* アニメーション設定 */
     @keyframes popIn {
       0%   { opacity: 0; transform: scale(0.6); }
@@ -152,18 +258,23 @@
 <div id="game-wrapper">
   <div id="game">
 
-    <div class="side left">
-      <div class="hand white-hand" id="whiteHandBox">
-        <h3>後手の持ち駒</h3>
-        <div id="whiteHand"></div>
-      </div>
-
-      <div id="status"></div>
-
-      <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
-        考慮時間: 0秒
-      </div>
+   <div class="side left">
+  <div class="hand white-hand" id="whiteHandBox">
+    <h3>後手の持ち駒</h3>
+    <div id="whiteHand"></div>
+  </div>
+  <div id="status"></div>
+  <div id="timerBox" style="font-weight: bold; font-size: 18px; margin: 5px 0; color: #333;">
+    考慮時間: 0秒
+  </div>
+  <div id="cpuSkillGaugeContainer">
+    <div class="gauge-label" style="color: #ff4500;">ENEMY</div>
+    <div class="gauge-box">
+      <div id="cpuSkillGaugeBar"></div> 
     </div>
+    <div id="cpuSkillGaugeText">0</div>
+  </div>
+  </div>
 
     <div id="center">
       <div id="checkStatus"></div>
@@ -180,13 +291,22 @@
     </div>
 
     <div class="side right">
-      <button id="resignBtn" class="square-btn">投了</button>
-      <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
-      <div class="hand black-hand" id="blackHandBox">
-        <h3>先手の持ち駒</h3>
-        <div id="blackHand"></div>
-      </div>
+  <button id="resignBtn" class="square-btn">投了</button>
+  <button id="skillBtn" class="square-btn" style="display: none;" onclick="toggleSkillMode()">必殺技</button>
+  <div class="hand black-hand" id="blackHandBox">
+    <h3>先手の持ち駒</h3>
+    <div id="blackHand"></div>
+  </div>
+  <div id="skillGaugeContainer">
+    <div class="gauge-label">SP</div>
+    <div class="gauge-box">
+      <div id="skillGaugeBar"></div>
     </div>
+    <div id="skillGaugeText">0</div>
+    <div id="nextCostText" style="font-size: 10px; color: #ffd700; margin-top: 2px;">Next: 50</div>
+  </div>
+  </div>
+
 
   </div>
 </div>
