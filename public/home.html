@@ -21,15 +21,52 @@
       position: fixed; 
       top: 0;
       left: 0;
+      width: 100%;   /* vw, vh ではなく % を使うのがポイント */
+    height: 100%;
+    
+    background-color: #2c3e50;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden; /* スクロールバーを出さない */
+
+    /* ★★★ ここが最重要：スワイプによる画面遷移（バウンス）を禁止する ★★★ */
+    overscroll-behavior-x: none; 
+    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    touch-action: none; /* ピンチズームなども無効化 */
+}
+
+/* ★★★ 追加：htmlタグにも適用しないと効かない場合があります ★★★ */
+html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+input, textarea {
+   user-select: text;
+   -webkit-user-select: text;
+   touch-action: auto; /* ここも忘れずに！ */
+ }
+
+/* 背景専用の設定 */
+    #bg-image {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100vw;
       height: 100vh;
-      overflow: hidden;
+      z-index: -1; /* 他の要素より背面に配置 */
       background-image: url('script/image/shogi_title.PNG');
-      background-color: #2c3e50;
       background-size: cover;
       background-position: center;
+      background-repeat: no-repeat;
     }
-
     /* 吹き出しの設定 */
     .speech-bubble {
       display: none;
@@ -78,7 +115,7 @@
       width: auto;
       max-width: 95%;
       z-index: 1;
-      content: url('script/image/komiya_touka.png'); 
+
       filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
       cursor: pointer;
       pointer-events: auto;
@@ -153,19 +190,31 @@
 
     /* モーダルボックスの基本スタイル */
     .modal-box {
-      position: relative;
-      background: #fff8dc;
-      padding: 15px;
-      border-radius: 10px;
-      border: 4px solid #8b4513;
-      text-align: center;
-      width: 80%;
-      max-width: 800px;
-      max-height: 90vh; 
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
-    }
+    position: relative;
+    background: #fff8dc;
+    padding: 15px;
+    border-radius: 10px;
+    border: 4px solid #8b4513;
+    text-align: center;
+    width: 80%;
+    max-width: 800px;
+    
+    /* ★★★ ここが重要：画面からはみ出さない設定 ★★★ */
+    max-height: 85vh; /* 画面の高さの85%までに制限 */
+    display: flex;    /* 中身を縦並びのFlexボックスにする */
+    flex-direction: column; /* 縦方向に並べる */
+    box-sizing: border-box;
+}
+
+    .modal-body {
+    flex: 1;            /* 余ったスペースを全部使う */
+    overflow-y: auto;   /* 中身が溢れたら縦スクロールバーを出す */
+    margin: 10px 0;     /* 上下の余白 */
+    padding: 5px;       /* 内側の余白（スクロールバーと文字が被らないように） */
+    
+    /* スクロールの操作性を良くする設定 */
+    -webkit-overflow-scrolling: touch; 
+}
     
     /* ボタンを2列に並べるためのグリッド設定 */
     .modal-grid {
@@ -234,11 +283,246 @@
       margin-top: 8px;
     }
 
+    /* --- メールボックス用スタイル --- */
+    .mail-btn {
+      position: relative;
+      background: #ff9800; /* オレンジ */
+    }
+    
+    /* 未読バッジ（赤丸） */
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      border: 2px solid white;
+      z-index: 10;
+      display: none; /* 初期は非表示 */
+    }
+
+    /* メールリスト */
+    #mailList {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      width: 100%;
+      text-align: left;
+    }
+
+    .mail-item {
+      background: white;
+      border-bottom: 1px solid #ccc;
+      padding: 15px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    .mail-item:first-child { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+    .mail-item:last-child { border-bottom: none; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+    .mail-item:active { background: #f0f0f0; }
+    
+    .mail-item.unread {
+      background: #fff8dc; /* 未読は少し黄色く */
+      font-weight: bold;
+    }
+    .mail-item.unread::before {
+      content: '●';
+      color: #d35400;
+      margin-right: 8px;
+    }
+
+    .mail-subject { font-size: 1rem; color: #333; flex: 1; }
+    .mail-date { font-size: 0.8rem; color: #888; margin-left: 10px; }
+
+    /* メール詳細画面 */
+    #mailDetailView {
+      display: none; /* 初期非表示 */
+      flex-direction: column;
+      height: 100%;
+      text-align: left;
+    }
+    .mail-header {
+      border-bottom: 2px solid #8b4513;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+    .mail-detail-subject { font-size: 1.2rem; font-weight: bold; color: #8b4513; }
+    .mail-detail-date { font-size: 0.85rem; color: #666; margin-top: 5px; }
+    .mail-body {
+      flex: 1;
+      font-size: 1rem;
+      line-height: 1.6;
+      white-space: pre-wrap; /* 改行を反映 */
+      background: rgba(255,255,255,0.6);
+      padding: 10px;
+      border-radius: 5px;
+      overflow-y: auto;
+    }
+    .mail-reward-area {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff;
+      border: 2px dashed #ff9800;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    /* --- 左側の浮遊ボタンエリア --- */
+    .right-side-menu {
+      position: absolute;
+      left: 15px;
+      top: 100px; /* 上部メニューの下あたり */
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 20; /* キャラ画像より手前に */
+    }
+
+    .mission-main-btn {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(to bottom, #fff176, #fbc02d); /* 金色っぽいグラデーション */
+      border: 3px solid #fff;
+      border-radius: 50%; /* 丸いボタン */
+      color: #5d4037;
+      font-weight: bold;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      animation: float-btn 3s infinite ease-in-out; /* ふわふわ動く */
+    }
+    
+    .mission-main-btn:active {
+      transform: scale(0.95);
+    }
+
+    .mission-icon-emoji {
+      font-size: 1.5rem;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    /* ふわふわアニメーション */
+    @keyframes float-btn {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    /* ミッション用バッジ（未達成・報酬ありの数など） */
+    .mission-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background-color: #d32f2f;
+      color: white;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 2px solid white;
+      font-weight: bold;
+      display: none; /* JSで制御 */
+    }
+
+    /* --- 新しいメールボタン（右メニュー用） --- */
+    .mail-main-btn {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(to bottom, #ffcc80, #ef6c00); /* オレンジのグラデーション */
+      border: 3px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.8rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      animation: float-btn 3s infinite ease-in-out;
+      animation-delay: 1.5s; /* 任務ボタンと動きのタイミングをズラす */
+    }
+    
+    .mail-main-btn:active {
+      transform: scale(0.95);
+    }
+
+    .mail-icon-emoji {
+      font-size: 1.5rem;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    /* ★★★ メールの状態ごとの色分け ★★★ */
+    /* 1. 添付あり・未受け取り（薄い青） */
+    .mail-item.type-reward-active {
+      background-color: #e3f2fd;
+      border-left: 5px solid #2196f3; /* アクセント */
+    }
+    
+    /* 2. 添付あり・受取済み（薄い灰色） */
+    .mail-item.type-reward-claimed {
+      background-color: #f5f5f5;
+      color: #888;
+      border-left: 5px solid #bdbdbd;
+    }
+
+    /* 3. 添付なし（薄い赤） */
+    .mail-item.type-normal {
+      background-color: #ffebee;
+      border-left: 5px solid #ef5350;
+    }
+
     /* チャット吹き出し・アイコン関連 */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
     .icon-container { display: flex; flex-direction: column; align-items: center; width: 60px; }
-    .chat-name-badge { background: #fff; border: 1px solid #8b4513; border-radius: 10px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; z-index: 2; margin-bottom: -10px; white-space: nowrap; }
+    .chat-name-badge {
+    /* 枠自体のスタイル */
+    background: #fff;
+    border: 1px solid #8b4513;
+    border-radius: 10px;
+    z-index: 2;
+    margin-bottom: -10px;
+    
+    /* ★★★ ここが重要：サイズを固定する ★★★ */
+    width: 60px;        /* 幅を固定 */
+    height: 18px;       /* 高さを固定 */
+    display: flex;      /* 中身（SVG）を中央寄せ */
+    justify-content: center;
+    align-items: center;
+    padding: 0 4px;     /* 左右に少し余白 */
+    overflow: hidden;   /* はみ出し防止（念のため） */
+}
+
+    .chat-name-text {
+    font-size: 12px;       /* 基準の文字サイズ */
+    font-weight: bold;
+    fill: #333;            /* 文字色 */
+    text-anchor: middle;   /* 中央揃え */
+    dominant-baseline: central; /* 上下中央揃え */
+}
     .chat-icon-img { width: 50px; height: 50px; border: 3px solid #56ab2f; border-radius: 12px; background: #fff; object-fit: cover; }
     .chat-row.mine .chat-icon-img { border: 3px solid #FFA500; }
     .chat-bubble { position: relative; padding: 10px; border-radius: 15px; font-size: 0.75rem; font-weight: bold; margin-top: 5px; word-break: break-all; }
@@ -252,6 +536,16 @@
     .ready-color { background: linear-gradient(to bottom, #a8e063 0%, #56ab2f 100%) !important; }
     .chat-color { background: linear-gradient(to bottom, #da92ec 0%, #a06ee1 100%) !important; }
 
+    /* ★★★ 追加：チャットとメールの画面を最大サイズに固定する ★★★ */
+    #lobbyChatModal .modal-box,
+    #mailboxModal .modal-box {
+ 
+      height: 85vh;       /* 縦幅いっぱい（画面の85%） */
+      max-width: 800px;   /* PCで見ても広がりすぎないように制限 */
+      display: flex;
+      flex-direction: column;
+    }
+    
     /* モバイル横向き調整 */
     @media screen and (max-height: 450px) {
       .modal-box { padding: 10px; }
@@ -261,33 +555,67 @@
 
 </head>
 <body>
+  <div id="bg-image"></div>
 
   <div class="user-info-bar">
     <div>
       <span id="userNameDisplay" class="user-name">ゲスト</span> さん
       <button id="editNameBtn" onclick="showNameEditModal()" style="display:none; background:none; border:none; cursor:pointer; font-size:1rem;">✏️</button>
+      
+      <span style="margin-left: 15px; font-weight: bold; color: #ffd700; text-shadow: 1px 1px 2px #000;">
+        💰 <span id="userGoldDisplay">0</span> G
+      </span>
     </div>
 
-    <div>
-      <button class="top-btn news-btn" onclick="openModal('newsModal')">お知らせ</button>
-      <button class="top-btn stats-btn" onclick="showMyStats()">戦績</button>
-      <button class="top-btn" style="background: #17a2b8;" onclick="openModal('helpMainMenu')">ヘルプ</button>
-      <button class="top-btn" style="background: #6f42c1;" onclick="openModal('helpContact')">不具合・ご要望</button>
-      <button class="top-btn" style="background: #6c757d;" onclick="openModal('settingsMainMenu')">⚙️</button>
-    </div>
+    <div></div>
+  </div>
+
+  <div class="right-side-menu">
+    <button class="mail-main-btn" onclick="openMailbox()">
+      <span class="mail-icon-emoji">✉</span>
+      <div>メール</div>
+      <span id="mailBadge" class="notification-badge">0</span>
+    </button>
+    <button class="mission-main-btn" onclick="window.location.href='mission.html'">
+      <span class="mission-icon-emoji">📜</span>
+      <div>目標</div>
+      <span id="missionBadge" class="mission-badge">!</span>
+    </button>
   </div>
 
   <div id="characterBubble" class="speech-bubble"></div>
 
-  <img class="character-stand" src="script/image/char_a.png" alt="Character" onclick="talkCharacter()">
+  <img class="character-stand" src="script/image/komiya_touka.png" alt="Character" onclick="talkCharacter()">
 
   <div class="bottom-menu">
     <button class="menu-btn offline-color" onclick="openModal('offlineMenu')">オフライン</button>
-    <button onclick="location.href='character.html?mode=online'" class="menu-btn online-color">
-    	オンライン
-    </button>
-    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button> <button class="menu-btn ready-color" onclick="window.location.href='kaiseki.html'">解析</button>
+    
+    <button onclick="goToCharacterSelect('online')" class="menu-btn online-color">オンライン</button>
+    
+    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
+    
+    <button class="menu-btn ready-color" onclick="window.location.href='shop.html'">ショップ</button>
+    
+    
+    
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
+    
+    <button class="menu-btn" style="background: linear-gradient(to bottom, #607d8b 0%, #455a64 100%);" onclick="openModal('unifiedMenuModal')">メニュー</button>
+  </div>
+
+  <div id="unifiedMenuModal" class="overlay">
+    <div class="modal-box">
+      <h3 style="color: #8b4513; margin-top: 0;">メニュー</h3>
+      <div class="modal-grid">
+        <button class="sub-btn" style="background: linear-gradient(to bottom, #FF9800 0%, #F57C00 100%);" onclick="window.location.href='inventory.html'">🎒 所持品</button>
+        <button class="sub-btn" style="background: #e91e63;" onclick="switchModal('unifiedMenuModal', 'characterSettingsMenu')">👤 キャラ</button>
+        <button class="sub-btn" style="background: #ff9800;" onclick="showMyStats()">📊 戦績</button>
+        <button class="sub-btn" style="background: #17a2b8;" onclick="switchModal('unifiedMenuModal', 'helpMainMenu')">❓ ヘルプ</button>
+        <button class="sub-btn" style="background: #6f42c1;" onclick="switchModal('unifiedMenuModal', 'helpContact')">🔧 不具合</button>
+        <button class="sub-btn" style="background: #6c757d;" onclick="switchModal('unifiedMenuModal', 'settingsMainMenu')">⚙️ 設定</button>
+      </div>
+      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('unifiedMenuModal')">閉じる</button>
+    </div>
   </div>
 
   <div id="newsModal" class="overlay">
@@ -297,71 +625,80 @@
         ・オンライン対局 実装！<br>
         ・ロビーチャット機能 追加！<br>
         ・棋譜解析機能 実装！<br>
-        ・最強CPU「試験実装」追加
+        ・最強CPU実装！
       </div>
       <button onclick="closeModal('newsModal')" style="background: #ccc; border: none; color: black; padding: 10px 20px; border-radius: 5px; cursor: pointer;">閉じる</button>
     </div>
   </div>
 
   <div id="settingsMainMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">設定</h3>
-      <div class="modal-grid">
-        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
-        <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
-        <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">設定</h3>
+    <div class="modal-grid">
+      <button class="sub-btn" style="background: #e91e63;" onclick="switchModal('settingsMainMenu', 'characterSettingsMenu')">キャラ設定</button>
+      
+      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'volumeMenu')">音量設定</button>
+      <button class="sub-btn" onclick="switchModal('settingsMainMenu', 'languageMenu')">言語設定</button>
+      <button class="sub-btn" onclick="openAccountFromSettings()">アカウント</button>
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsMainMenu')">閉じる</button>
   </div>
+</div>
 
-  <div id="volumeMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">音量設定</h3>
-      <div style="margin: 20px 0;">
-        <p>BGM</p><input type="range" style="width:80%;">
-        <p>効果音</p><input type="range" style="width:80%;">
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('volumeMenu', 'settingsMainMenu')">もどる</button>
+<div id="volumeMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">音量設定</h3>
+    <div style="margin: 20px 0;">
+      <p>BGM</p><input type="range" style="width:80%;">
+      <p>効果音</p><input type="range" style="width:80%;">
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="switchModal('volumeMenu', 'settingsMainMenu')">もどる</button>
   </div>
+</div>
 
-  <div id="languageMenu" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
-      <div class="modal-grid">
-        <button class="sub-btn">日本語</button>
-        <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
-      </div>
-      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
+<div id="languageMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">言語設定 / Language</h3>
+    <div class="modal-grid">
+      <button class="sub-btn">日本語</button>
+      <button class="sub-btn" style="background:#555;">スワヒリ語（準備中）</button>
     </div>
+    <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="switchModal('languageMenu', 'settingsMainMenu')">もどる</button>
   </div>
+</div>
 
-  <div id="authModal" class="overlay">
+ 
+<div id="authModal" class="overlay">
     <div class="modal-box">
-      <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
-      <div id="authInputs">
-        <div style="text-align: left; margin: 15px 0;">
-          <label>お名前（新規登録時のみ）</label><br>
-          <input type="text" id="authName" placeholder="なまえ" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+      
+      <h2 id="authTitle" style="margin-top: 0; color: #8b4513; flex-shrink: 0;">ログイン / 新規登録</h2>
+      
+      <div class="modal-body">
+        
+        <div id="authInputs">
+          <div style="text-align: left; margin: 15px 0;">
+            <label>メールアドレス</label><br>
+            <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+          </div>
+          <div style="text-align: left; margin: 15px 0;">
+            <label>パスワード（6文字以上）</label><br>
+            <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
+          </div>
+
+          <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+            <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">ログイン</button>
+            <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 45px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">新規登録</button>
+          </div>
         </div>
-        <div style="text-align: left; margin: 15px 0;">
-          <label>メールアドレス</label><br>
-          <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
-        </div>
-        <div style="text-align: left; margin: 15px 0;">
-          <label>パスワード（6文字以上）</label><br>
-          <input type="password" id="authPass" placeholder="******" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
-        </div>
-        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
-          <button onclick="loginUser()" style="background: #007bff; color: white; width: 45%; height: 40px; border:none; border-radius:5px;">ログイン</button>
-          <button onclick="registerUser()" style="background: #28a745; color: white; width: 45%; height: 40px; border:none; border-radius:5px;">新規登録</button>
-        </div>
+
+        <div style="margin-top:20px; padding-top:10px;">
+    <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px; font-weight:bold;">ログアウト</button>
+</div>
+
+      </div> <div style="margin-top: 0; border-top: 1px solid #ccc; padding-top: 15px; flex-shrink: 0;">
+        <button onclick="closeAuthModal()" style="background: #ccc; border: none; padding: 10px 30px; border-radius: 5px; cursor: pointer; font-weight:bold;">もどる</button>
       </div>
-      <div style="margin-top:20px; border-top:1px solid #ccc; padding-top:10px;">
-         <button id="logoutBtnInModal" onclick="logoutUser(); closeAuthModal()" style="display:none; background: #6c757d; border:none; border-radius:5px; color: white; width: 100%; height: 40px;">ログアウト</button>
-      </div>
-      <button onclick="closeAuthModal()" style="margin-top: 15px; background: #ccc; border: none; padding: 5px 15px; border-radius: 5px;">もどる</button>
+
     </div>
   </div>
 
@@ -369,7 +706,7 @@
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">名前を変更</h3>
       <div style="margin: 20px 0;">
-        <input type="text" id="newNameInput" style="width: 80%; padding: 10px; font-size: 16px; border: 2px solid #8b4513; border-radius: 5px; text-align: center;">
+        <input type="text" maxlength="8" id="newNameInput" style="width: 80%; padding: 10px; font-size: 16px; border: 2px solid #8b4513; border-radius: 5px; text-align: center;">
       </div>
       <div style="display: flex; justify-content: space-around; gap: 10px;">
         <button onclick="saveNewName()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; flex: 1;">決定</button>
@@ -424,7 +761,7 @@
         <button class="sub-btn" onclick="startGame('hard2')">しおや</button>
         <button class="sub-btn" onclick="startGame('ex_hard1')">こみやEX</button>
         <button class="sub-btn" onclick="startGame('ex_hard2')">しおやEX</button>
-      </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">試験実装 (最強)</button>
+      </div> <button class="sub-btn" style="background:#d35400; margin-top: 5px;" onclick="startGame('ex_hard3')">最強AI（PC限定）</button>
       <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('onePlayerModeSelect')">閉じる</button>
     </div>
   </div>
@@ -447,9 +784,9 @@
       <h3 style="color: #8b4513;">モードについて</h3>
       <div style="text-align: left; font-size: 0.85rem; line-height: 1.5; overflow-y: auto; max-height: 50vh;">
         <p><strong>・オフライン（れんしゅう／ひとりで／ふたりで）</strong><br>CPUとの対局ができます。この端末のみを使用して、プレイヤー同士でも対局ができます。</p>
-        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。「待った」が禁止です。</p>
+        <p><strong>・オンライン</strong><br>遠くにいる人とオンライン対局ができます。先に入室した人が先手になります。</p>
         <p><strong>・チャット</strong><br>オンラインのロビーにいる人たちと会話ができます。</p> <p><strong>・解析</strong><br>棋譜を貼り付けて、解析や振り返りができます。</p>
-        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。</p>
+        <p><strong>・棋譜</strong><br>自身の過去の棋譜が見られます。解析や振り返りもできます。※ログインが必要です。※PC限定の機能です。</p>
       </div>
       <button class="sub-btn" style="background:#666;" onclick="switchModal('helpMode', 'helpMainMenu')">もどる</button>
     </div>
@@ -488,18 +825,18 @@
   </div>
 
   <div id="helpContact" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513;">不具合・ご要望</h3>
-      <div style="margin: 20px 0; line-height: 1.6;">
-        <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
-        <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
-          onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
-          回答フォームを開く ↗
-        </button>
-      </div>
-      <button class="sub-btn" style="background:#666;" onclick="switchModal('helpContact', 'helpMainMenu')">もどる</button>
+  <div class="modal-box">
+    <h3 style="color: #8b4513;">不具合・ご要望</h3>
+    <div style="margin: 20px 0; line-height: 1.6;">
+      <p>こちらからいつでも受け付けております。<br>またはロビーチャットに送信してください。</p>
+      <button class="sub-btn" style="background: #28a745; margin-top: 10px;" 
+        onclick="window.open('https://docs.google.com/forms/d/e/1FAIpQLSc5Ry7hikuBYzDp7lTVLtO74zWabVlvvsjc3a0HgqrIuT8Dww/viewform', '_blank')">
+        回答フォームを開く ↗
+      </button>
     </div>
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('helpContact')">閉じる</button>
   </div>
+</div>
 
   <div id="offlineMenu" class="overlay">
     <div class="modal-box">
@@ -511,26 +848,122 @@
     </div>
   </div>
 
+  <div id="systemAlertModal" class="overlay" style="z-index: 200;">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 style="color: #8b4513; margin-top: 0;">お知らせ</h3>
+      <p id="sysAlertMsg" style="margin: 20px 0; line-height: 1.5; white-space: pre-wrap;"></p>
+      <button id="sysAlertBtn" style="background: #28a745; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">OK</button>
+    </div>
+  </div>
+
+  <div id="systemConfirmModal" class="overlay" style="z-index: 200;">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 style="color: #8b4513; margin-top: 0;">確認</h3>
+      <p id="sysConfirmMsg" style="margin: 20px 0; line-height: 1.5; white-space: pre-wrap;"></p>
+      <div style="display: flex; justify-content: center; gap: 20px;">
+        <button id="sysConfirmYesBtn" style="background: #007bff; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">はい</button>
+        <button id="sysConfirmNoBtn" style="background: #6c757d; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">いいえ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="characterSettingsMenu" class="overlay">
+  <div class="modal-box">
+    <h3 style="color: #8b4513; margin-top: 0;">キャラクター選択</h3>
+    <p style="font-size:0.9rem;">ホーム画面のパートナーを選べます</p>
+    
+    <div class="modal-grid">
+      <button class="sub-btn" onclick="changeCharacter('komiya')">キャラA</button>
+      <button class="sub-btn" onclick="changeCharacter('a')">キャラB</button>
+      <button class="sub-btn" onclick="changeCharacter('b')">キャラC</button>
+      <button class="sub-btn" onclick="changeCharacter('d')">キャラD</button>
+    </div>
+    
+    <button class="sub-btn" style="background:#666;" onclick="closeModal('characterSettingsMenu')">閉じる</button>
+  </div>
+</div>
+
+  <div id="mailboxModal" class="overlay">
+   <div class="modal-box">
+      
+      <div id="mailListView" style="display: flex; flex-direction: column; height: 100%;">
+        <h3 style="color: #8b4513; margin-top: 0;">受信トレイ</h3>
+        <div class="modal-body" style="background: #eee; border-radius: 5px; padding: 0;">
+          <ul id="mailList">
+            <li style="padding:20px; color:#666;">読み込み中...</li>
+          </ul>
+          <div id="noMailMsg" style="display:none; padding:20px; color:#666;">メールはありません</div>
+        </div>
+        <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="closeModal('mailboxModal')">閉じる</button>
+      </div>
+
+      <div id="mailDetailView">
+        <div class="mail-header">
+          <div class="mail-detail-subject" id="detailSubject">件名</div>
+          <div class="mail-detail-date" id="detailDate">日付</div>
+        </div>
+        <div class="mail-body" id="detailBody">
+          本文
+        </div>
+        
+        <div id="rewardArea" class="mail-reward-area">
+          <div style="font-weight:bold; margin-bottom:5px;">🎁 添付アイテム</div>
+          <div id="rewardContent" style="color:#d35400; font-size:1.1rem; margin-bottom:10px;">1000 G</div>
+          <button id="claimRewardBtn" class="sub-btn" style="background: #28a745;">受け取る</button>
+        </div>
+
+        <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="backToMailList()">戻る</button>
+      </div>
+
+    </div>
+  </div>
+  
+  <script src="script/missions.js"></script>
+  <script src="script/serifu/komiya.js"></script>
+<script src="script/serifu/a.js"></script>
+<script src="script/serifu/b.js"></script>
+<script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
   <script>
-    // --- ★★★ 修正点：Socket.ioをここで一括初期化 ★★★ ---
+    // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
-    let globalChatHistory = [];
+
     try {
         socket = io();
     } catch(e) {
         console.log("チャットサーバーに接続できませんでした");
     }
 
-    // --- ★★★ 復帰機能（統合済み） ★★★ ---
+    // --- システムモーダル関数 ---
+    function showSystemAlert(msg, callback) {
+        document.getElementById("sysAlertMsg").textContent = msg;
+        const modal = document.getElementById("systemAlertModal");
+        modal.style.display = "flex";
+        const btn = document.getElementById("sysAlertBtn");
+        btn.onclick = function() {
+            modal.style.display = "none";
+            if (callback) callback();
+        };
+    }
+
+    function showSystemConfirm(msg, yesCallback, noCallback) {
+        document.getElementById("sysConfirmMsg").textContent = msg;
+        const modal = document.getElementById("systemConfirmModal");
+        modal.style.display = "flex";
+        document.getElementById("sysConfirmYesBtn").onclick = function() {
+            modal.style.display = "none";
+            if (yesCallback) yesCallback();
+        };
+        document.getElementById("sysConfirmNoBtn").onclick = function() {
+            modal.style.display = "none";
+            if (noCallback) noCallback();
+        };
+    }
+    
+    // --- 復帰機能 ---
     document.addEventListener("DOMContentLoaded", () => {
-        // 1. 保存されているルームIDがあるか確認
         const savedRoomId = localStorage.getItem('current_shogi_room');
-        
         if (savedRoomId && socket) {
-            // 2. サーバーに「この部屋、まだやってる？」と聞く
-            // socket.connected が false でも emit すると自動でバッファリングされますが、
-            // 念のため接続確認イベント内で実行します
             if (socket.connected) {
                 checkReconnection(savedRoomId);
             } else {
@@ -539,23 +972,27 @@
                 });
             }
         }
+        
+        // ★★★ 追加：保存されたキャラクターを読み込んで画像を更新する処理 ★★★
+        const savedCharId = localStorage.getItem('selected_character_id');
+        if (savedCharId && window.CHARACTERS && window.CHARACTERS[savedCharId]) {
+            currentCharacterId = savedCharId; // IDを更新
+            const imgEl = document.querySelector('.character-stand');
+            if (imgEl) {
+                imgEl.src = window.CHARACTERS[savedCharId].image;
+            }
+        }
     });
 
     function checkReconnection(roomId) {
         socket.emit('check reconnection', roomId, (response) => {
             if (response.canReconnect) {
-                // 対局中（または待機中）
-                const shouldRejoin = confirm(
-                    "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
+                showSystemConfirm(
+                    "中断された対局があります。\n復帰しますか？\n（「いいえ」を選ぶと対局を破棄します）",
+                    () => { window.location.href = `player_vs_player_online.html?room=${roomId}`; },
+                    () => { localStorage.removeItem('current_shogi_room'); }
                 );
-                if (shouldRejoin) {
-                    window.location.href = `player_vs_player_online.html?room=${roomId}`;
-                } else {
-                    localStorage.removeItem('current_shogi_room');
-                }
             } else {
-                // 終了済み
-                console.log("古い対局データが見つかりましたが、すでに終了しています。");
                 localStorage.removeItem('current_shogi_room');
             }
         });
@@ -572,273 +1009,270 @@
     }
 
     // --- 画面遷移 ---
-    function goToCharacterSelect(mode) { window.location.href = "character.html?mode=" + mode; }
+    function goToCharacterSelect(mode) { 
+        if (mode === 'online') {
+            const user = firebase.auth().currentUser;
+            if (!user) {
+                showSystemAlert("オンライン機能を利用するにはログインが必要です。", () => {
+                    showAuthModal(); 
+                });
+                return;
+            }
+        }
+        window.location.replace("character.html?mode=" + mode);
+    }
 
     function startGame(difficulty) {
       if (difficulty === 'ex_hard3') {
-          window.location.href = "cpu_yaneuraou.html";
+          window.location.replace("cpu_yaneuraou.html");
       } else {
-          window.location.href = "game_cpu.html?opponent=" + difficulty;
+          window.location.replace("game_cpu.html?opponent=" + difficulty);
       }
     }
 
-    // --- キャラクターの喋り機能 ---
+    // --- ★★★ キャラクター切り替え機能 ★★★ ---
+    // 現在選択中のキャラID（デフォルトは komiya）
+    let currentCharacterId = localStorage.getItem('selected_character_id') || 'komiya';
+
+    function changeCharacter(charId) {
+        // 外部ファイルから読み込まれた CHARACTERS があるか確認
+        if (!window.CHARACTERS || !window.CHARACTERS[charId]) {
+            console.error("指定されたキャラクターデータが見つかりません:", charId);
+            return;
+        }
+
+        // 1. IDを更新・保存
+        currentCharacterId = charId;
+        localStorage.setItem('selected_character_id', charId);
+
+        // 2. 画像を更新
+        const imgEl = document.querySelector('.character-stand');
+        if (imgEl) {
+            imgEl.src = window.CHARACTERS[charId].image;
+        }
+
+        // 3. 設定メニューに戻る
+        switchModal('characterSettingsMenu', 'settingsMainMenu');
+
+        // 4. 切り替え直後に挨拶させる（お好みで）
+        setTimeout(talkCharacter, 500);
+    }
+
+    // --- ★★★ キャラクターの喋り機能（{name}置換対応版） ★★★ ---
     let bubbleTimer = null;
+    
     function talkCharacter() {
+        // データが存在するかチェック
+        if (!window.CHARACTERS || !window.CHARACTERS[currentCharacterId]) return;
+
         const bubble = document.getElementById("characterBubble");
+        // ユーザー名を取得
         const userName = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        
         const now = new Date();
         const hour = now.getHours();
 
-        const baseMessages = [
-            `お手合わせ、\nよろしくお願いします！\n${userName}さん！`,
-            `${userName}さん、こんにちは！\n今日も将棋ですか？`,
-            `次の一手、\nじっくり考えましょう…`,
-            `将棋は楽しむことが一番ですよね！\n${userName}さん！`,
-            `さあ、対局を始めましょう！\n${userName}さん！`,
-            `ここはどこでしょうか…？`,
-            `対局が終わったら、\nカレーを食べましょう…`,
-            `一歩千金…\n歩も大切にしましょうね、\n${userName}さん。`,
-            `${userName}さんの得意戦法は\nなんですか？`,
-            `詰将棋が解けると、\n頭がスッキリしますよね！`,
-            `負けても腐らず、\n次の一手を見据えましょう。`,
-            `攻める時は大胆に、\n守る時は慎重に、ですよ。`,
-            `二歩にだけは気をつけてくださいね！`,
-            `${userName}さんと指す時間は、\n私にとって宝物です。`,
-            `王手！といきたいところですが、\nまずは落ち着きましょう。`,
-            `${userName}さん、\n少し休憩しませんか？\nお茶を淹れますね。`,
-            `外の空気は、\n今どんな感じですか？`,
-            `${userName}さん！\n会いに来てくれて嬉しいです！`,
-            `なんだか今日は、\n良いことがありそうな予感です！`,
-            `画面の向こう側って、\nどんな景色なんですか？`,
-            `わたしのこの服、\n実は動きやすいんですよ。`,
-            `次はどんな棋譜を\n見せてくれるんですか？`,
-            `将棋の駒なら、\わたしは銀が好きですよ。`,
-            `わたしは銀なので、\横には動きませんよ。`,
-            `くすぐったいですよ。`,
-            `銀は桂馬を捕まえるのが上手なんですよ！`,
-            `銀って、成れるのに成らないこと多くないですか？`,
-            `わたし思うんです。\n将棋は銀の使い方がうまい人が勝ちます。`,
-            `将棋の前に\nちょっとお水飲んできます。`,
-            `銀の動きって、可愛いですよね。`,
-            `対局の後のカレーは、\n格別の味がします。`,
-            `駒の音って、\n心が落ち着きませんか？`,
-            `集中しすぎて、\n瞬きを忘れてませんか？目が乾いちゃいますよ～`,
-            `背筋を伸ばすと、\n良い手が浮かびますよ。`,
-            `今日はどんな名局が\n生まれるんでしょうか。`,
-            `無理な攻めより、\n粘り強い受けが勝機を呼びます。`,
-            `持ち時間を使い切るくらい、\nじっくり考えちゃいましょう！`,
-            `たまには「投了」も大事な勇気、\nですよね…？`,
-            `攻めている時こそ、\n自玉の安全を確認、ですよ。`,
-            `将棋の駒って、\nずっと触っていたいくらい\n手触りがいいですよね。`,
-            `実は私、\n扇子を広げるのが\nちょっと苦手なんです…。`,
-            `たまには空でも眺めて、\n頭を空っぽにするのも\n大切ですよ。`,
-            `将棋を好きになってくれて、\n本当にありがとうございます。`,
-            `苦しい時こそ、相手の視点になって盤面を眺めてみましょう。`,
-            `将棋もカレーも、一晩寝かせると深みが出るんですよ。`,
-            `無理して強くなろうとしなくても、楽しく指すのが一番の近道ですよ。`,
-            `気分転換に麻雀でも…\nあ、麻雀機能はないんでした。`,
-            `どんな機能が欲しいですか？おしえてください！`,
-            `バグを見つけたらおしえてくださいね！`,
-            `このゲームに関する要望や改善案があったらいつでもおしえてください！`,
-            `将棋って、ずっと同じ姿勢でやると疲れちゃいます。`,
-            `集中すると、おなかがすいているのも忘れちゃいますね。`,
-            `新国立競技場の近くに、将棋盤みたいな建物ありません？`,
-            `${userName}さんは、好きな駒ってありますか？`,
-            `将棋の夢ってレアじゃないですか？`,
-            `読み込みが遅い時は、私が裏で駒を並べている最中かもしれません。`,
-            `充電、大丈夫ですか？熱くなったら少し休憩ですよ。`,
-            `このゲーム、${userName}さんの使いやすいように進化していきたいです。`,
-            `スマホの電池、大丈夫ですか？熱くなったら少し休憩ですよ。`,
-            `長考した末に、結局直感で指しちゃうことありますよね。`,
-            `「桂馬の高跳び歩の餌食」…それでも跳ねたくなるのが桂馬なんですよね。`,
-            `桂馬をはねるときが一番気持ちいいといっても過言じゃないです。`,
-            `対局が終わっても、もう少しだけこうしてお話ししててもいいですか？`,
-            `首が凝っていませんか？ぐるっと回してストレッチしましょう。`,
-            `目が疲れたら、遠くの緑を見るといいらしいですよ。…あ、わたしの服緑色ですね、遠くにいきます！`,
-            `「王の早逃げ八手の得」って言いますし、嫌な予感がしたらすぐ休憩ですよ！`,
-            `「遠見の角に好手あり」…少し離れた視点から自分を見つめるのも大切です。`,
-            `テストプレイに付き合ってくれてありがとうございます。助かります！`,
-            `端歩を突くか突かぬか、それが問題です。`,
-            `銀を成るか成らぬか、それが問題です。`,
-            `穴熊って、なんだか暖かそうですよね。`,
-            `勝った時の喜びを、${userName}さんと分かち合いたいです！`,
-            `もし私が駒になるとしたら、やっぱり銀になりたいです。`,
-            `昨日、詰将棋の夢を\n見ちゃいました。`
-        ];
+        // 現在のキャラデータを取得
+        const charData = window.CHARACTERS[currentCharacterId];
 
+        // 時間帯別のセリフリストを取得
         let timeMessages = [];
         if (hour >= 5 && hour < 11) {
-            timeMessages = [
-                `おはようございます！\n朝の将棋は頭が冴えますね。`,
-                `おはようございます！\n${userName}さん！`,
-                `今日もたくさん将棋しましょう！\n${userName}さん！`,
-                `${userName}さん、\n朝ごはんは食べましたか？\n私はカレーでした！`,
-                `今日も一日、\n清々しく指しましょう！`,
-                `朝ごはんは、\nもう食べましたか？`,
-                `朝はパンですか？お米ですか？\nあ、麺ですか？`,
-                `おはようございます！\n眠そうですね？`,
-                `早起きは三文の徳…\nいえ、三手の得、ですね！\n玉の早逃げのほうがお得です。`,
-                `まだ眠いですか？\n将棋を指せば目が覚めますよ！`,
-                `朝の空気は澄んでいて、\n盤面がよく見渡せる気がします。`,
-                `どちらか一つ許されるとしたら、\n二度寝ですか？二歩ですか？`,
-                `朝の光を浴びながらの\n対局…贅沢ですね。`
-            ];
+            timeMessages = charData.time.morning || [];
         } else if (hour >= 11 && hour < 17) {
-            timeMessages = [
-                `お昼休みですか？\n対局してから戻りますか？`,
-                `午後も頑張りましょう！\n応援していますね。`,
-                `あ、お昼ごはんの匂い…`,
-                `お昼寝したくなる時間ですね。長考中にこっそり寝てませんよね？`,
-                `午後の眠気覚ましに、激しい攻め合いをしましょうか！`,
-                `お昼はまったり将棋をします。`,
-                `この時間が一番眠くなりますよね？`,
-                `こんにちは、\n${userName}さん。`,
-                `一番眠くなる時間ですね。\n少し深呼吸しましょう！`
-            ];
+            timeMessages = charData.time.noon || [];
         } else if (hour >= 17 && hour < 22) {
-            timeMessages = [
-                `今日もお疲れ様です！\n一局指してリラックスしましょう。`,
-                `夜の静かな対局、\n私は大好きですよ。`,
-                `こんばんは。\n今日も将棋しますか？`,
-                `少し眠くなってきたような\n気がします。`,
-                `一日の締めくくりに、良い手を指してスッキリしましょう！`,
-                `お風呂に入ってサッパリしてから指しますか？`,
-                `夜に向けて、わたしの集中力も上がってきましたよ！`,
-                `街の明かりが灯り始めましたね。\n盤上の明かりも灯しましょう。`,
-                `晩ごはんは、\nもう食べましたか？`
-            ];
+            timeMessages = charData.time.evening || [];
         } else {
-            timeMessages = [
-                `${userName}さん、\n夜更かしは禁物ですよ？`,
-                `こんな時間まで熱心ですね。\n…無理はしないでくださいね。`,
-                `羊を数えるより、\n詰将棋を解く方が\n眠れるかもしれませんよ？`,
-                `深夜の対局は、負けると悔しくて眠れなくなっちゃいますよ？`,
-                `今日は徹夜で将棋ですか？`,
-                `夜食なに食べます？`,
-                `明日も早いんじゃないですか？大丈夫ですか？`,
-                `草木も眠る丑三つ時…将棋の駒たちが動き出す時間ですよ。`,
-                `外は真っ暗ですね。でも、盤上だけは輝いて見えます。`,
-                `充電残量は大丈夫ですか？わたしの体力は${userName}さん次第です。`,
-                `美濃囲いってお布団みたいです。\nおやすみなさい。`,
-                `こんばんは、\n${userName}さん。`,
-                `静かな真夜中…\n駒の音が響いて心地いいですね。`
-            ];
+            timeMessages = charData.time.night || [];
         }
 
-        const charMessages = baseMessages.concat(timeMessages);
-        const randomMsg = charMessages[Math.floor(Math.random() * charMessages.length)];
+        // 基本セリフと結合
+        const allMessages = (charData.base || []).concat(timeMessages);
         
-        bubble.textContent = randomMsg;
+        // セリフが1つもない場合は終了
+        if (allMessages.length === 0) return;
+
+        // ランダムに選択
+        let rawMsg = allMessages[Math.floor(Math.random() * allMessages.length)];
+        
+        // ★ {name} を 実際のユーザー名に置き換える処理
+        let finalMsg = rawMsg.split('{name}').join(userName);
+        
+        // 表示
+        bubble.textContent = finalMsg;
         bubble.style.display = "block";
 
         clearTimeout(bubbleTimer);
         bubbleTimer = setTimeout(() => {
             bubble.style.display = "none";
-        }, 2000);
+        }, 3000); // 少し長めに表示(3秒)
     }
 
     // --- ロビーチャット機能 ---
     function openLobbyChat() {
         openModal('lobbyChatModal');
-        // チャットを開いたら入室メッセージを送る（任意）
-        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
-        // socket.emit('chat message', { name: "システム", text: `${myName}さんがロビーに来ました`, isSystem: true });
     }
 
-    function sendLobbyMessage() {
-        if (!socket) return alert("チャットサーバーに接続されていません");
-        const input = document.getElementById("lobbyChatInput");
-        const text = input.value.trim();
-        if (!text) return;
+    // 【修正版】メッセージ送信関数
+// 【修正版】メッセージ送信関数 (Firestore版)
+function sendLobbyMessage() {
+    const input = document.getElementById("lobbyChatInput");
+    const text = input.value.trim();
+    if (!text) return;
 
-        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
-        socket.emit('chat message', {
-            name: myName,
-            text: text,
-            role: 'lobby' 
+    const user = firebase.auth().currentUser;
+    
+    // ユーザー情報の取得
+    let myName = "ゲスト";
+    let myId = "guest"; // ゲストも識別したい場合は指紋IDなどが必要ですが一旦簡易化
+    let iconUrl = "script/image/test.icon.PNG"; // デフォルトアイコン
+
+    if (user) {
+        myId = user.uid;
+        myName = document.getElementById("userNameDisplay").textContent || "名無し";
+        // ★将来的にuserデータからアイコンを取得する場合はここで設定
+    }
+
+    // ★Socket.ioではなく、Firestoreに保存する
+    // コレクション名: "lobby_chat" (自由につけてOK)
+    db.collection("lobby_chat").add({
+        text: text,
+        name: myName,
+        userId: myId,
+        icon: iconUrl,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), // サーバー時間
+        role: 'lobby'
+    })
+    .then(() => {
+        console.log("送信成功");
+        input.value = ""; // 入力欄を空にする
+    })
+    .catch((error) => {
+        console.error("送信エラー: ", error);
+        alert("送信できませんでした");
+    });
+}
+    
+
+// --- ★★★ 新しいチャット機能 (Firestore版) ★★★ ---
+
+let chatUnsubscribe = null; // 監視解除用の変数
+
+// チャットの初期化・監視開始
+function initLobbyChat() {
+    const historyDiv = document.getElementById("lobbyChatHistory");
+    if (!historyDiv) return;
+
+    // 二重監視を防ぐため、既に監視中なら解除
+    if (chatUnsubscribe) {
+        chatUnsubscribe();
+    }
+
+    console.log("チャット接続開始...");
+
+    // Firestoreの "lobby_chat" コレクションを監視
+    chatUnsubscribe = db.collection("lobby_chat")
+        .orderBy("createdAt", "desc") // 新しい順に取得
+        .limit(50)                    // 最新50件
+        .onSnapshot((snapshot) => {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            // データ変更があるたびにここが動く
+            
+            // データを配列にまとめる
+            let messages = [];
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                data.id = doc.id;
+                messages.push(data);
+            });
+
+            // 新しい順(desc)で取得したので、表示のために古い順に直す
+            messages.reverse();
+
+            // 画面を一度クリアして再描画
+            historyDiv.innerHTML = "";
+            messages.forEach(msg => {
+                addMessageToLobbyChatFirestore(msg);
+            });
+
+            // 一番下へスクロール
+            historyDiv.scrollTop = historyDiv.scrollHeight;
         });
-        input.value = "";
+}
+
+// 1件分のメッセージを表示する関数
+function addMessageToLobbyChatFirestore(data) {
+    const historyDiv = document.getElementById("lobbyChatHistory");
+    const user = firebase.auth().currentUser;
+    
+    // 自分のIDかどうかの判定
+    // ログインしていない場合は null と比較
+    const currentMyId = user ? user.uid : null;
+    
+    // データにuserIdがない場合（古いログなど）への対策
+    const msgUserId = data.userId || "unknown";
+
+    const isMe = (msgUserId === currentMyId);
+
+    // --- ここからはデザイン生成（以前と同じ） ---
+    const rowDiv = document.createElement("div");
+    rowDiv.className = "chat-row";
+    if (isMe) rowDiv.classList.add("mine");
+
+    const iconCol = document.createElement("div");
+    iconCol.className = "icon-container";
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "chat-name-badge";
+    
+    // 名前が長すぎた場合に備えて、SVGで描画する
+    // preserveAspectRatio="xMidYMid meet" が「縦横比を保って全体を収める」設定です
+    const safeName = data.name || "名無し";
+    
+    // 文字数に応じてviewBoxの幅を計算する（簡易的な自動調整）
+    // 全角文字なら幅12pxくらいと仮定して計算
+    // 最低でも80px（CSSのwidthと同じ）は確保する
+    const textWidth = Math.max(80, safeName.length * 12); 
+    
+    nameDiv.innerHTML = `
+        <svg viewBox="0 0 ${textWidth} 20" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+            <text x="50%" y="50%" class="chat-name-text">${safeName}</text>
+        </svg>
+    `;
+
+    const iconImg = document.createElement("img");
+    iconImg.src = data.icon || "script/image/test.icon.PNG";
+    iconImg.className = "chat-icon-img";
+    // 画像エラー時はグレーに
+    iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
+
+    iconCol.appendChild(nameDiv);
+    iconCol.appendChild(iconImg);
+
+    const bubbleDiv = document.createElement("div");
+    bubbleDiv.className = "chat-bubble";
+    bubbleDiv.textContent = data.text;
+
+    // 日付を表示したい場合は以下を追加
+    /*
+    if (data.createdAt) {
+        const d = data.createdAt.toDate();
+        const timeStr = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+        const timeSpan = document.createElement("div");
+        timeSpan.style.fontSize = "0.6rem";
+        timeSpan.style.textAlign = "right";
+        timeSpan.style.opacity = "0.6";
+        timeSpan.textContent = timeStr;
+        bubbleDiv.appendChild(timeSpan);
     }
+    */
 
-    // チャット受信処理
-    if (socket) {
-        socket.on('chat history', (history) => {
-            globalChatHistory = history; 
-            renderLobbyChat();           
-        });
-
-        socket.on('chat message', (data) => {
-            globalChatHistory.push(data); 
-            addMessageToLobbyChat(data); 
-        });
-    }
-
-    // 履歴全体を再描画する関数
-    function renderLobbyChat() {
-        const historyDiv = document.getElementById("lobbyChatHistory");
-        if (!historyDiv) return;
-
-        historyDiv.innerHTML = ""; 
-        
-        globalChatHistory.forEach(data => {
-            addMessageToLobbyChat(data);
-        });
-    }
-
-    // 画像アイコン付きメッセージ表示関数
-    function addMessageToLobbyChat(data) {
-        const historyDiv = document.getElementById("lobbyChatHistory");
-        if (!historyDiv) return;
-
-        const domName = document.getElementById("userNameDisplay").textContent;
-        const storageName = localStorage.getItem('shogi_username');
-        const isMe = (data.name.trim() === (domName || "").trim()) || 
-                     (data.name.trim() === (storageName || "").trim());
-
-        if (data.isSystem) {
-            const sysDiv = document.createElement("div");
-            sysDiv.className = "chat-system-box";
-            sysDiv.textContent = data.text;
-            historyDiv.appendChild(sysDiv);
-        } else {
-            const rowDiv = document.createElement("div");
-            rowDiv.className = "chat-row";
-            if (isMe) rowDiv.classList.add("mine");
-
-            // 1. アイコンと名前の列
-            const iconCol = document.createElement("div");
-            iconCol.className = "icon-container";
-
-            // 名前
-            const nameDiv = document.createElement("div");
-            nameDiv.className = "chat-name-badge";
-            nameDiv.textContent = data.name;
-
-            // アイコン画像
-            const iconImg = document.createElement("img");
-            iconImg.src = "script/image/test.icon.PNG"; 
-            iconImg.className = "chat-icon-img";
-            iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
-
-            iconCol.appendChild(nameDiv);
-            iconCol.appendChild(iconImg);
-
-            // 2. 吹き出し
-            const bubbleDiv = document.createElement("div");
-            bubbleDiv.className = "chat-bubble";
-            bubbleDiv.textContent = data.text;
-
-            rowDiv.appendChild(iconCol);
-            rowDiv.appendChild(bubbleDiv);
-
-            historyDiv.appendChild(rowDiv);
-        }
-
-        historyDiv.scrollTop = historyDiv.scrollHeight;
-    }
-
-    // Enterキー送信対応
+    rowDiv.appendChild(iconCol);
+    rowDiv.appendChild(bubbleDiv);
+    historyDiv.appendChild(rowDiv);
+}
+    
     document.addEventListener("DOMContentLoaded", () => {
         const lobbyInput = document.getElementById("lobbyChatInput");
         if (lobbyInput) {
@@ -851,7 +1285,6 @@
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
       const openMenuId = urlParams.get('open');
-      
       if (openMenuId) {
         const menuEl = document.getElementById(openMenuId);
         if (menuEl) {
@@ -863,43 +1296,330 @@
       }
     };
 
-    // ログイン状態が確定したら、チャットの色を更新する
     firebase.auth().onAuthStateChanged((user) => {
+        // ★修正：ログイン・未ログインに関わらず、チャットを読み込み開始する
+        setTimeout(() => {
+            initLobbyChat();
+        }, 500);
+
         if (user) {
-            setTimeout(() => {
-                renderLobbyChat();
-            }, 500); 
+            // ここは「ログインしている人だけ」に必要な処理（所持金データの取得など）
+            db.collection("users").doc(user.uid).onSnapshot((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    // 1. 所持金
+                    const currentGold = data.gold || 0;
+                    const goldEl = document.getElementById("userGoldDisplay");
+                    if (goldEl) {
+                        goldEl.textContent = currentGold.toLocaleString();
+                    }
+
+                    // 2. メールボックス
+                    const mailbox = data.mailbox || [];
+                    updateMailBadge(mailbox);
+                    if (document.getElementById("mailboxModal").style.display === "flex") {
+                         renderMailList(mailbox);
+                    }
+                    window.currentUserMailbox = mailbox;
+
+                    // 3. ミッションバッジ
+                    const missions = data.missions || {};
+                    let claimableCount = 0;
+                    if (typeof GAME_MISSIONS !== 'undefined') {
+                        GAME_MISSIONS.forEach(m => {
+                            const uData = missions[m.id];
+                            if (uData && uData.progress >= m.target && !uData.collected) {
+                                claimableCount++;
+                            }
+                        });
+                    }
+                    const mBadge = document.getElementById("missionBadge");
+                    if (mBadge) {
+                        if (claimableCount > 0) {
+                            mBadge.style.display = "flex";
+                            mBadge.textContent = claimableCount;
+                        } else {
+                            mBadge.style.display = "none";
+                        }
+                    }
+                }
+            });
+        } else {
+            const goldEl = document.getElementById("userGoldDisplay");
+            if (goldEl) goldEl.textContent = "0";
         }
     });
 
+    // --- 画面回転・スクロール制御 ---
     function autoRotateTitle() {
         const w = window.innerWidth;
         const h = window.innerHeight;
         const isPortrait = h > w;
-
         if (isPortrait) {
-          document.body.style.position = "fixed";
-          document.body.style.top = "50%";
-          document.body.style.left = "50%";
-          document.body.style.transformOrigin = "center center";
-          document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-          document.body.style.width = h + "px";
-          document.body.style.height = w + "px";
-          document.body.style.overflow = "hidden";
+            document.body.style.width = h + "px";
+            document.body.style.height = w + "px";
+            document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
+            document.body.style.position = "fixed";
+            document.body.style.top = "50%";
+            document.body.style.left = "50%";
         } else {
-          document.body.style.position = "";
-          document.body.style.top = "";
-          document.body.style.left = "";
-          document.body.style.transform = "";
-          document.body.style.width = "100vw";
-          document.body.style.height = "100vh";
+            document.body.style.width = "100%";
+            document.body.style.height = "100%";
+            document.body.style.transform = "";
+            document.body.style.top = "0";
+            document.body.style.left = "0";
         }
     }
 
-    window.addEventListener('load', autoRotateTitle);
-    window.addEventListener('resize', autoRotateTitle);
-    setTimeout(autoRotateTitle, 100);
-  </script>
+    window.addEventListener('load', () => {
+        autoRotateTitle();
+        window.addEventListener('resize', autoRotateTitle);
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        history.pushState(null, null, location.href);
+        window.addEventListener('popstate', (e) => {
+            history.pushState(null, null, location.href);
+        });
+
+        let startX = 0;
+        let startY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) return;
+            startX = e.touches[0].pageX;
+            startY = e.touches[0].pageY;
+            if (startX < 30 || startX > window.innerWidth - 30) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) return;
+            const x = e.touches[0].pageX;
+            const y = e.touches[0].pageY;
+            const deltaX = Math.abs(x - startX);
+            const deltaY = Math.abs(y - startY);
+            const isScrollable = e.target.closest('#lobbyChatHistory, .modal-box, #statsHistory, .help-content');
+
+            if (isScrollable) {
+                e.stopPropagation(); 
+            } else {
+                e.preventDefault();
+            }
+            if (deltaX > deltaY && deltaX > 10) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    });
+
+    // --- メールボックス機能 ---
+
+  // バッジ（赤丸）の更新
+  // --- ★★★ メールボックス機能（仕様変更版） ★★★ ---
+
+    // バッジ更新
+    function updateMailBadge(mailbox) {
+        // 未読、かつ「報酬があるのにまだ受け取っていない」メールの数をカウントするように変更
+        // (単に未読管理したい場合は既読フラグが必要ですが、今回は「未受取」を通知します)
+        let unreadCount = 0;
+        mailbox.forEach(m => {
+            // 報酬がある かつ まだ受け取っていない(claimedフラグがない/false)
+            if (m.reward && !m.claimed) {
+                unreadCount++;
+            }
+            // ※もし「報酬なし」のメールも含めて単に「未読」を管理したい場合は
+            // 別途 read: false などのフラグを管理する必要があります。
+        });
+        
+        const badge = document.getElementById("mailBadge");
+        if (unreadCount > 0) {
+            badge.textContent = unreadCount;
+            badge.style.display = "flex";
+        } else {
+            badge.style.display = "none";
+        }
+    }
+
+    // メールボックスを開く
+    function openMailbox() {
+        openModal('mailboxModal');
+        backToMailList(); 
+        if (window.currentUserMailbox) {
+            renderMailList(window.currentUserMailbox);
+        }
+    }
+
+    // リスト描画（色分けロジック追加）
+    function renderMailList(mailbox) {
+        const listEl = document.getElementById("mailList");
+        const noMsg = document.getElementById("noMailMsg");
+        listEl.innerHTML = "";
+
+        // 新しい順にソート
+        const sortedMail = [...mailbox].reverse();
+
+        if (sortedMail.length === 0) {
+            noMsg.style.display = "block";
+        } else {
+            noMsg.style.display = "none";
+            sortedMail.forEach((mail) => {
+                const li = document.createElement("li");
+                
+                // ★★★ 色分けのクラス適用 ★★★
+                let itemClass = "mail-item";
+                
+                if (mail.reward) {
+                    if (mail.claimed) {
+                        // 添付あり・受取済 → 薄い灰色
+                        itemClass += " type-reward-claimed";
+                    } else {
+                        // 添付あり・未受取 → 薄い青
+                        itemClass += " type-reward-active";
+                    }
+                } else {
+                    // 添付なし → 薄い赤
+                    itemClass += " type-normal";
+                }
+                
+                li.className = itemClass;
+                
+                // 日付フォーマット
+                let dateStr = "---";
+                if (mail.date && mail.date.toDate) {
+                    const d = mail.date.toDate();
+                    dateStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+                } else if (mail.date) {
+                    dateStr = "日付不明"; 
+                }
+
+                // 件名の表示（受取済なら「(済)」をつけるなどしても分かりやすい）
+                let subjectText = mail.subject;
+                if (mail.reward && mail.claimed) {
+                    subjectText = "【済】 " + subjectText;
+                }
+
+                li.innerHTML = `
+                    <div class="mail-subject">${subjectText}</div>
+                    <div class="mail-date">${dateStr}</div>
+                `;
+                
+                li.onclick = () => showMailDetail(mail);
+                
+                listEl.appendChild(li);
+            });
+        }
+    }
+
+    // 詳細画面を表示（ボタン制御追加）
+    function showMailDetail(mail) {
+        document.getElementById("mailListView").style.display = "none";
+        document.getElementById("mailDetailView").style.display = "flex";
+
+        document.getElementById("detailSubject").textContent = mail.subject;
+        
+        let dateStr = "";
+        if (mail.date && mail.date.toDate) {
+             dateStr = mail.date.toDate().toLocaleString();
+        }
+        document.getElementById("detailDate").textContent = dateStr;
+        
+        document.getElementById("detailBody").textContent = mail.body;
+
+        const rewardArea = document.getElementById("rewardArea");
+        const rewardBtn = document.getElementById("claimRewardBtn");
+        
+        if (mail.reward) {
+            rewardArea.style.display = "block";
+            document.getElementById("rewardContent").textContent = mail.reward.name || "報酬あり";
+            
+            // ★★★ 受取状況によってボタンを変える ★★★
+            if (mail.claimed) {
+                // 受取済みの場合
+                rewardBtn.textContent = "受取済み";
+                rewardBtn.style.background = "#ccc";
+                rewardBtn.disabled = true;
+                rewardBtn.onclick = null;
+            } else {
+                // 未受取の場合
+                rewardBtn.textContent = "受け取る";
+                rewardBtn.style.background = "#28a745";
+                rewardBtn.disabled = false;
+                rewardBtn.onclick = () => claimMailReward(mail);
+            }
+        } else {
+            rewardArea.style.display = "none";
+        }
+    }
+
+    // リストに戻る
+    function backToMailList() {
+        document.getElementById("mailListView").style.display = "flex";
+        document.getElementById("mailDetailView").style.display = "none";
+    }
+
+    // 報酬受け取り処理（削除せずフラグ更新）
+    async function claimMailReward(mail) {
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+        
+        if (!confirm("報酬を受け取りますか？")) return;
+
+        const userRef = db.collection("users").doc(user.uid);
+
+        try {
+            await db.runTransaction(async (transaction) => {
+                const doc = await transaction.get(userRef);
+                if (!doc.exists) throw "User not found";
+
+                const userData = doc.data();
+                const currentMailbox = userData.mailbox || [];
+                
+                // 対象のメールを探す
+                const targetIndex = currentMailbox.findIndex(m => m.id === mail.id);
+                if (targetIndex === -1) {
+                      throw "このメールは見つかりませんでした。";
+                }
+                
+                // 既に受け取っていないか念のためチェック
+                if (currentMailbox[targetIndex].claimed) {
+                    throw "この報酬は既に受け取っています。";
+                }
+
+                const updates = {};
+
+                // 報酬の付与
+                if (mail.reward.type === "gold") {
+                    updates.gold = (userData.gold || 0) + Number(mail.reward.value);
+                } else if (mail.reward.type === "item") {
+                    const currentInv = userData.inventory || [];
+                    if (!currentInv.includes(mail.reward.value)) {
+                        updates.inventory = firebase.firestore.FieldValue.arrayUnion(mail.reward.value);
+                    }
+                }
+
+                // ★★★ メールを削除せず、claimedフラグを立てて更新する ★★★
+                // 配列内のオブジェクトを直接書き換える
+                currentMailbox[targetIndex].claimed = true;
+                
+                // 更新した配列全体をセット
+                updates.mailbox = currentMailbox;
+
+                transaction.update(userRef, updates);
+            });
+
+            alert(`受け取りました！\n${mail.reward.name}`);
+            
+            // 成功したらリストに戻る（自動的に再描画され、グレーになります）
+            backToMailList(); 
+
+        } catch (e) {
+            console.error(e);
+            alert("受け取りに失敗しました: " + e);
+        }
+    }
+    
+</script>
 
 </body>
 </html>
