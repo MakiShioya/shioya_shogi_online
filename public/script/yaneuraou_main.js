@@ -15,7 +15,32 @@ window.skillUsed = false;
 // ★追加：このターン、駒取りを禁止するかどうかのフラグ
 window.isCaptureRestricted = false;
 // -----------------------------
+// ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
+// ★必殺技・ゲージ関連の変数
+window.skillUsed = false;
+window.isCaptureRestricted = false;
+let lastSkillKifu = "";
+let pendingMove = null;
+
+// ★CPU 2回行動用
+let isCpuDoubleAction = false;
+let cpuSkillUseCount = 0;
+
+// ★ゲージ用ポイント（エラーの原因はこれがないことです！）
+let playerSkillPoint = 0;
+let cpuSkillPoint = 0;
+const MAX_SKILL_POINT = 1000;
+
+// ★ポイント設定
+const SP_CONFIG = {
+  MOVE: { "P": 5, "+P": 15, "L": 8, "+L": 15, "N": 8, "+N": 15, "S": 10, "+S": 15, "G": 10, "B": 15, "+B": 30, "R": 15, "+R": 30, "K": 20 },
+  DROP: { "P": 10, "L": 12, "N": 12, "S": 15, "G": 15, "B": 20, "R": 20 },
+  CAPTURE: { "P": 10, "+P": 30, "L": 20, "+L": 40, "N": 20, "+N": 40, "S": 30, "+S": 50, "G": 40, "B": 60, "+B": 100, "R": 60, "+R": 100, "K": 1000 },
+  PROMOTE: { "P": 20, "L": 25, "N": 25, "S": 30, "B": 50, "R": 50 }
+};
+
+// ▲▲▲ ここまで ▲▲▲
 // DOM要素の参照
 const board = document.getElementById("board");
 const blackHandDiv = document.getElementById("blackHand");
