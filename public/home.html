@@ -15,9 +15,6 @@
 
   <style>
 
-      * {
-  font-family: "SetoFont", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif !important;
-}
 
        /* ★追加：ロード画面のスタイル */
 #loading-screen {
@@ -57,10 +54,16 @@
 }
       
 
-    @font-face {
+@font-face {
   font-family: 'SetoFont';
-  src: url('script/font/setofont.ttf') format('truetype');
-  font-display: swap; /* ★これを入れると文字消えを防げます */
+  /* ↓ ファイル名が本当に正しいか、script/font/ フォルダにあるか再確認してください！ */
+  src: url('script/font/setofont-ex.ttf') format('truetype');
+  font-display: swap; /* ★読み込み中も文字を消さない魔法の1行 */
+}
+
+/* 全ての要素にフォントを指定し、読み込めない時は標準フォントを使う設定 */
+* {
+  font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
 }
     
     body {
@@ -1696,6 +1699,7 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
 
 
