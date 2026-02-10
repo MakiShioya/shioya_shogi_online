@@ -61,7 +61,7 @@ window.render = function() {
     const tr = document.createElement("tr");
     for (let x = 0; x < 9; x++) {
       const td = document.createElement("td");
-      const piece = boardState[y][x];
+      
       
       if (piece) {
         const isWhite = piece === piece.toLowerCase();
@@ -657,7 +657,7 @@ function onCellClick(x, y) {
     if (!piece) return;
     const isWhite = piece === piece.toLowerCase();
     if ((turn === "black" && isWhite) || (turn === "white" && !isWhite)) return;
-    selected = { x, y, fromHand: false };
+    selected = { x, y, fromHand: false, player: turn };
     legalMoves = getLegalMoves(x, y);
 
     if (window.isCaptureRestricted) {
@@ -1015,4 +1015,5 @@ function updatePvPGaugeUI() {
         else wBar.classList.remove("gauge-max");
     }
 }
+
 
