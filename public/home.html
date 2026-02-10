@@ -1082,24 +1082,46 @@ input, textarea {
         openModal('lobbyChatModal');
     }
 
-    function sendLobbyMessage() {
-        if (!socket) {
-            showSystemAlert("チャットサーバーに接続されていません");
-            return;
-        }
-        const input = document.getElementById("lobbyChatInput");
-        const text = input.value.trim();
-        if (!text) return;
+    // 【修正版】メッセージ送信関数
+function sendLobbyMessage() {
+    if (!socket) {
+        showSystemAlert("チャットサーバーに接続されていません");
+        return;
+    }
+    const input = document.getElementById("lobbyChatInput");
+    const text = input.value.trim();
+    if (!text) return;
 
-        const myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
-        socket.emit('chat message', {
-            name: myName,
-            text: text,
-            role: 'lobby' 
-        });
-        input.value = "";
+    // --- ★★★ 変更点：IDと名前の決定ロジック ★★★ ---
+    const user = firebase.auth().currentUser;
+    
+    let myName, myId;
+
+    if (user) {
+        // ログインしている場合
+        // ID: FirebaseのUIDを使う（他人と絶対被らない）
+        myId = user.uid; 
+        // 名前: 画面の表示名を使う
+        myName = document.getElementById("userNameDisplay").textContent || "名無し";
+    } else {
+        // ゲストの場合
+        // ID: socket.id を使う（ブラウザを閉じると変わるが、その場では他人と区別できる）
+        // ※もし本当に「全ゲストを同一人物（自分）」として扱いたい場合は、ここを "guest_id_common" などの固定文字にしてください
+        myId = socket.id; 
+        // 名前: 強制的に「ゲスト」にする
+        myName = "ゲスト";
     }
 
+    // サーバーへ送信（userIdを追加）
+    socket.emit('chat message', {
+        userId: myId,   // ★追加：本人確認用のID
+        name: myName,   // 表示用の名前
+        text: text,
+        role: 'lobby' 
+    });
+    
+    input.value = "";
+}
     // チャット受信処理
     if (socket) {
         socket.on('chat history', (history) => {
@@ -1121,51 +1143,66 @@ input, textarea {
         });
     }
 
-    function addMessageToLobbyChat(data) {
-        const historyDiv = document.getElementById("lobbyChatHistory");
-        if (!historyDiv) return;
+    // 【修正版】メッセージ表示関数
+function addMessageToLobbyChat(data) {
+    const historyDiv = document.getElementById("lobbyChatHistory");
+    if (!historyDiv) return;
 
-        const domName = document.getElementById("userNameDisplay").textContent;
-        const storageName = localStorage.getItem('shogi_username');
-        const isMe = (data.name.trim() === (domName || "").trim()) || 
-                     (data.name.trim() === (storageName || "").trim());
-
-        if (data.isSystem) {
-            const sysDiv = document.createElement("div");
-            sysDiv.className = "chat-system-box";
-            sysDiv.textContent = data.text;
-            historyDiv.appendChild(sysDiv);
-        } else {
-            const rowDiv = document.createElement("div");
-            rowDiv.className = "chat-row";
-            if (isMe) rowDiv.classList.add("mine");
-
-            const iconCol = document.createElement("div");
-            iconCol.className = "icon-container";
-
-            const nameDiv = document.createElement("div");
-            nameDiv.className = "chat-name-badge";
-            nameDiv.textContent = data.name;
-
-            const iconImg = document.createElement("img");
-            iconImg.src = "script/image/test.icon.PNG"; 
-            iconImg.className = "chat-icon-img";
-            iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
-
-            iconCol.appendChild(nameDiv);
-            iconCol.appendChild(iconImg);
-
-            const bubbleDiv = document.createElement("div");
-            bubbleDiv.className = "chat-bubble";
-            bubbleDiv.textContent = data.text;
-
-            rowDiv.appendChild(iconCol);
-            rowDiv.appendChild(bubbleDiv);
-            historyDiv.appendChild(rowDiv);
-        }
-        historyDiv.scrollTop = historyDiv.scrollHeight;
+    // --- ★★★ 変更点：本人判定ロジック ★★★ ---
+    const user = firebase.auth().currentUser;
+    
+    // 自分のIDを取得（送信時と同じロジック）
+    let currentMyId;
+    if (user) {
+        currentMyId = user.uid;
+    } else {
+        // ゲストの時は自分のsocket.idと比較
+        // socketが未接続の場合はnullになるので注意
+        currentMyId = socket ? socket.id : null;
     }
 
+    // ★ IDが一致すれば「自分」とみなす
+    // (data.userId が無い古いメッセージ対策として、念のため名前チェックも残すか、あるいはID必須にする)
+    const isMe = (data.userId === currentMyId);
+
+    // --- 以下、表示処理（既存コードとほぼ同じ） ---
+
+    if (data.isSystem) {
+        const sysDiv = document.createElement("div");
+        sysDiv.className = "chat-system-box";
+        sysDiv.textContent = data.text;
+        historyDiv.appendChild(sysDiv);
+    } else {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "chat-row";
+        if (isMe) rowDiv.classList.add("mine"); // 自分の場合、右寄せクラス付与
+
+        const iconCol = document.createElement("div");
+        iconCol.className = "icon-container";
+
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "chat-name-badge";
+        nameDiv.textContent = data.name; // IDに関わらず、送られてきた名前を表示
+
+        const iconImg = document.createElement("img");
+        // ★ 将来的にアイコンもIDによって変えるならここで判定できます
+        iconImg.src = "script/image/test.icon.PNG"; 
+        iconImg.className = "chat-icon-img";
+        iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
+
+        iconCol.appendChild(nameDiv);
+        iconCol.appendChild(iconImg);
+
+        const bubbleDiv = document.createElement("div");
+        bubbleDiv.className = "chat-bubble";
+        bubbleDiv.textContent = data.text;
+
+        rowDiv.appendChild(iconCol);
+        rowDiv.appendChild(bubbleDiv);
+        historyDiv.appendChild(rowDiv);
+    }
+    historyDiv.scrollTop = historyDiv.scrollHeight;
+}
     document.addEventListener("DOMContentLoaded", () => {
         const lobbyInput = document.getElementById("lobbyChatInput");
         if (lobbyInput) {
@@ -1514,6 +1551,7 @@ input, textarea {
 
 </body>
 </html>
+
 
 
 
