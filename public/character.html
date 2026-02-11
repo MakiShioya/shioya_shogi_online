@@ -4,30 +4,93 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>キャラクター選択 - しおや将棋</title>
+  
+  <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
+  
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
 
   <script src="/socket.io/socket.io.js"></script>
   <style>
+    /* ★追加：フォント定義（読み込み待ち中は文字を表示しない block 設定） */
+    @font-face {
+      font-family: 'SetoFont';
+      src: url('script/font/setofont.ttf') format('truetype');
+      font-display: block;
+    }
+
+    /* ★追加：全体のフォント適用 */
+    * {
+      font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    }
+
+    /* ★追加：ロード画面のスタイル */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* ホーム画面に合わせて半透明設定にしています。不透明にする場合は rgba ではなく #2c3e50 などにしてください */
+      background-color: rgba(44, 62, 80, 0.5); 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .loader-content {
+      text-align: center;
+      color: white;
+      font-family: "SetoFont", sans-serif;
+    }
+
+    /* ぐるぐる回るアニメーション */
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.3);
+      border-top: 5px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* チップスのテキスト表示エリア */
+    #loading-tips {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      max-width: 250px;
+      line-height: 1.5;
+      min-height: 3em;
+    }
+
+    /* --- 以下、既存のスタイル --- */
     body {
       background-image: url('script/image/haikei.PNG');
       background-color: #2c3e50;
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
-      font-family: Arial, sans-serif;
+      /* font-family: Arial, sans-serif; ← SetoFontを使うため削除 */
       text-align: center;
       margin: 0;
       padding: 0;
-      /* 画面に収めるための設定 */
       width: 100vw;
       height: 100vh;
       display: flex;
       flex-direction: column;
-      overflow: hidden; /* スクロール禁止 */
-
-      /* ▼▼▼ 追加：コピー・長押し禁止設定 ▼▼▼ */
+      overflow: hidden;
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
@@ -39,7 +102,7 @@
     h1 {
       color: #FFB347;
       text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8);
-      font-size: min(6vw, 2rem); /* 画面幅に合わせて伸縮 */
+      font-size: min(6vw, 2rem);
       margin: 15px 0 5px;
     }
 
@@ -50,11 +113,10 @@
       text-shadow: 1px 1px 3px black;
     }
 
-    /* キャラクターカードのコンテナ */
     .char-container {
       display: flex;
       justify-content: center;
-      align-items: center; /* カード同士を上下中央に */
+      align-items: center;
       gap: 10px;
       width: 98%;
       max-width: 1200px;
@@ -65,7 +127,6 @@
       min-height: 0; 
     }
 
-    /* カード単体 */
     .char-card {
       background: white;
       border: 3px solid #ccc;
@@ -74,7 +135,7 @@
       cursor: pointer;
       flex: 1;
       max-width: 180px;
-      aspect-ratio: 3 / 5; /* ← 縦長カードにする決定打 */
+      aspect-ratio: 3 / 5;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -83,40 +144,35 @@
       box-sizing: border-box;
     }
 
-    /* 画像を表示するエリア */
     .img-wrapper {
-      flex: 1; /* 名前以外のスペースをすべて使う */
+      flex: 1;
       display: flex;
-      align-items: center; /* 画像を上下中央に */
-      justify-content: center; /* 画像を左右中央に */
-      min-height: 0; /* はみ出し防止 */
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
       margin-bottom: 8px;
     }
 
-    /* 画像：比率を維持しつつ、枠をはみ出さない */
     .char-card img {
       max-width: 100%;
       max-height: 100%;
       width: auto;
       height: auto;
-      object-fit: contain; /* 比率維持の絶対条件 */
+      object-fit: contain;
       border-radius: 5px;
-
-      /* ▼▼▼ 追加：画像自体の長押し・保存を無効化（クリックは親のdivが受け取るのでOK） ▼▼▼ */
       pointer-events: none; 
     }
 
-    /* 名前：常にカードの最下部に配置 */
     .char-name {
       font-size: min(3vw, 1rem);
       font-weight: bold;
       color: #333;
-      white-space: nowrap; /* 改行させない */
+      white-space: nowrap;
       padding: 5px 0;
-      flex-shrink: 0; /* 名前エリアが潰れないようにする */
-      border-top: 1px solid #eee; /* 境界線を入れるとより綺麗です */
+      flex-shrink: 0;
+      border-top: 1px solid #eee;
     }
-     
+      
     .back-btn-container {
       padding: 15px 0;
     }
@@ -132,21 +188,28 @@
       cursor: pointer;
     }
 
-    /* 準備中のカード用のスタイル */
     .disabled-card {
-      filter: grayscale(100%); /* 白黒にする */
-      opacity: 0.7;             /* 少し透けさせる */
-      cursor: not-allowed;      /* カーソルを禁止マークに */
-      pointer-events: none;     /* クリックイベントを無効化 */
-      border-color: #888 !important; /* 枠線をグレーに */
+      filter: grayscale(100%);
+      opacity: 0.7;
+      cursor: not-allowed;
+      pointer-events: none;
+      border-color: #888 !important;
     }
 
     .disabled-card .char-name {
-      color: #888;              /* 文字色もグレーに */
+      color: #888;
     }
   </style>
 </head>
 <body>
+
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <div id="loading-tips"></div>
+      <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+    </div>
+  </div>
 
   <h1 id="pageTitle">プレイヤーを選択</h1>
   <div id="messageArea">お好みのキャラクターを選んでください</div>
@@ -200,6 +263,48 @@
     <button class="back-btn" onclick="goBack()">キャンセル</button>
   </div>
 
+  <script>
+    const loadingTipsList = [
+        "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+        "【tips】オンライン対局は、先に入室した方が先手になります。",
+        "【tips】棋譜では、自分のこれまでの対局を振り返るだけでなく、解析もできます。",
+        "【tips】メニューボタンから、ホーム画面のキャラクターを変更できます。",
+        "【tips】CPUの必殺技は、2回行動です。",
+        "【tips】CPUは必殺技ゲージが300たまると必ず必殺技を打ってきます。"
+    ];
+
+    function showRandomTips() {
+        const tipEl = document.getElementById('loading-tips');
+        if (!tipEl) return;
+        const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+        tipEl.textContent = randomTip;
+    }
+
+    let tipsInterval = null;
+
+    // 【重要】画像の読み込みを待たずにTipsを表示（DOMContentLoaded）
+    document.addEventListener('DOMContentLoaded', () => {
+        showRandomTips();
+        tipsInterval = setInterval(showRandomTips, 3000);
+    });
+
+    // 画像とフォントの読み込みが終わってからロード画面を消す（load）
+    window.addEventListener('load', () => {
+        const loader = document.getElementById('loading-screen');
+        
+        // フォントの準備完了を待つ
+        document.fonts.ready.then(() => {
+            setTimeout(() => {
+                clearInterval(tipsInterval);
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 800); // 演出のため少し待機（短めの0.8秒に設定）
+        });
+    });
+  </script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     // 1. 保存されているルームIDがあるか確認
@@ -207,32 +312,35 @@ document.addEventListener("DOMContentLoaded", () => {
      
     if (savedRoomId) {
         // 2. ソケット接続してサーバーに確認
-        const socket = io();
-         
-        socket.on('connect', () => {
-            // サーバーに「この部屋、まだやってる？」と聞く
-            socket.emit('check reconnection', savedRoomId, (response) => {
-                 
-                if (response.canReconnect) {
-                    // 3. まだ対局中（または待機中）の場合
-                    const shouldRejoin = confirm(
-                        "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
-                    );
+        // socket.ioの読み込みタイミングによってはioが未定義になる可能性があるためチェック
+        if (typeof io !== 'undefined') {
+             const socket = io();
+             
+             socket.on('connect', () => {
+                // サーバーに「この部屋、まだやってる？」と聞く
+                socket.emit('check reconnection', savedRoomId, (response) => {
+                     
+                    if (response.canReconnect) {
+                        // 3. まだ対局中（または待機中）の場合
+                        const shouldRejoin = confirm(
+                            "中断された対局があります。\n復帰しますか？\n（キャンセルを押すと対局を破棄します）"
+                        );
 
-                    if (shouldRejoin) {
-                        // ★対局画面へ直行！
-                        window.location.href = `player_vs_player_online.html?room=${savedRoomId}`;
+                        if (shouldRejoin) {
+                            // ★対局画面へ直行！
+                            window.location.href = `player_vs_player_online.html?room=${savedRoomId}`;
+                        } else {
+                            // 破棄する場合
+                            localStorage.removeItem('current_shogi_room');
+                        }
                     } else {
-                        // 破棄する場合
+                        // 4. すでに終了している部屋の場合
+                        console.log("古い対局データが見つかりましたが、すでに終了しています。");
                         localStorage.removeItem('current_shogi_room');
                     }
-                } else {
-                    // 4. すでに終了している部屋の場合
-                    console.log("古い対局データが見つかりましたが、すでに終了しています。");
-                    localStorage.removeItem('current_shogi_room');
-                }
-            });
-        });
+                });
+             });
+        }
     }
 });
 
@@ -242,7 +350,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const phase = urlParams.get('phase'); 
   const isPvpSecondPick = (mode === 'pvp' && phase === '2');
 
+  // window.onload は既存のコードとロード画面制御で競合しないよう注意が必要ですが、
+  // ここでは要素へのテキストセットだけなので、DOMContentLoadedの方が安全かもしれません。
+  // そのまま残しますが、ロード画面の裏で実行されます。
   window.onload = function() {
+    // ★注意：上部のロード画面制御用スクリプトで window.addEventListener('load') を使っているため、
+    // こちらの window.onload = function... で上書きされる可能性があります。
+    // そのため、addEventListener に書き換えます。
+  };
+  
+  // ★書き換え版（安全な実装）
+  window.addEventListener('load', () => {
     const title = document.getElementById('pageTitle');
     const msg = document.getElementById('messageArea');
     if (mode === 'pvp') {
@@ -262,7 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
       msg.textContent = "キャラを選んでください";
       sessionStorage.removeItem('char_black'); 
     }
-  };
+  });
 
   function onCharSelected(charId) {
     let targetUrl = `character_detail.html?id=${charId}&mode=${mode}`;
