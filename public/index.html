@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>しおや将棋 - タイトル</title>
+  
+  <link rel="preload" href="script/image/shogi_title.PNG" as="image">
+  
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
@@ -27,26 +30,58 @@
       justify-content: center;
       font-family: sans-serif;
       overflow: hidden;
-      -webkit-user-select: none; /* Safari / Chrome */
-      -moz-user-select: none;    /* Firefox */
-      -ms-user-select: none;     /* IE / Edge */
-      user-select: none;         /* Standard */
-
-      /* iOSで長押しした際のメニュー（コピー・保存など）を無効化 */
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
       -webkit-touch-callout: none;
-      
-      /* 画像などのドラッグを無効化 */
       -webkit-user-drag: none;
-      
-      /* ▲▲▲ 追加部分ここまで ▲▲▲ */
     }
 
-    /* ▼▼▼ 入力フォームだけは操作できるようにする（必須） ▼▼▼ */
     input, textarea {
       -webkit-user-select: text;
       user-select: text;
-      -webkit-touch-callout: default; /* 必要に応じて */
+      -webkit-touch-callout: default;
     }
+
+    /* ▼▼▼ スプラッシュスクリーン（オープニング演出用） ▼▼▼ */
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000; /* 背景は黒 */
+      z-index: 99999; /* 最前面に表示 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none; /* 演出中のクリック無効化 */
+      transition: opacity 1s ease; /* フェードアウト用 */
+    }
+
+    .splash-content {
+      color: white;
+      font-family: "MS Mincho", serif; /* 雰囲気のあるフォント */
+      text-align: center;
+      opacity: 0; /* 最初は隠しておく */
+      transition: opacity 1s ease;
+      position: absolute;
+      width: 100%;
+    }
+
+    #splash-logo {
+      font-size: 2.5rem;
+      font-weight: bold;
+      letter-spacing: 0.2em;
+    }
+
+    #splash-warning {
+      font-size: 1.2rem;
+      line-height: 2;
+    }
+    /* ▲▲▲ スプラッシュスクリーンここまで ▲▲▲ */
+
 
     .title-logo {
       font-size: 4rem;
@@ -55,6 +90,9 @@
       font-weight: bold;
       margin-bottom: 20vh;
       text-align: center;
+      /* タイトルも最初は隠しておく（演出後にふわっと出すため） */
+      opacity: 0;
+      transition: opacity 2s ease;
     }
 
     .tap-start {
@@ -66,10 +104,13 @@
       background: rgba(0,0,0,0.3);
       padding: 10px 40px;
       border-radius: 30px;
+      /* これも最初は隠す */
+      opacity: 0;
+      transition: opacity 2s ease;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
-    /* 設定（アカウント）ボタンの洗練 */
+    /* 設定ボタン */
     .settings-btn {
       position: absolute;
       top: 20px;
@@ -77,42 +118,61 @@
       font-size: 0.9rem;
       font-weight: bold;
       color: white;
-      
-      /* 背景に和風な濃い茶色と透け感を追加 */
       background: rgba(139, 69, 19, 0.8); 
       border: 2px solid #FFB347;
       border-radius: 8px;
       padding: 8px 16px;
-      
       cursor: pointer;
-      box-shadow: 0 4px 0 #5d2e0d; /* 立体感 */
+      box-shadow: 0 4px 0 #5d2e0d;
       transition: all 0.2s;
       z-index: 10;
       display: flex;
       align-items: center;
       gap: 5px;
+      /* これも最初は隠す */
+      opacity: 0;
+      transition: opacity 2s ease;
     }
 
-    /* 押し込んだ時の動き */
     .settings-btn:active {
       transform: translateY(2px);
       box-shadow: 0 2px 0 #5d2e0d;
     }
 
-    /* ホバー（マウスを乗せた時）の光 */
     .settings-btn:hover {
       background: rgba(160, 82, 45, 0.9);
       border-color: #ffcc80;
     }
+    
+    /* アニメーション完了後に表示するクラス */
+    .fade-in-done {
+        opacity: 1 !important;
+    }
+    /* 点滅アニメーションを持たせるための特別対応 */
+    .tap-start.fade-in-done {
+        animation: blink 1.5s infinite; /* フェードイン後も点滅を維持 */
+    }
+
   </style>
 </head>
 <body>
 
-  <button class="settings-btn" onclick="showAuthModal()">アカウント</button>
+  <div id="splash-screen">
+    <div id="splash-logo" class="splash-content">
+        しおやゲーム
+    </div>
+    <div id="splash-warning" class="splash-content">
+        <span style="font-size: 3rem; color: #ffcc00;">⚠</span><br><br>
+        歩きながらの将棋は<br>
+        王手放置より危険です。<br>
+        安全な場所でプレイしてください。
+    </div>
+  </div>
+  <button id="main-settings" class="settings-btn" onclick="showAuthModal()">アカウント</button>
 
-  <div class="title-logo">しおや将棋</div>
+  <div id="main-title" class="title-logo">しおや将棋</div>
 
-  <div class="tap-start" onclick="goToHome()">TAP TO START</div>
+  <div id="main-start" class="tap-start" onclick="goToHome()">TAP TO START</div>
 
   <div id="authModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
     <div style="background: #fff8dc; padding: 30px; border: 4px solid #8b4513; border-radius: 10px; text-align: center; width: 300px;">
@@ -120,7 +180,6 @@
       <h2 id="authTitle" style="margin-top: 0; color: #8b4513;">ログイン / 新規登録</h2>
       
       <div id="authInputs">
-
         <div style="text-align: left; margin: 15px 0;">
           <label>メールアドレス</label><br>
           <input type="email" id="authEmail" placeholder="example@mail.com" style="width: 100%; padding: 8px; font-size: 16px; box-sizing: border-box;">
@@ -145,110 +204,78 @@
   </div>
 
   <script src="script/auth.js"></script>
+  
   <script>
+    // ▼▼▼ オープニング演出のスクリプト ▼▼▼
+    document.addEventListener("DOMContentLoaded", async () => {
+        const splashScreen = document.getElementById('splash-screen');
+        const logo = document.getElementById('splash-logo');
+        const warning = document.getElementById('splash-warning');
+        
+        const mainTitle = document.getElementById('main-title');
+        const mainStart = document.getElementById('main-start');
+        const mainSettings = document.getElementById('main-settings');
+
+        // 指定した時間（ミリ秒）待つ関数
+        const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // 1. 少し待ってから「しおやゲーム」を表示
+        await wait(500);
+        logo.style.opacity = '1';
+
+        // 2. しおやゲームを表示しておく時間（2秒）
+        await wait(2000); 
+        logo.style.opacity = '0'; // 消す
+
+        // 3. 消えるアニメーション待ち（1秒）
+        await wait(1000);
+
+        // 4. 注意喚起を表示
+        warning.style.opacity = '1';
+
+        // 5. 注意喚起を表示しておく時間（2.5秒）
+        await wait(2500);
+        warning.style.opacity = '0'; // 消す
+
+        // 6. 消えるアニメーション待ち
+        await wait(1000);
+
+        // 7. 黒い幕自体をフェードアウト
+        splashScreen.style.opacity = '0';
+        
+        // 8. タイトル画面の要素をフェードイン
+        mainTitle.classList.add('fade-in-done');
+        mainStart.classList.add('fade-in-done');
+        mainSettings.classList.add('fade-in-done');
+
+        // 9. 完全に消えたら幕を削除（クリックの邪魔にならないように）
+        await wait(1000);
+        splashScreen.style.display = 'none';
+    });
+
     function goToHome() {
       window.location.href = "home.html";
     }
-
-    // ★重要：ここにあった showAuthModal などのローカル関数は削除しました
-    // これにより script/auth.js の「賢い方」の関数が使われます。
   </script>
 
 
 <script>
-  function autoFitGame() {
-    // タイトル画面なのでIDが存在しない場合があります。
-    // その場合は body 全体を対象にします。
-    let wrapper = document.getElementById('game-wrapper');
-    
-    // index.html には game-wrapper がないので body に直接スタイルを当てます
-    if (!wrapper) {
-       document.body.style.transformOrigin = "center center";
-       wrapper = document.body; 
-    }
-
-    // 基準サイズ（タイトル画面用）
-    // index.htmlは背景画像がメインなので、少し広めでも大丈夫ですが
-    // 統一感を持たせるなら同じサイズが良いでしょう
-    const baseWidth = 780;
-    const baseHeight = 600;
-
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const isPortrait = h > w;
-
-    let scale;
-    let rotation = '';
-
-    if (isPortrait) {
-      // 縦持ち → 90度回転
-      const scaleX = h / baseWidth;
-      const scaleY = w / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = 'rotate(90deg)';
-      
-      // 回転させた場合、幅と高さを入れ替えて指定しないとスクロールが発生することがあるため調整
-      wrapper.style.width = baseHeight + "px"; 
-      wrapper.style.height = baseWidth + "px";
-
-    } else {
-      // 横持ち → そのまま
-      const scaleX = w / baseWidth;
-      const scaleY = h / baseHeight;
-      scale = Math.min(scaleX, scaleY) * 0.95;
-      rotation = '';
-      
-      wrapper.style.width = baseWidth + "px";
-      wrapper.style.height = baseHeight + "px";
-    }
-
-    if (scale > 1) scale = 1;
-
-    // タイトル画面は中央寄せ済みなので、translateは不要な場合もありますが
-    // 念のため固定配置にします
-    wrapper.style.position = "absolute";
-    wrapper.style.top = "50%";
-    wrapper.style.left = "50%";
-    wrapper.style.transform = `translate(-50%, -50%) ${rotation} scale(${scale})`;
-  }
-
-  window.addEventListener('load', autoFitGame);
-  window.addEventListener('resize', autoFitGame);
-  setTimeout(autoFitGame, 500);
-</script>
-
-
-<script>
+  // 画面の自動調整スクリプト（既存のもの）
   function autoRotateTitle() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    // 高さが幅より大きければ「縦持ち」と判定
     const isPortrait = h > w;
 
     if (isPortrait) {
-      // ■ 縦持ちの場合
-      // 縮小(scale)はせず、幅と高さを入れ替えて90度回転させます
-      
-      // 1. 画面中央を基準に回転させるための配置設定
       document.body.style.position = "fixed";
       document.body.style.top = "50%";
       document.body.style.left = "50%";
       document.body.style.transformOrigin = "center center";
-      
-      // 2. 90度回転させる
       document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-      
-      // 3. 重要な点：回転した状態での「幅」は画面の「高さ」になります
-      // これにより、縮小されずに画面いっぱいに表示されます
       document.body.style.width = h + "px";
       document.body.style.height = w + "px";
-      
-      // スクロールバーが出ないように念のため
       document.body.style.overflow = "hidden";
-
     } else {
-      // ■ 横持ち（PC含む）の場合
-      // 何もしない（CSSの元の設定 100vw, 100vh に戻す）
       document.body.style.position = "";
       document.body.style.top = "";
       document.body.style.left = "";
@@ -258,20 +285,17 @@
     }
   }
 
-  // 読み込み時とリサイズ時に実行
   window.addEventListener('load', autoRotateTitle);
   window.addEventListener('resize', autoRotateTitle);
-  // 画像読み込みのタイミング対策
   setTimeout(autoRotateTitle, 100);
 </script>
 
 <script>
-  // 右クリック（長押しメニュー）を禁止
+  // 禁止系スクリプト
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
   }, { passive: false });
 
-  // 画像やリンクのドラッグ開始を禁止（念のため）
   document.addEventListener('dragstart', function(e) {
     e.preventDefault();
   }, { passive: false });
