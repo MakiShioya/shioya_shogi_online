@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レベル選択 - しおや将棋</title>
+<link rel="stylesheet" href="script/style.css">
+<style>
+    body {
+        background-color: #fdf5e6;
+        text-align: center;
+        padding: 20px;
+        font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    }
+    h2 { color: #8b4513; }
+    .level-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 400px;
+        margin: 0 auto;
+        height: 70vh;
+        overflow-y: auto; /* たくさんレベルがあってもスクロール可能に */
+        padding: 10px;
+        border: 2px solid #8b4513;
+        border-radius: 10px;
+        background: #fff;
+    }
+    .level-btn {
+        padding: 15px;
+        font-size: 16px;
+        font-weight: bold;
+        background-color: #8b4513;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+        display: block;
+    }
+    .level-btn:hover {
+        background-color: #a0522d;
+    }
+    .description {
+        font-size: 12px;
+        color: #ddd;
+        display: block;
+        margin-top: 5px;
+        font-weight: normal;
+    }
+</style>
+</head>
+<body>
+
+    <h2>対戦レベルを選択</h2>
+    <p>強さを選んでください</p>
+
+    <div class="level-container" id="levelList">
+        </div>
+
+    <div style="margin-top: 20px;">
+        <button class="square-btn" style="background:gray; color:white;" onclick="location.href='home.html'">戻る</button>
+    </div>
+
+    <script>
+        // ★レベル定義（後でJS側と合わせる必要があります）
+        const levels = [
+            { lv: 1,  name: "Lv1 入門 (15級)", desc: "まずはここから。駒の動かし方を覚えたて。" },
+            { lv: 2,  name: "Lv2 初心 (13級)", desc: "少しだけ先を読みます。" },
+            { lv: 3,  name: "Lv3 初級 (11級)", desc: "うっかりミスが減ります。" },
+            { lv: 4,  name: "Lv4 初級 (9級)",  desc: "基本的な攻めをしてきます。" },
+            { lv: 5,  name: "Lv5 中級 (7級)",  desc: "手強くなってきます。" },
+            { lv: 10, name: "Lv10 上級 (3級)", desc: "油断すると負けます。" },
+            { lv: 15, name: "Lv15 有段 (初段)", desc: "かなり強いです。" },
+            { lv: 20, name: "Lv20 強豪 (三段)", desc: "本気モードです。" },
+            // 必要に応じて増やせます
+        ];
+
+        const container = document.getElementById("levelList");
+
+        levels.forEach(l => {
+            const a = document.createElement("a");
+            a.className = "level-btn";
+            // ★ここがポイント：URLパラメータ「?lv=数値」を付けて対局画面へ移動
+            a.href = `cpu_level.html?lv=${l.lv}`;
+            
+            a.innerHTML = `${l.name} <span class="description">${l.desc}</span>`;
+            container.appendChild(a);
+        });
+    </script>
+
+</body>
+</html>
