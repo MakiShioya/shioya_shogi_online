@@ -1737,26 +1737,39 @@ function addMessageToLobbyChatFirestore(data) {
     }
 
        // ★追加：読み込み完了時にロード画面を消す
-window.addEventListener('load', () => {
-    // 最初に1つチップスを表示
-    showRandomTips();
-    
-    // 3秒ごとにチップスを切り替える（読み込みが長い場合用）
-    const tipsInterval = setInterval(showRandomTips, 3000);
+// タイマーIDを保存する変数（2つのイベントで共有するため外に出す）
+let tipsInterval = null;
 
+// 【第1段階】 HTMLの読み込みが終わったら「すぐ」動く
+// 画像の読み込みを待たずにTipsを表示します
+document.addEventListener('DOMContentLoaded', () => {
+    showRandomTips();
+    tipsInterval = setInterval(showRandomTips, 3000);
+});
+
+// 【第2段階】 画像やフォントなど「全部」の読み込みが終わったら動く
+// ここでロード画面を消します
+window.addEventListener('load', () => {
     const loader = document.getElementById('loading-screen');
-    setTimeout(() => {
-        clearInterval(tipsInterval); // 消去前にタイマーを止める
-        loader.style.opacity = '0';
+
+    // フォントの読み込み完了も待つ（カクつき防止）
+    document.fonts.ready.then(() => {
+        
         setTimeout(() => {
-            loader.style.display = 'none';
-        }, 500);
-    }, 1500); // 演出のために最低1.5秒は見せる
+            clearInterval(tipsInterval); // タイマーを止める
+            loader.style.opacity = '0';
+            setTimeout(() => {
+                loader.style.display = 'none';
+            }, 500);
+        }, 1500); // 最低表示時間の確保
+
+    });
 });
     
 </script>
 
 </body>
 </html>
+
 
 
