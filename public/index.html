@@ -56,16 +56,21 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      pointer-events: none; /* 演出中のクリック無効化 */
-      transition: opacity 1s ease; /* フェードアウト用 */
+      
+      /* ★変更：幕がある間は、ここでクリックを遮断する（下のボタンを押させない） */
+      pointer-events: auto; 
+      
+      /* フェードアウト時間を短縮（1s -> 0.5s） */
+      transition: opacity 0.5s ease; 
     }
 
     .splash-content {
       color: white;
-      font-family: "MS Mincho", serif; /* 雰囲気のあるフォント */
+      font-family: "MS Mincho", serif;
       text-align: center;
-      opacity: 0; /* 最初は隠しておく */
-      transition: opacity 1s ease;
+      opacity: 0;
+      /* 文字のフェードイン・アウトも少し早く（1s -> 0.5s） */
+      transition: opacity 0.5s ease;
       position: absolute;
       width: 100%;
     }
@@ -90,9 +95,12 @@
       font-weight: bold;
       margin-bottom: 20vh;
       text-align: center;
-      /* タイトルも最初は隠しておく（演出後にふわっと出すため） */
+      
       opacity: 0;
-      transition: opacity 2s ease;
+      /* ★変更：最初はクリック判定を消す */
+      pointer-events: none;
+      /* ★変更：出現スピードアップ（2s -> 0.8s） */
+      transition: opacity 0.8s ease;
     }
 
     .tap-start {
@@ -104,9 +112,12 @@
       background: rgba(0,0,0,0.3);
       padding: 10px 40px;
       border-radius: 30px;
-      /* これも最初は隠す */
+      
       opacity: 0;
-      transition: opacity 2s ease;
+      /* ★変更：最初はクリック判定を消す */
+      pointer-events: none;
+      /* ★変更：出現スピードアップ */
+      transition: opacity 0.8s ease;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
@@ -124,14 +135,16 @@
       padding: 8px 16px;
       cursor: pointer;
       box-shadow: 0 4px 0 #5d2e0d;
-      transition: all 0.2s;
       z-index: 10;
       display: flex;
       align-items: center;
       gap: 5px;
-      /* これも最初は隠す */
+      
       opacity: 0;
-      transition: opacity 2s ease;
+      /* ★変更：最初はクリック判定を消す */
+      pointer-events: none;
+      /* ★変更：出現スピードアップ */
+      transition: opacity 0.8s ease;
     }
 
     .settings-btn:active {
@@ -145,12 +158,14 @@
     }
     
     /* アニメーション完了後に表示するクラス */
+    /* ★重要：ここで初めてクリック可能(pointer-events: auto)にする */
     .fade-in-done {
         opacity: 1 !important;
+        pointer-events: auto !important;
     }
-    /* 点滅アニメーションを持たせるための特別対応 */
+    
     .tap-start.fade-in-done {
-        animation: blink 1.5s infinite; /* フェードイン後も点滅を維持 */
+        animation: blink 1.5s infinite;
     }
 
   </style>
@@ -206,7 +221,7 @@
   <script src="script/auth.js"></script>
   
   <script>
-    // ▼▼▼ オープニング演出のスクリプト ▼▼▼
+    // ▼▼▼ オープニング演出のスクリプト（高速化・誤タップ防止版） ▼▼▼
     document.addEventListener("DOMContentLoaded", async () => {
         const splashScreen = document.getElementById('splash-screen');
         const logo = document.getElementById('splash-logo');
@@ -216,40 +231,45 @@
         const mainStart = document.getElementById('main-start');
         const mainSettings = document.getElementById('main-settings');
 
-        // 指定した時間（ミリ秒）待つ関数
         const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-        // 1. 少し待ってから「しおやゲーム」を表示
-        await wait(500);
+        // 1. 起動直後のウェイト（短縮：500ms → 200ms）
+        await wait(200);
         logo.style.opacity = '1';
 
-        // 2. しおやゲームを表示しておく時間（2秒）
-        await wait(2000); 
-        logo.style.opacity = '0'; // 消す
+        // 2. 「しおやゲーム」表示時間（短縮：2000ms → 1200ms）
+        // ちゃんと読めるけど待たされすぎない長さ
+        await wait(1200); 
+        logo.style.opacity = '0';
 
-        // 3. 消えるアニメーション待ち（1秒）
-        await wait(1000);
+        // 3. フェードアウト待ち（短縮：1000ms → 500ms）
+        await wait(500);
 
         // 4. 注意喚起を表示
         warning.style.opacity = '1';
 
-        // 5. 注意喚起を表示しておく時間（2.5秒）
-        await wait(2500);
-        warning.style.opacity = '0'; // 消す
+        // 5. 注意喚起の表示時間（短縮：2500ms → 1800ms）
+        await wait(1800);
+        warning.style.opacity = '0';
 
-        // 6. 消えるアニメーション待ち
-        await wait(1000);
+        // 6. フェードアウト待ち（短縮：1000ms → 500ms）
+        await wait(500);
 
-        // 7. 黒い幕自体をフェードアウト
+        // 7. 黒い幕を消す
         splashScreen.style.opacity = '0';
         
-        // 8. タイトル画面の要素をフェードイン
+        // ★重要：ここで初めて幕のクリックブロックを解除し、下のボタンを押せるようにする
+        // ただし、アニメーションが終わるまでは幕がまだ「透明で存在」しているので
+        // display:none にするまでは安心できません。
+        
+        // 8. タイトル画面を「クリック可能状態で」表示
         mainTitle.classList.add('fade-in-done');
         mainStart.classList.add('fade-in-done');
         mainSettings.classList.add('fade-in-done');
 
-        // 9. 完全に消えたら幕を削除（クリックの邪魔にならないように）
-        await wait(1000);
+        // 9. 幕が完全に透明になったら、DOM的にも消してクリックが確実に通るようにする
+        // （短縮：1000ms → 500ms）
+        await wait(500);
         splashScreen.style.display = 'none';
     });
 
@@ -260,7 +280,7 @@
 
 
 <script>
-  // 画面の自動調整スクリプト（既存のもの）
+  // 画面の自動調整スクリプト
   function autoRotateTitle() {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -291,7 +311,6 @@
 </script>
 
 <script>
-  // 禁止系スクリプト
   document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
   }, { passive: false });
