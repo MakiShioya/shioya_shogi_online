@@ -670,6 +670,52 @@ input, textarea {
   border: 2px solid #432517 !important; /* 枠 */
 }
 
+    /* --- ★★★ 新しい左右分割用レイアウト ★★★ --- */
+
+/* 1. 本文と報酬を包むコンテナ */
+.mail-split-container {
+  display: flex;       /* 横並びにする */
+  flex: 1;             /* 残りの高さを全部使う */
+  overflow: hidden;    /* はみ出し防止 */
+  gap: 10px;           /* 本文と報酬の隙間 */
+  margin-bottom: 10px;
+}
+
+/* 2. 本文エリア (左側) */
+.mail-body {
+  flex: 1;             /* 幅を自動で広げる */
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  background: rgba(255,255,255,0.6);
+  padding: 10px;
+  border-radius: 5px;
+  overflow-y: auto;    /* 文章が長い時はここだけスクロール */
+  height: 100%;        /* 高さをコンテナいっぱいにする */
+  box-sizing: border-box; /* パディングを含める */
+}
+
+/* 3. 報酬エリア (右側) */
+.mail-reward-area {
+  width: 30%;          /* ★ここで幅を3割に固定 */
+  min-width: 120px;    /* スマホで狭くなりすぎないように最低幅を指定 */
+  
+  display: flex;       /* 中身を上下中央揃えにする */
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  
+  margin-top: 0;       /* 余白リセット */
+  padding: 10px;
+  background: #ECDBBF;
+  border: 2px dashed #ff9800;
+  border-radius: 10px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+
+
     /* ★★★ 追加：チャットとメールの画面を最大サイズに固定する ★★★ */
     #lobbyChatModal .modal-box,
     #mailboxModal .modal-box {
@@ -1053,22 +1099,26 @@ input, textarea {
       </div>
 
       <div id="mailDetailView">
-        <div class="mail-header">
-          <div class="mail-detail-subject" id="detailSubject">件名</div>
-          <div class="mail-detail-date" id="detailDate">日付</div>
-        </div>
-        <div class="mail-body" id="detailBody">
-          本文
-        </div>
-        
-        <div id="rewardArea" class="mail-reward-area">
-          <div style="font-weight:bold; margin-bottom:5px;">🎁 添付アイテム</div>
-          <div id="rewardContent" style="color:#d35400; font-size:1.1rem; margin-bottom:10px;">1000 G</div>
-          <button id="claimRewardBtn" class="sub-btn" style="background: #28a745;">受け取る</button>
-        </div>
+  <div class="mail-header">
+    <div class="mail-detail-subject" id="detailSubject">件名</div>
+    <div class="mail-detail-date" id="detailDate">日付</div>
+  </div>
 
-        <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="backToMailList()">戻る</button>
-      </div>
+  <div class="mail-split-container">
+    
+    <div class="mail-body" id="detailBody">
+      本文
+    </div>
+    
+    <div id="rewardArea" class="mail-reward-area">
+      <div style="font-weight:bold; margin-bottom:10px;">🎁 添付</div>
+      <div id="rewardContent" style="color:#d35400; font-size:1.2rem; font-weight:bold; margin-bottom:15px;">1000 G</div>
+      <button id="claimRewardBtn" class="sub-btn" style="background: #28a745; width:90%; margin:0 auto;">受け取る</button>
+    </div>
+
+  </div>
+  <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="backToMailList()">戻る</button>
+</div>
 
     </div>
   </div>
@@ -1826,3 +1876,4 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
