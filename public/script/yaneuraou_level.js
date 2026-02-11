@@ -726,6 +726,8 @@ function movePieceWithSelected(sel, x, y) {
 
 // script/yaneuraou_level.js の executeMove 関数
 
+// script/yaneuraou_level.js の executeMove 関数
+
 function executeMove(sel, x, y, doPromote) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
@@ -738,7 +740,7 @@ function executeMove(sel, x, y, doPromote) {
           isCpuDoubleAction = true;
           cpuSkillUseCount++;
           
-          // ★重要：ここで必殺技モードON
+          // ★重要：ここで必殺技モードON（SFENモードへ）
           window.skillUsed = true; 
 
           // 演出
@@ -855,7 +857,7 @@ function executeMove(sel, x, y, doPromote) {
       statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
       
       // ★重要修正：パスのときは「直前の指し手」情報をクリアする
-      // これをしないと、次の手が「同〇〇」になってしまい、棋譜がおかしくなります
+      // これをしないと、次の手が「同〇〇」と判定されてエラーになります
       lastMoveTo = null;
 
       selected = null;
@@ -915,6 +917,7 @@ function executeMove(sel, x, y, doPromote) {
   }
   checkGameOver();
 }
+
 function checkGameOver() {
   if (moveCount >= 500) {
     gameOver = true;
@@ -1806,5 +1809,6 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
