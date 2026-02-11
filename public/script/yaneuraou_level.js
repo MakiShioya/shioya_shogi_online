@@ -11,26 +11,75 @@
 // depth: 読みの深さ
 // multiPV: 候補手の数（多いほど、2番手・3番手の悪手を選ぶ余地が生まれる）
 // noise: 評価値に加える乱数の幅（点数）。大きいほど判断が狂う。
-const LEVEL_CONFIG = [
-    // --- 低レベル帯：計算はさせるが、ノイズで判断を狂わせる ---
-    { id: 1,  nodes: 5000,    depth: 5,  multiPV: 5, noise: 3000, useBook: false, name: "Lv1 (入門)" }, // 3000点のノイズ＝王手放置レベルのミスもする
-    { id: 2,  nodes: 10000,   depth: 6,  multiPV: 4, noise: 2000, useBook: false, name: "Lv2 (初心)" },
-    { id: 3,  nodes: 20000,   depth: 7,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
-    { id: 4,  nodes: 30000,   depth: 8,  multiPV: 3, noise: 600,  useBook: false, name: "Lv4 (初級+)" },
-    
-    // --- 中レベル帯：少し迷う ---
-    { id: 5,  nodes: 50000,   depth: 10, multiPV: 2, noise: 300,  useBook: false, name: "Lv5 (中級)" },
-    { id: 6,  nodes: 100000,  depth: 12, multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" }, // ここからガチ
-    
-    // --- 高レベル帯：全力 ---
-    { id: 7,  nodes: 200000,  depth: 15, multiPV: 1, noise: 0,    useBook: true,  name: "Lv7 (上級)" },
-    { id: 8,  nodes: 500000,  depth: 18, multiPV: 1, noise: 0,    useBook: true,  name: "Lv8 (有段者)" },
-    { id: 9,  nodes: 1000000, depth: 22, multiPV: 1, noise: 0,    useBook: true,  name: "Lv9 (強豪)" },
-    { id: 10, nodes: 3000000, depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv10 (最強)" },
+// script/yaneuraou_level.js の LEVEL_CONFIG をこれに書き換え
 
-    // HTML側のボタンに対応する追加レベル
-    { id: 15, nodes: 5000000, depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv15 (有段)" },
-    { id: 20, nodes: 10000000,depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv20 (最強)" }
+// --- ★レベル別設定テーブル (Lv1～Lv50) ---
+// nodes: 思考量
+// depth: 読みの深さ
+// multiPV: 候補手の数（多いほど、悪手を選ぶ余地が生まれる）
+// noise: 評価値に加える乱数の幅。大きいほど判断が狂う。
+// useBook: 定跡を使うかどうか（Lv21からON）
+
+const LEVEL_CONFIG = [
+    // --- 【入門・初心者帯】 (Lv1-10) 派手に間違える ---
+    { id: 1,  name: "Lv1",  nodes: 5000,  depth: 5,  multiPV: 20, noise: 6000, useBook: false },
+    { id: 2,  name: "Lv2",  nodes: 6000,  depth: 5,  multiPV: 18, noise: 5500, useBook: false },
+    { id: 3,  name: "Lv3",  nodes: 7000,  depth: 6,  multiPV: 16, noise: 5000, useBook: false },
+    { id: 4,  name: "Lv4",  nodes: 8000,  depth: 6,  multiPV: 14, noise: 4500, useBook: false },
+    { id: 5,  name: "Lv5",  nodes: 9000,  depth: 7,  multiPV: 12, noise: 4000, useBook: false },
+    { id: 6,  name: "Lv6",  nodes: 10000, depth: 7,  multiPV: 10, noise: 3500, useBook: false },
+    { id: 7,  name: "Lv7",  nodes: 12000, depth: 8,  multiPV: 9,  noise: 3000, useBook: false },
+    { id: 8,  name: "Lv8",  nodes: 14000, depth: 8,  multiPV: 8,  noise: 2500, useBook: false },
+    { id: 9,  name: "Lv9",  nodes: 16000, depth: 9,  multiPV: 7,  noise: 2000, useBook: false },
+    { id: 10, name: "Lv10", nodes: 18000, depth: 9,  multiPV: 6,  noise: 1500, useBook: false },
+
+    // --- 【中級者帯】 (Lv11-20) ミスが減り、少しずつ正確に ---
+    { id: 11, name: "Lv11", nodes: 20000, depth: 10, multiPV: 5,  noise: 1200, useBook: false },
+    { id: 12, name: "Lv12", nodes: 25000, depth: 10, multiPV: 5,  noise: 1000, useBook: false },
+    { id: 13, name: "Lv13", nodes: 30000, depth: 11, multiPV: 4,  noise: 800,  useBook: false },
+    { id: 14, name: "Lv14", nodes: 35000, depth: 11, multiPV: 4,  noise: 600,  useBook: false },
+    { id: 15, name: "Lv15", nodes: 40000, depth: 12, multiPV: 3,  noise: 500,  useBook: false },
+    { id: 16, name: "Lv16", nodes: 45000, depth: 12, multiPV: 3,  noise: 400,  useBook: false },
+    { id: 17, name: "Lv17", nodes: 50000, depth: 13, multiPV: 2,  noise: 300,  useBook: false },
+    { id: 18, name: "Lv18", nodes: 60000, depth: 13, multiPV: 2,  noise: 200,  useBook: false },
+    { id: 19, name: "Lv19", nodes: 70000, depth: 14, multiPV: 2,  noise: 100,  useBook: false },
+    { id: 20, name: "Lv20", nodes: 80000, depth: 14, multiPV: 1,  noise: 0,    useBook: false }, // ここでノイズ0へ
+
+    // --- 【上級者帯】 (Lv21-30) 定跡解禁・本格派 ---
+    { id: 21, name: "Lv21", nodes: 90000,  depth: 15, multiPV: 1, noise: 0, useBook: true },
+    { id: 22, name: "Lv22", nodes: 100000, depth: 15, multiPV: 1, noise: 0, useBook: true },
+    { id: 23, name: "Lv23", nodes: 120000, depth: 16, multiPV: 1, noise: 0, useBook: true },
+    { id: 24, name: "Lv24", nodes: 140000, depth: 16, multiPV: 1, noise: 0, useBook: true },
+    { id: 25, name: "Lv25", nodes: 160000, depth: 17, multiPV: 1, noise: 0, useBook: true },
+    { id: 26, name: "Lv26", nodes: 180000, depth: 17, multiPV: 1, noise: 0, useBook: true },
+    { id: 27, name: "Lv27", nodes: 200000, depth: 18, multiPV: 1, noise: 0, useBook: true },
+    { id: 28, name: "Lv28", nodes: 250000, depth: 18, multiPV: 1, noise: 0, useBook: true },
+    { id: 29, name: "Lv29", nodes: 300000, depth: 19, multiPV: 1, noise: 0, useBook: true },
+    { id: 30, name: "Lv30", nodes: 400000, depth: 19, multiPV: 1, noise: 0, useBook: true },
+
+    // --- 【有段者・強豪帯】 (Lv31-40) 読みが深くなる ---
+    { id: 31, name: "Lv31", nodes: 500000,  depth: 20, multiPV: 1, noise: 0, useBook: true },
+    { id: 32, name: "Lv32", nodes: 600000,  depth: 20, multiPV: 1, noise: 0, useBook: true },
+    { id: 33, name: "Lv33", nodes: 700000,  depth: 21, multiPV: 1, noise: 0, useBook: true },
+    { id: 34, name: "Lv34", nodes: 800000,  depth: 21, multiPV: 1, noise: 0, useBook: true },
+    { id: 35, name: "Lv35", nodes: 900000,  depth: 22, multiPV: 1, noise: 0, useBook: true },
+    { id: 36, name: "Lv36", nodes: 1000000, depth: 22, multiPV: 1, noise: 0, useBook: true },
+    { id: 37, name: "Lv37", nodes: 1200000, depth: 23, multiPV: 1, noise: 0, useBook: true },
+    { id: 38, name: "Lv38", nodes: 1500000, depth: 23, multiPV: 1, noise: 0, useBook: true },
+    { id: 39, name: "Lv39", nodes: 1800000, depth: 24, multiPV: 1, noise: 0, useBook: true },
+    { id: 40, name: "Lv40", nodes: 2000000, depth: 24, multiPV: 1, noise: 0, useBook: true },
+
+    // --- 【最強・神の領域】 (Lv41-50) マシンスペックの限界へ ---
+    { id: 41, name: "Lv41", nodes: 2500000,  depth: 25, multiPV: 1, noise: 0, useBook: true },
+    { id: 42, name: "Lv42", nodes: 3000000,  depth: 26, multiPV: 1, noise: 0, useBook: true },
+    { id: 43, name: "Lv43", nodes: 3500000,  depth: 27, multiPV: 1, noise: 0, useBook: true },
+    { id: 44, name: "Lv44", nodes: 4000000,  depth: 28, multiPV: 1, noise: 0, useBook: true },
+    { id: 45, name: "Lv45", nodes: 5000000,  depth: 29, multiPV: 1, noise: 0, useBook: true },
+    { id: 46, name: "Lv46", nodes: 6000000,  depth: 30, multiPV: 1, noise: 0, useBook: true },
+    { id: 47, name: "Lv47", nodes: 7000000,  depth: 30, multiPV: 1, noise: 0, useBook: true },
+    { id: 48, name: "Lv48", nodes: 8000000,  depth: 30, multiPV: 1, noise: 0, useBook: true },
+    { id: 49, name: "Lv49", nodes: 9000000,  depth: 30, multiPV: 1, noise: 0, useBook: true },
+    { id: 50, name: "Lv50", nodes: 10000000, depth: 30, multiPV: 1, noise: 0, useBook: true }
 ];
 // 現在のレベル（初期値はLv1にしておきます）
 let currentLevelSetting = LEVEL_CONFIG[0];
@@ -1910,15 +1959,3 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
