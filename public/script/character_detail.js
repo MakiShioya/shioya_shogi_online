@@ -69,6 +69,16 @@ function decideCharacter() {
   // 2. 選択されたキャラIDを取得
   const charId = sessionStorage.getItem('temp_selected_char');
 
+  // ■ レベル別CPU対戦モード（ここを追加！）
+  if (mode === 'cpu_level') {
+    // 1. 選んだキャラを「プレイヤー(黒)」として保存
+    sessionStorage.setItem('char_black', charId);
+    
+    // 2. レベル選択画面へ移動
+    window.location.href = 'level_select.html';
+    return; // ここで終了
+  }
+
   // --- モードごとの分岐 ---
 
   if (mode === 'online') {
