@@ -728,13 +728,12 @@ input, textarea {
   <img class="character-stand" src="script/image/komiya_touka.png" alt="Character" onclick="talkCharacter()">
 
   <div class="bottom-menu">
-    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
-    
-    <button class="menu-btn ready-color" onclick="window.location.href='shop.html'">ショップ</button>
     
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
-    
+    <button class="menu-btn ready-color" onclick="window.location.href='shop.html'">ショップ</button>
     <button class="menu-btn" style="background: linear-gradient(to bottom, #607d8b 0%, #455a64 100%);" onclick="openModal('unifiedMenuModal')">メニュー</button>
+    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
+    
   </div>
 
   <div id="unifiedMenuModal" class="overlay">
@@ -1805,4 +1804,5 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
