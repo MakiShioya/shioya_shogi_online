@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>しおや将棋 - ホーム</title>
+  <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="icon" href="script/image/komiya_icon.png"> 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="script/image/komiya_icon.png">
@@ -80,9 +81,8 @@
 
 @font-face {
   font-family: 'SetoFont';
-  /* ↓ ファイル名が本当に正しいか、script/font/ フォルダにあるか再確認してください！ */
   src: url('script/font/setofont.ttf') format('truetype');
-  font-display: swap; /* ★読み込み中も文字を消さない魔法の1行 */
+  font-display: block; /* ← ここを block に変更 */
 }
 
 /* 全ての要素にフォントを指定し、読み込めない時は標準フォントを使う設定 */
@@ -1750,3 +1750,4 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
