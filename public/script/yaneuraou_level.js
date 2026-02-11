@@ -726,189 +726,185 @@ function movePieceWithSelected(sel, x, y) {
 
 // 実際の移動処理（USI記録・AI思考トリガー含む）
 function executeMove(sel, x, y, doPromote) {
-  if (typeof stopPondering === "function") stopPondering();
-if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
-      const cost = CpuDoubleAction.getCost();
-      if (cpuSkillPoint >= cost) {
-          consumeCpuSkillPoint(cost);
-          isCpuDoubleAction = true;
-          cpuSkillUseCount++;
+  // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
+  if (typeof stopPondering === "function") stopPondering();
 
-          // 演出
-          playSkillEffect("boss_cutin.png", ["boss.mp3", "skill.mp3"], "dark"); 
-          statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
+  // ▼▼▼ CPU必殺技（2回行動）の発動チェック ▼▼▼
+  if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
+      const cost = CpuDoubleAction.getCost();
+      if (cpuSkillPoint >= cost) {
+          consumeCpuSkillPoint(cost);
+          isCpuDoubleAction = true;
+          cpuSkillUseCount++;
+          
+          // ★重要修正：ここで「必殺技モード」をONにします
+          // これにより、次の思考でエンジンが「プレイヤーの番」と勘違いするのを防ぎ、
+          // 強制的に「現在の盤面（CPUの手番）」を読ませることができます。
+          window.skillUsed = true; 
 
-          // 演出の時間分待ってから、本来の指し手を実行
-          setTimeout(() => {
-              executeMove(sel, x, y, doPromote); 
-          }, 1500);
-          return; // ここで一旦処理を終了
-      }
-  }
-  const pieceBefore = sel.fromHand
-    ? hands[sel.player][sel.index]
-    : boardState[sel.y][sel.x];
+          // 演出
+          playSkillEffect("boss_cutin.png", ["boss.mp3", "skill.mp3"], "dark"); 
+          statusDiv.textContent = `CPUが必殺技【${CpuDoubleAction.name}】を発動！`;
+          
+          // 演出の時間分待ってから、本来の指し手を実行
+          setTimeout(() => { executeMove(sel, x, y, doPromote); }, 1500);
+          return; // ここで一旦処理を終了
+      }
+  }
+  // ▲▲▲▲▲▲
 
-  history.push(deepCopyState());
-  const boardBefore = boardState.map(r => r.slice());
-  const moveNumber = kifu.length + 1; 
+  const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
+  history.push(deepCopyState());
+  const boardBefore = boardState.map(r => r.slice());
+  const moveNumber = kifu.length + 1; 
 
-  if (moveSound) {
-    moveSound.currentTime = 0;
-    moveSound.volume = 0.3;
-    moveSound.play().catch(() => {});
-  }
+  if (moveSound) {
+    moveSound.currentTime = 0;
+    moveSound.volume = 0.3;
+    moveSound.play().catch(() => {});
+  }
 
-  if (sel.fromHand) {
-    const piece = hands[sel.player][sel.index];
-    boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
-    hands[sel.player].splice(sel.index, 1);
-    pieceStyles[y][x] = null;
-  } else {
-    let piece = boardState[sel.y][sel.x];
-    const target = boardState[y][x];
-    if (target) hands[turn].push(target.replace("+","").toUpperCase());
+  // --- 盤面の更新処理 ---
+  if (sel.fromHand) {
+    const piece = hands[sel.player][sel.index];
+    boardState[y][x] = sel.player === "black" ? piece : piece.toLowerCase();
+    hands[sel.player].splice(sel.index, 1);
+    pieceStyles[y][x] = null;
+  } else {
+    let piece = boardState[sel.y][sel.x];
+    const target = boardState[y][x];
+    if (target) hands[turn].push(target.replace("+","").toUpperCase());
+    const isWhite = piece === piece.toLowerCase();
+    const player = isWhite ? "white" : "black";
+    const base = piece.replace("+","").toUpperCase();
+    if (doPromote) {
+      piece = promote(piece.toUpperCase());
+      if (player === "white") piece = piece.toLowerCase();
+      sel.promoted = true;
+      if (promoteSound) {
+        promoteSound.currentTime = 0;
+        promoteSound.volume = 0.8;
+        promoteSound.play().catch(() => {});
+      }
+      const boardTable = document.getElementById("board");
+      if (boardTable) {
+        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
+        void boardTable.offsetWidth;
+        if (base === "R") {
+            boardTable.classList.add("flash-green");
+            setTimeout(() => boardTable.classList.remove("flash-green"), 2000);
+        } else if (base === "B") {
+            boardTable.classList.add("flash-orange");
+            setTimeout(() => boardTable.classList.remove("flash-orange"), 2000);
+        }
+      }
+    } else {
+      if (!piece.includes("+") && canPromote(base) && 
+          (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
+          sel.unpromoted = true;
+      }
+    }
+    boardState[sel.y][sel.x] = "";
+    boardState[y][x] = piece;
+    pieceStyles[y][x] = pieceStyles[sel.y][sel.x];
+    pieceStyles[sel.y][sel.x] = null;
+  }
 
-    const isWhite = piece === piece.toLowerCase();
-    const player = isWhite ? "white" : "black";
-    const base = piece.replace("+","").toUpperCase();
+  // --- 履歴の記録 ---
+  const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
+  
+  // 必殺技モードのときはUSI履歴（startpos moves ...）を使わないのでpushしない
+  if (!window.skillUsed) {
+      usiHistory.push(usiMove);
+  }
 
-    if (doPromote) {
-      piece = promote(piece.toUpperCase());
-      if (player === "white") piece = piece.toLowerCase();
-      sel.promoted = true;
-      if (promoteSound) {
-        promoteSound.currentTime = 0;
-        promoteSound.volume = 0.8;
-        promoteSound.play().catch(() => {});
-      }
-      const boardTable = document.getElementById("board");
-      if (boardTable) {
-        boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
-        void boardTable.offsetWidth;
-        if (base === "R") {
-            boardTable.classList.add("flash-green");
-            setTimeout(() => boardTable.classList.remove("flash-green"), 2000);
-        } else if (base === "B") {
-            boardTable.classList.add("flash-orange");
-            setTimeout(() => boardTable.classList.remove("flash-orange"), 2000);
-        }
-      }
-    } else {
-      if (!piece.includes("+") && canPromote(base) && 
-          (isInPromotionZone(sel.y, player) || isInPromotionZone(y, player))) {
-          sel.unpromoted = true;
-      }
-    }
-    boardState[sel.y][sel.x] = "";
-    boardState[y][x] = piece;
-    pieceStyles[y][x] = pieceStyles[sel.y][sel.x];
-    pieceStyles[sel.y][sel.x] = null;
-  }
+  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
+  const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
 
-  // ★USI履歴への記録
-  const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
+  kifu.push(""); 
+  if (typeof lastSkillKifu !== 'undefined' && lastSkillKifu !== "") {
+      kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
+      lastSkillKifu = ""; 
+  } else {
+      kifu[kifu.length - 1] = currentMoveStr;
+  }
 
-  // 【修正】必殺技使用済みフラグが立っている場合は、履歴に追加しない！
-  // これにより usiHistory が空のまま維持され、CPUは確実にSFEN（盤面図）を読み込むようになります。
-  if (!window.skillUsed) {
-      usiHistory.push(usiMove);
-  }
+  lastMoveTo = { x, y };
+  if (!isSimulating && turn !== cpuSide) {
+    lastPlayerMove = {
+      piece: pieceBefore.replace("+","").toUpperCase(),
+      toX: x, toY: y
+    };
+  }
 
-  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
-  const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
+  // ▼▼▼ 2回行動時の処理（ここがバグの起きやすい場所でした） ▼▼▼
+  if (isCpuDoubleAction) {
+      isCpuDoubleAction = false; 
+      
+      // プレイヤーの番をスキップする演出
+      const playerRole = (turn === "black") ? "white" : "black";
+      const mark = (playerRole === "black") ? "▲" : "△";
+      kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
+      moveCount++; 
+      
+      statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
+      selected = null;
+      legalMoves = [];
+      render(); 
+      if (typeof showKifu === "function") showKifu();
 
-  kifu.push(""); 
-  if (typeof lastSkillKifu !== 'undefined' && lastSkillKifu !== "") {
-      kifu[kifu.length - 1] = `${moveNumber}手目：${lastSkillKifu}★，${currentMoveContent}`;
-      lastSkillKifu = ""; 
-  } else {
-      kifu[kifu.length - 1] = currentMoveStr;
-  }
+      // ★重要：すぐに次の手を考えさせる
+      // 上で window.skillUsed = true にしてあるので、
+      // cpuMove は generateSfen() を使って「現在の盤面（CPU手番）」を正しく読み込みます。
+      if (!gameOver) setTimeout(() => { cpuMove(); }, 100);
 
-  lastMoveTo = { x, y };
-  if (!isSimulating && turn !== cpuSide) {
-    lastPlayerMove = {
-      piece: pieceBefore.replace("+","").toUpperCase(),
-      toX: x, toY: y
-    };
-  }
+  } else {
+      // 通常の手番交代
+      turn = turn === "black" ? "white" : "black";
+      window.isCaptureRestricted = false;
+      selected = null;
+      legalMoves = [];
+      render(); 
+      if (typeof showKifu === "function") showKifu();
+      if (!gameOver) startTimer();
+      else stopTimer();
+      moveCount++;
+      
+      // CPUの手番になったら思考開始
+      if (turn === cpuSide && !gameOver) setTimeout(() => cpuMove(), 1000);
+  }
+  // ▲▲▲▲▲▲
 
-  // ▼▼▼ 手番交代のロジックを変更 ▼▼▼
-  if (isCpuDoubleAction) {
-      // 2回行動中：手番を交代せず、もう一度AIに考えさせる
-      isCpuDoubleAction = false; 
-      const playerRole = (turn === "black") ? "white" : "black";
-      const mark = (playerRole === "black") ? "▲" : "△";
-      kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
-      moveCount++; 
-      statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
-      
-      selected = null;
-      legalMoves = [];
-      render(); 
-      if (typeof showKifu === "function") showKifu();
-
-      // すぐに次の手を考えさせる
-      if (!gameOver) setTimeout(() => { cpuMove(); }, 100);
-
-  } else {
-      // 通常の手番交代
-      turn = turn === "black" ? "white" : "black";
-      window.isCaptureRestricted = false;
-      selected = null;
-      legalMoves = [];
-      render(); 
-      if (typeof showKifu === "function") showKifu();
-      if (!gameOver) startTimer();
-      else stopTimer();
-      moveCount++;
-      
-      // 通常のAI思考開始
-      if (turn === cpuSide && !gameOver) setTimeout(() => cpuMove(), 1000);
-  }
-  // ▲▲▲ ここまで ▲▲▲
-
-  // ▼▼▼ ポイント加算ロジックを追加 ▼▼▼
-  if (!gameOver) {
-      let gain = 0;
-      const getPoint = (configCategory, pieceCode) => {
-          const raw = pieceCode.toUpperCase();
-          const base = raw.replace("+", "");
-          if (configCategory[raw] !== undefined) return configCategory[raw];
-          if (configCategory[base] !== undefined) return configCategory[base];
-          return 10;
-      };
-      // 行動によるポイント
-      if (sel.fromHand) {
-          const piece = boardState[y][x]; 
-          gain += getPoint(SP_CONFIG.DROP, piece);
-      } else {
-          const piece = boardState[y][x];
-          gain += getPoint(SP_CONFIG.MOVE, piece);
-      }
-      // 成りポイント
-      if (sel.promoted) {
-          const piece = boardState[y][x].replace("+","");
-          gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
-      }
-      // 捕獲ポイント
-      const captured = boardBefore[y][x];
-      if (captured !== "") {
-          gain += getPoint(SP_CONFIG.CAPTURE, captured);
-      }
-      
-      // プレイヤーかCPUかで加算先を分ける
-      const isPlayerAction = (sel.player === "black" && cpuSide === "white") || (sel.player === "white" && cpuSide === "black");
-      if (isPlayerAction) {
-          addSkillPoint(gain);
-      } else {
-          addCpuSkillPoint(gain);
-      }
-  }
-  // ▲▲▲ ここまで ▲▲▲
-
-  checkGameOver(); // ←この行の直前に追加してください
+  if (!gameOver) {
+      let gain = 0;
+      const getPoint = (configCategory, pieceCode) => {
+          const raw = pieceCode.toUpperCase();
+          const base = raw.replace("+", "");
+          if (configCategory[raw] !== undefined) return configCategory[raw];
+          if (configCategory[base] !== undefined) return configCategory[base];
+          return 10;
+      };
+      if (sel.fromHand) {
+          const piece = boardState[y][x]; 
+          gain += getPoint(SP_CONFIG.DROP, piece);
+      } else {
+          const piece = boardState[y][x];
+          gain += getPoint(SP_CONFIG.MOVE, piece);
+      }
+      if (sel.promoted) {
+          const piece = boardState[y][x].replace("+","");
+          gain += (SP_CONFIG.PROMOTE[piece.toUpperCase()] || 20);
+      }
+      const captured = boardBefore[y][x];
+      if (captured !== "") {
+          gain += getPoint(SP_CONFIG.CAPTURE, captured);
+      }
+      
+      const isPlayerAction = (sel.player === "black" && cpuSide === "white") || (sel.player === "white" && cpuSide === "black");
+      if (isPlayerAction) addSkillPoint(gain);
+      else addCpuSkillPoint(gain);
+  }
+  checkGameOver();
 }
 
 function checkGameOver() {
@@ -1802,3 +1798,4 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
