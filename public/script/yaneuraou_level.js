@@ -724,7 +724,8 @@ function movePieceWithSelected(sel, x, y) {
   }
 }
 
-// 実際の移動処理（USI記録・AI思考トリガー含む）
+// script/yaneuraou_level.js の executeMove 関数
+
 function executeMove(sel, x, y, doPromote) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
@@ -737,9 +738,7 @@ function executeMove(sel, x, y, doPromote) {
           isCpuDoubleAction = true;
           cpuSkillUseCount++;
           
-          // ★重要修正：ここで「必殺技モード」をONにします
-          // これにより、次の思考でエンジンが「プレイヤーの番」と勘違いするのを防ぎ、
-          // 強制的に「現在の盤面（CPUの手番）」を読ませることができます。
+          // ★重要：ここで必殺技モードON
           window.skillUsed = true; 
 
           // 演出
@@ -754,10 +753,13 @@ function executeMove(sel, x, y, doPromote) {
   // ▲▲▲▲▲▲
 
   const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
+  
+  // 履歴保存
   history.push(deepCopyState());
   const boardBefore = boardState.map(r => r.slice());
   const moveNumber = kifu.length + 1; 
 
+  // 音再生
   if (moveSound) {
     moveSound.currentTime = 0;
     moveSound.volume = 0.3;
@@ -786,6 +788,7 @@ function executeMove(sel, x, y, doPromote) {
         promoteSound.volume = 0.8;
         promoteSound.play().catch(() => {});
       }
+      // 成りエフェクト
       const boardTable = document.getElementById("board");
       if (boardTable) {
         boardTable.classList.remove("flash-green", "flash-orange", "flash-silver", "flash-red", "flash-blue", "flash-yellow");
@@ -813,7 +816,7 @@ function executeMove(sel, x, y, doPromote) {
   // --- 履歴の記録 ---
   const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
   
-  // 必殺技モードのときはUSI履歴（startpos moves ...）を使わないのでpushしない
+  // 必殺技使用後はSFENモードになるため、USI履歴への追加は行わない
   if (!window.skillUsed) {
       usiHistory.push(usiMove);
   }
@@ -829,7 +832,9 @@ function executeMove(sel, x, y, doPromote) {
       kifu[kifu.length - 1] = currentMoveStr;
   }
 
+  // 直前の指し手座標を更新
   lastMoveTo = { x, y };
+  
   if (!isSimulating && turn !== cpuSide) {
     lastPlayerMove = {
       piece: pieceBefore.replace("+","").toUpperCase(),
@@ -837,25 +842,28 @@ function executeMove(sel, x, y, doPromote) {
     };
   }
 
-  // ▼▼▼ 2回行動時の処理（ここがバグの起きやすい場所でした） ▼▼▼
+  // ▼▼▼ 2回行動時の処理（バグ修正版） ▼▼▼
   if (isCpuDoubleAction) {
-      isCpuDoubleAction = false; 
+      isCpuDoubleAction = false; // フラグを下ろす
       
-      // プレイヤーの番をスキップする演出
+      // プレイヤーの番をスキップする演出（パスを記録）
       const playerRole = (turn === "black") ? "white" : "black";
       const mark = (playerRole === "black") ? "▲" : "△";
       kifu.push(`${kifu.length + 1}手目：${mark}パス(硬直)★`);
       moveCount++; 
       
       statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
+      
+      // ★重要修正：パスのときは「直前の指し手」情報をクリアする
+      // これをしないと、次の手が「同〇〇」になってしまい、棋譜がおかしくなります
+      lastMoveTo = null;
+
       selected = null;
       legalMoves = [];
       render(); 
       if (typeof showKifu === "function") showKifu();
 
-      // ★重要：すぐに次の手を考えさせる
-      // 上で window.skillUsed = true にしてあるので、
-      // cpuMove は generateSfen() を使って「現在の盤面（CPU手番）」を正しく読み込みます。
+      // ★重要：手番を交代せず（turnを変えず）、すぐに次の手を考えさせる
       if (!gameOver) setTimeout(() => { cpuMove(); }, 100);
 
   } else {
@@ -875,6 +883,7 @@ function executeMove(sel, x, y, doPromote) {
   }
   // ▲▲▲▲▲▲
 
+  // ポイント計算
   if (!gameOver) {
       let gain = 0;
       const getPoint = (configCategory, pieceCode) => {
@@ -906,7 +915,6 @@ function executeMove(sel, x, y, doPromote) {
   }
   checkGameOver();
 }
-
 function checkGameOver() {
   if (moveCount >= 500) {
     gameOver = true;
@@ -1798,4 +1806,5 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
