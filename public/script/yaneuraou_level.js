@@ -199,7 +199,8 @@ function handleEngineMessage(msg) {
     }
     else if (msg === "readyok") {
         isEngineReady = true;
-        
+        console.log("定跡をオフにします...");
+        sendToEngine("setoption name BookFile value no_book");
         // ★メッセージの出し分け
         if (cpuSide === "white") {
              statusDiv.textContent = "対局開始！ あなたは【先手】です。";
@@ -1781,4 +1782,5 @@ function updateCpuSkillGaugeUI() {
         if (cpuSkillPoint >= MAX_SKILL_POINT) bar.classList.add("gauge-max"); 
         else bar.classList.remove("gauge-max");
     }
+
 }
