@@ -177,7 +177,12 @@ function sendToEngine(msg) {
 // メッセージ受信処理（ノイズ対応版）
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
+// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
+
 function handleEngineMessage(msg) {
+    // デバッグ：エンジンからの生の出力を確認したい場合はコメントアウトを外す
+    // if (msg.startsWith("info")) console.log("[EngineRaw]", msg);
+
     // 1. 候補手情報の解析（info ... pv ...）
     if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
         
@@ -194,7 +199,6 @@ function handleEngineMessage(msg) {
         if (matchScore) {
             score = parseInt(matchScore[1]);
         } else if (matchMate) {
-            // 詰みの場合は超高得点にする
             const mateVal = parseInt(matchMate[1]);
             score = (mateVal > 0) ? 30000 : -30000;
         }
@@ -204,7 +208,9 @@ function handleEngineMessage(msg) {
         if (matchMove) {
             const move = matchMove[1];
             
-            // 候補手リストに保存（同じmultipvの更新が来たら上書き）
+            // リストに保存（デバッグ用にログ出力）
+            // console.log(`[候補発見] PV:${pvIndex}, Move:${move}, Score:${score}`);
+
             const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
             if (existingIdx !== -1) {
                 candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
@@ -218,7 +224,6 @@ function handleEngineMessage(msg) {
             let graphScore = score;
             if (turn === "white") graphScore = -graphScore;
             evalHistory[moveCount] = graphScore;
-            // 欠損データの補完
             for(let i = 0; i < moveCount; i++) {
                 if (evalHistory[i] === undefined) evalHistory[i] = evalHistory[i-1] || 0;
             }
@@ -232,10 +237,8 @@ function handleEngineMessage(msg) {
     else if (msg === "readyok") {
         isEngineReady = true;
         
-        // ★定跡の制御（currentLevelSetting を使用）
         if (currentLevelSetting.useBook) {
             console.log("定跡をONにします");
-            // 定跡ファイル名があれば指定（なければデフォルト）
             // sendToEngine("setoption name BookFile value user_book1.db"); 
         } else {
             console.log("定跡をOFFにします");
@@ -249,7 +252,7 @@ function handleEngineMessage(msg) {
     }
     else if (typeof msg === "string" && msg.startsWith("bestmove")) {
         const parts = msg.split(" ");
-        let bestMove = parts[1]; // エンジンが選んだ最善手
+        let bestMove = parts[1]; // エンジンが推奨する最善手
         
         if (isStoppingPonder) {
              console.log("Ponder停止によるbestmoveを無視");
@@ -267,19 +270,36 @@ function handleEngineMessage(msg) {
             return;
         }
 
-        // ▼▼▼ ここが核心：ノイズを加えて手を選び直す処理 ▼▼▼
+        // ▼▼▼ デバッグ：候補手が正しく集まっているか確認 ▼▼▼
+        console.group("★思考結果詳細デバッグ");
+        console.log(`現在のレベル: ${currentLevelSetting.name}`);
+        console.log(`ノイズ設定値: ${currentLevelSetting.noise}`);
+        console.log(`収集された候補手:`, JSON.parse(JSON.stringify(candidateMoves)));
+
+        if (candidateMoves.length === 0) {
+            console.warn("警告：候補手が1つも取得できていません。エンジンのinfo出力形式が想定と異なるか、思考時間が短すぎます。");
+        } else if (candidateMoves.length === 1 && currentLevelSetting.multiPV > 1) {
+            console.warn(`警告：MultiPV=${currentLevelSetting.multiPV} の設定ですが、候補手が1つしか返ってきていません。エンジンが対応していない可能性があります。`);
+        }
+        // ▲▲▲▲▲▲
+
+        // ▼▼▼ ノイズ計算と選択処理 ▼▼▼
         if (currentLevelSetting.noise > 0 && candidateMoves.length > 0) {
             
-            // 候補手それぞれにノイズを足して並び替え
             const noiseRange = currentLevelSetting.noise;
             
             const noisyCandidates = candidateMoves.map(c => {
-                // -noiseRange ～ +noiseRange の乱数を作る
+                // -noiseRange ～ +noiseRange の乱数を生成
                 const noise = (Math.random() - 0.5) * 2 * noiseRange;
+                const finalScore = c.score + noise;
+                
+                // 計算過程をログ出力
+                console.log(`手:${c.move} | 元点:${c.score} + ノイズ:${Math.floor(noise)} = 最終点:${Math.floor(finalScore)}`);
+                
                 return {
                     move: c.move,
                     rawScore: c.score,
-                    finalScore: c.score + noise // ノイズを足したスコア
+                    finalScore: finalScore 
                 };
             });
 
@@ -289,16 +309,28 @@ function handleEngineMessage(msg) {
             // 一番スコアが高くなった手を採用する
             const selected = noisyCandidates[0];
             
-            console.log(`[ノイズ判定] 本来:${bestMove} -> 採用:${selected.move} (元点:${selected.rawScore} ノイズ後:${Math.floor(selected.finalScore)})`);
+            console.log(`【結果】採用する手: ${selected.move} (本来の最善手: ${bestMove})`);
+            
+            if (selected.move !== bestMove) {
+                console.log("%c★弱体化成功！わざと悪手を選びました。", "color: red; font-weight: bold;");
+            } else {
+                console.log("今回は運良く（運悪く？）最善手と同じ手が選ばれました。");
+            }
             
             bestMove = selected.move;
+        } else {
+            console.log("ノイズなし、または候補手不足のため、エンジンの最善手をそのまま採用します。");
         }
+        console.groupEnd();
         // ▲▲▲▲▲▲
 
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
     }
 }
+
+
+
 function playBGM() {
   if (!bgm) return;
   bgm.volume = 0.3;
@@ -1870,6 +1902,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
