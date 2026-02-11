@@ -728,6 +728,8 @@ function movePieceWithSelected(sel, x, y) {
 
 // script/yaneuraou_level.js の executeMove 関数
 
+// script/yaneuraou_level.js の executeMove 関数（修正版）
+
 function executeMove(sel, x, y, doPromote) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
@@ -742,6 +744,9 @@ function executeMove(sel, x, y, doPromote) {
           
           // ★重要：ここで必殺技モードON（SFENモードへ）
           window.skillUsed = true; 
+          
+          // ★修正1：履歴を空にして、強制的に「現在の盤面図」を読ませるようにする
+          usiHistory = []; 
 
           // 演出
           playSkillEffect("boss_cutin.png", ["boss.mp3", "skill.mp3"], "dark"); 
@@ -818,7 +823,7 @@ function executeMove(sel, x, y, doPromote) {
   // --- 履歴の記録 ---
   const usiMove = convertToUsi(sel, x, y, doPromote, pieceBefore);
   
-  // 必殺技使用後はSFENモードになるため、USI履歴への追加は行わない
+  // 必殺技モードのときはUSI履歴への追加は行わない
   if (!window.skillUsed) {
       usiHistory.push(usiMove);
   }
@@ -844,7 +849,7 @@ function executeMove(sel, x, y, doPromote) {
     };
   }
 
-  // ▼▼▼ 2回行動時の処理（バグ修正版） ▼▼▼
+  // ▼▼▼ 2回行動時の処理（バグ修正済み） ▼▼▼
   if (isCpuDoubleAction) {
       isCpuDoubleAction = false; // フラグを下ろす
       
@@ -856,8 +861,8 @@ function executeMove(sel, x, y, doPromote) {
       
       statusDiv.textContent = "必殺技の効果！ プレイヤーは行動できません！";
       
-      // ★重要修正：パスのときは「直前の指し手」情報をクリアする
-      // これをしないと、次の手が「同〇〇」と判定されてエラーになります
+      // ★修正2：パスのときは「直前の指し手座標」を消す！
+      // これをしないと、次の手が「同〇〇」と誤判定されてエラーになります
       lastMoveTo = null;
 
       selected = null;
@@ -1809,6 +1814,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
