@@ -1749,55 +1749,58 @@ function closeResignModal() {
 /**
  * 4. Firebaseへの保存処理本体
  */
+// script/yaneuraou_level.js の saveGameResult 関数をこれに書き換え
+
 function saveGameResult(res) {
-    const user = auth.currentUser; // Firebaseのログインユーザーを確認
-    if (!user) {
-        console.log("未ログインのため、記録は保存されません。");
-        return; 
-    }
+    const user = auth.currentUser; // Firebaseのログインユーザーを確認
+    if (!user) {
+        console.log("未ログインのため、記録は保存されません。");
+        return; 
+    }
 
-    // HTML側で設定した名前（window.opponentName）を優先
-    const opponentDisplayName = window.opponentName || "試験実装AI (最強)"; 
-    
-    // あなた（先手/black）が勝ったかどうか
-    // ★修正：AIの手番(cpuSide)が "white" なら、プレイヤーは "black"
-    const playerColor = (cpuSide === "white" ? "black" : "white");
-    const isWin = (res === playerColor);
-    
-    // 保存するデータのカタマリを作成
-    const gameRecord = {
-        date: new Date(),                // 対局日時
-        opponent: opponentDisplayName,   // 相手の名前
-        moves: moveCount,                // 合計手数
-        result: isWin ? "WIN" : "LOSE",  // 勝敗
-        mode: "yaneuraou", 
-        kifuData: kifu                   // 記録された指し手（配列）
-    };
+    // ★修正：現在のレベル設定から名前を取得して、相手の名前にする
+    // currentLevelSetting.name には "Lv1" や "Lv50" などが入っています
+    const levelName = currentLevelSetting ? currentLevelSetting.name : "Lv?";
+    const opponentDisplayName = `CPU ${levelName}`; // 記録される名前（例: "CPU Lv1"）
+    
+    // あなた（先手/black）が勝ったかどうか
+    // AIの手番(cpuSide)が "white" なら、プレイヤーは "black"
+    const playerColor = (cpuSide === "white" ? "black" : "white");
+    const isWin = (res === playerColor);
+    
+    // 保存するデータのカタマリを作成
+    const gameRecord = {
+        date: new Date(),                // 対局日時
+        opponent: opponentDisplayName,   // 相手の名前 (ここでCPUのレベルが入る)
+        moves: moveCount,                // 合計手数
+        result: isWin ? "WIN" : "LOSE",  // 勝敗
+        mode: "yaneuraou", 
+        kifuData: kifu                   // 記録された指し手（配列）
+    };
 
-  if (typeof updateMissionProgress === "function") {
-      // 1. 「対局する」ミッションの進行 (+1回)
-      updateMissionProgress("play", 1);
+    if (typeof updateMissionProgress === "function") {
+        // 1. 「対局する」ミッションの進行 (+1回)
+        updateMissionProgress("play", 1);
 
-      // 2. 「勝利する」ミッションの進行 (勝った場合のみ +1回)
-      if (isWin) {
-          updateMissionProgress("win", 1);
-      }
-  }
+        // 2. 「勝利する」ミッションの進行 (勝った場合のみ +1回)
+        if (isWin) {
+            updateMissionProgress("win", 1);
+        }
+    }
 
-    // Firestoreの「users/ユーザーID」ドキュメントを更新
-    db.collection("users").doc(user.uid).update({
-        // 勝敗数を+1（インクリメント）
-        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
-        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
-        // 履歴配列の最後にデータを追加
-        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
-    }).then(() => {
-        console.log("対局データが正常に保存されました。");
-    }).catch((error) => {
-        console.error("保存失敗:", error);
-    });
+    // Firestoreの「users/ユーザーID」ドキュメントを更新
+    db.collection("users").doc(user.uid).update({
+        // 勝敗数を+1（インクリメント）
+        win: firebase.firestore.FieldValue.increment(isWin ? 1 : 0),
+        lose: firebase.firestore.FieldValue.increment(isWin ? 0 : 1),
+        // 履歴配列の最後にデータを追加
+        history: firebase.firestore.FieldValue.arrayUnion(gameRecord)
+    }).then(() => {
+        console.log("対局データが正常に保存されました。");
+    }).catch((error) => {
+        console.error("保存失敗:", error);
+    });
 }
-
 // script/yaneuraou_main.js の末尾に追加
 
 // ★★★ 駒台の左右を入れ替える関数 ★★★
@@ -1959,3 +1962,4 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
