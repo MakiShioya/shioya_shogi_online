@@ -12,7 +12,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js" defer></script>
 
   <style>
 /* キャラクターをふわふわ浮かせるアニメーション */
@@ -1028,12 +1028,12 @@ function showRandomTips() {
 }
 </script>
        
-  <script src="script/missions.js"></script>
-  <script src="script/serifu/komiya.js"></script>
-<script src="script/serifu/a.js"></script>
-<script src="script/serifu/b.js"></script>
-<script src="script/serifu/d.js"></script>
-  <script src="script/auth.js"></script>
+  <script src="script/missions.js" defer></script>
+  <script src="script/serifu/komiya.js" defer></script>
+<script src="script/serifu/a.js" defer></script>
+<script src="script/serifu/b.js" defer></script>
+<script src="script/serifu/d.js" defer></script>
+  <script src="script/auth.js" defer></script>
   <script>
     // --- ★★★ 修正点：Socket.io初期化 ★★★ ---
     let socket = null;
@@ -1406,6 +1406,8 @@ function addMessageToLobbyChatFirestore(data) {
       }
     };
 
+    document.addEventListener('DOMContentLoaded', () => {
+
     firebase.auth().onAuthStateChanged((user) => {
         // ★修正：ログイン・未ログインに関わらず、チャットを読み込み開始する
         setTimeout(() => {
@@ -1753,6 +1755,7 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
 
 
