@@ -212,7 +212,7 @@ function handleEngineMessage(msg) {
         }
 
         // 指し手を取得
-        const matchMove = msg.match(/ pv ([a-zA-Z0-9\+\*]+)/);
+        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
         if (matchMove) {
             const move = matchMove[1];
             
@@ -1910,6 +1910,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
