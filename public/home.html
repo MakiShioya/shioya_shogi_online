@@ -511,10 +511,10 @@ input, textarea {
     .mission-main-btn {
       width: 70px;
       height: 70px;
-      background: linear-gradient(to bottom, #fff176, #fbc02d); /* 金色っぽいグラデーション */
+      background: linear-gradient(to bottom, #432517, #432517); /* 金色っぽいグラデーション */
       border: 3px solid #fff;
       border-radius: 50%; /* 丸いボタン */
-      color: #5d4037;
+      color: #fff;
       font-weight: bold;
       font-size: 0.8rem;
       cursor: pointer;
@@ -566,7 +566,7 @@ input, textarea {
     .mail-main-btn {
       width: 70px;
       height: 70px;
-      background: linear-gradient(to bottom, #ffcc80, #ef6c00); /* オレンジのグラデーション */
+      background: linear-gradient(to bottom, #432517, #432517); /* オレンジのグラデーション */
       border: 3px solid #fff;
       border-radius: 50%;
       color: #fff;
@@ -649,11 +649,15 @@ input, textarea {
     .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; }
 
     /* ボタンカラーバリエーション */
-    .offline-color { background: linear-gradient(to bottom, #57908B 0%, #ECDBBF 100%) !important; }
-    .online-color { background: linear-gradient(to bottom, #90575C 0%, #ECDBBF 100%) !important; }
-    .mypage-color { background: linear-gradient(to bottom, #655790 0%, #432517 100%) !important; }
-    .ready-color { background: linear-gradient(to bottom, #829057 0%, #432517 100%) !important; }
-    .chat-color { background: linear-gradient(to bottom, #747474 0%, #432517 100%) !important; }
+    .offline-color { background: linear-gradient(to bottom, #4B9C95 0%, #ECDBBF 100%) !important; 
+  border: 2px solid #432517 !important; /* 枠 */
+}
+    .online-color { background: linear-gradient(to bottom, #9C4B52 0%, #ECDBBF 100%) !important; 
+  border: 2px solid #432517 !important; /* 枠 */
+}
+    .mypage-color { background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important; }
+    .ready-color { background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important; }
+    .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important; }
 
     /* ★★★ 追加：チャットとメールの画面を最大サイズに固定する ★★★ */
     #lobbyChatModal .modal-box,
@@ -731,7 +735,7 @@ input, textarea {
     
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
     <button class="menu-btn ready-color" onclick="window.location.href='shop.html'">ショップ</button>
-    <button class="menu-btn" style="background: linear-gradient(to bottom, #607d8b 0%, #432517 100%);" onclick="openModal('unifiedMenuModal')">メニュー</button>
+    <button class="menu-btn" style="background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%);" onclick="openModal('unifiedMenuModal')">メニュー</button>
     <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
     
   </div>
@@ -1804,12 +1808,3 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
