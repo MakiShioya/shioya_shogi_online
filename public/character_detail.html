@@ -5,34 +5,89 @@
     <title>キャラクター詳細</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
+    <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
+
     <link rel="icon" href="script/image/komiya_icon.png"> 
     <link rel="manifest" href="manifest.json">
     <style>
+        /* ★追加：フォント定義（読み込み待ち中は文字を表示しない block 設定） */
+        @font-face {
+            font-family: 'SetoFont';
+            src: url('script/font/setofont.ttf') format('truetype');
+            font-display: block;
+        }
+
+        /* ★追加：全体のフォント適用 */
+        * {
+            font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+        }
+
+        /* ★追加：ロード画面のスタイル */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* 背景色（半透明のダークブルー） */
+            background-color: rgba(44, 62, 80, 0.5); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loader-content {
+            text-align: center;
+            color: white;
+            font-family: "SetoFont", sans-serif;
+        }
+
+        /* ぐるぐる回るアニメーション */
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* チップスのテキスト表示エリア */
+        #loading-tips {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            max-width: 250px;
+            line-height: 1.5;
+            min-height: 3em;
+        }
+
+        /* --- 以下、既存のスタイル（一部フォント指定を削除） --- */
         body {
             height: 100%;
             margin: 0;
             padding: 0;
-            /* ダブルタップ判定などを抑制 */
             touch-action: manipulation;
-        }
-
-        body {
             background-image: url('script/image/haikei.PNG'); 
             background-color: #f0e68c; 
             background-size: cover;
             background-position: center;
-            /* 2. 確実に画面いっぱいの高さを確保する */
-            min-height: 100vh; /* または 100dvh */
-            
-            /* 3. Flexbox で上下左右中央に配置 */
+            min-height: 100vh;
             display: flex;
-            align-items: center;       /* 上下中央 */
-            justify-content: center;   /* 左右中央 */
-            
-            font-family: "MS Mincho", serif;
+            align-items: center;
+            justify-content: center;
+            /* font-family: "MS Mincho", serif; ← SetoFontを使うため削除 */
             overflow: hidden; 
-
-            /* ▼▼▼ コピー・長押し禁止設定 ▼▼▼ */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -42,9 +97,7 @@
         }
 
         .container {
-            /* コンテナ自体の位置調整（margin: auto も加えるとより安定します） */
             margin: auto;
-            
             width: 90%;
             max-height: 90dvh; 
             max-width: 450px;
@@ -56,28 +109,25 @@
             display: flex;
             flex-direction: column;
             box-sizing: border-box;
-            overflow-y: auto; /* 中身が多い時にスクロールできるように */
+            overflow-y: auto;
         }
 
         h1 { 
             color: #8b4513; 
             margin: 0 0 10px 0; 
-            font-size: 1.5em; /* タイトルを少し小さく */
+            font-size: 1.5em; 
         }
 
         .char-img {
-            /* 固定値ではなく、コンテナに合わせて伸縮させる */
             width: auto;
             height: auto;
-            max-height: 30dvh; /* 画像が画面の3割を超えないように */
+            max-height: 30dvh;
             object-fit: contain;
             border: 2px solid #ccc;
             background-color: #eee;
             margin: 0 auto 10px auto;
             border-radius: 10px;
-            flex-shrink: 1; /* 画面が狭いときは画像が縮むようにする */
-
-            /* 画像の長押し・保存を無効化 */
+            flex-shrink: 1;
             pointer-events: none;
         }
 
@@ -88,7 +138,7 @@
             margin: 10px 0;
             text-align: left;
             border-radius: 5px;
-            font-size: 0.9em; /* 文字を少し小さく */
+            font-size: 0.9em;
         }
 
         .skill-name {
@@ -103,7 +153,7 @@
         }
 
         .btn-group {
-            margin-top: auto; /* 下端に配置 */
+            margin-top: auto;
             display: flex;
             justify-content: center;
             gap: 10px;
@@ -121,7 +171,7 @@
             color: white;
             border: 2px solid #800000;
             font-weight: bold;
-            flex: 2; /* 決定ボタンを優先的に大きく */
+            flex: 2;
         }
 
         .btn-back {
@@ -133,6 +183,14 @@
     </style>
 </head>
 <body>
+
+<div id="loading-screen">
+    <div class="loader-content">
+        <div class="spinner"></div>
+        <div id="loading-tips"></div>
+        <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+    </div>
+</div>
 
 <div class="container">
     <h1 id="charName">キャラクター名</h1>
@@ -152,6 +210,48 @@
 </div>
 
 <script src="script/character_detail.js"></script>
+
+<script>
+    const loadingTipsList = [
+        "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+        "【tips】オンライン対局は、先に入室した方が先手になります。",
+        "【tips】棋譜では、自分のこれまでの対局を振り返るだけでなく、解析もできます。",
+        "【tips】メニューボタンから、ホーム画面のキャラクターを変更できます。",
+        "【tips】CPUの必殺技は、2回行動です。",
+        "【tips】CPUは必殺技ゲージが300たまると必ず必殺技を打ってきます。"
+    ];
+
+    function showRandomTips() {
+        const tipEl = document.getElementById('loading-tips');
+        if (!tipEl) return;
+        const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+        tipEl.textContent = randomTip;
+    }
+
+    let tipsInterval = null;
+
+    // 【重要】画像の読み込みを待たずにTipsを表示（DOMContentLoaded）
+    document.addEventListener('DOMContentLoaded', () => {
+        showRandomTips();
+        tipsInterval = setInterval(showRandomTips, 3000);
+    });
+
+    // 画像とフォントの読み込みが終わってからロード画面を消す（load）
+    window.addEventListener('load', () => {
+        const loader = document.getElementById('loading-screen');
+        
+        // フォントの準備完了を待つ
+        document.fonts.ready.then(() => {
+            setTimeout(() => {
+                clearInterval(tipsInterval);
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 800); // 演出のため少し待機
+        });
+    });
+</script>
 
 <script>
   function autoRotateTitle() {
