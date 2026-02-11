@@ -12,12 +12,12 @@
 // multiPV: 候補手の数（多いほど、2番手・3番手の悪手を選ぶ余地が生まれる）
 // noise: 評価値に加える乱数の幅（点数）。大きいほど判断が狂う。
 const LEVEL_CONFIG = [
-    { id: 1,  nodes: 50,      depth: 1,  multiPV: 5, noise: 2000, useBook: false, name: "Lv1 (入門)" },
-    { id: 2,  nodes: 100,     depth: 2,  multiPV: 4, noise: 1500, useBook: false, name: "Lv2 (初心)" },
-    { id: 3,  nodes: 300,     depth: 3,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
-    { id: 4,  nodes: 600,     depth: 4,  multiPV: 3, noise: 500,  useBook: false, name: "Lv4 (初級+)" },
-    { id: 5,  nodes: 1000,    depth: 5,  multiPV: 2, noise: 200,  useBook: false, name: "Lv5 (中級)" },
-    { id: 6,  nodes: 3000,    depth: 6,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" },
+    { id: 1,  nodes: 5000,      depth: 1,  multiPV: 5, noise: 2000, useBook: false, name: "Lv1 (入門)" },
+    { id: 2,  nodes: 5000,     depth: 2,  multiPV: 4, noise: 1500, useBook: false, name: "Lv2 (初心)" },
+    { id: 3,  nodes: 5000,     depth: 3,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
+    { id: 4,  nodes: 5000,     depth: 4,  multiPV: 3, noise: 500,  useBook: false, name: "Lv4 (初級+)" },
+    { id: 5,  nodes: 5000,    depth: 5,  multiPV: 2, noise: 200,  useBook: false, name: "Lv5 (中級)" },
+    { id: 6,  nodes: 5000,    depth: 6,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" },
     { id: 7,  nodes: 10000,   depth: 8,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv7 (上級)" },
     { id: 8,  nodes: 50000,   depth: 10, multiPV: 1, noise: 0,    useBook: true,  name: "Lv8 (有段者)" },
     { id: 9,  nodes: 200000,  depth: 14, multiPV: 1, noise: 0,    useBook: true,  name: "Lv9 (強豪)" },
@@ -1902,6 +1902,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
