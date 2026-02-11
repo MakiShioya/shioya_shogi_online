@@ -989,13 +989,17 @@ input, textarea {
   </div>
 </div>
 
-  <div id="offlineMenu" class="overlay">
+ <div id="offlineMenu" class="overlay">
     <div class="modal-box">
       <h3 style="color: #8b4513; margin-top: 0;">オフライン対局</h3>
-      <div class="modal-grid"> <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
+      <div class="modal-grid">
+        <button class="sub-btn" onclick="goToCharacterSelect('cpu_level')">レベル</button>
+        
+        <button class="sub-btn" onclick="goToCharacterSelect('practice')">れんしゅう</button>
         <button class="sub-btn" onclick="goToCharacterSelect('cpu')">ひとりで</button>
         <button class="sub-btn" onclick="goToCharacterSelect('pvp')">ふたりで</button>
-      </div> <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('offlineMenu')">戻る</button>
+      </div>
+      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('offlineMenu')">戻る</button>
     </div>
   </div>
 
@@ -1822,6 +1826,7 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
 
 
