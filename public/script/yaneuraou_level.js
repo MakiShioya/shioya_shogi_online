@@ -175,6 +175,8 @@ function sendToEngine(msg) {
 }
 
 // メッセージ受信処理（ノイズ対応版）
+// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
+
 function handleEngineMessage(msg) {
     // 1. 候補手情報の解析（info ... pv ...）
     if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
@@ -202,7 +204,7 @@ function handleEngineMessage(msg) {
         if (matchMove) {
             const move = matchMove[1];
             
-            // リストに保存（同じmultipvの更新が来たら上書き）
+            // 候補手リストに保存（同じmultipvの更新が来たら上書き）
             const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
             if (existingIdx !== -1) {
                 candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
@@ -216,6 +218,7 @@ function handleEngineMessage(msg) {
             let graphScore = score;
             if (turn === "white") graphScore = -graphScore;
             evalHistory[moveCount] = graphScore;
+            // 欠損データの補完
             for(let i = 0; i < moveCount; i++) {
                 if (evalHistory[i] === undefined) evalHistory[i] = evalHistory[i-1] || 0;
             }
@@ -229,9 +232,10 @@ function handleEngineMessage(msg) {
     else if (msg === "readyok") {
         isEngineReady = true;
         
-        // 定跡の制御
-        if (currentLevelInfo.useBook) {
+        // ★定跡の制御（currentLevelSetting を使用）
+        if (currentLevelSetting.useBook) {
             console.log("定跡をONにします");
+            // 定跡ファイル名があれば指定（なければデフォルト）
             // sendToEngine("setoption name BookFile value user_book1.db"); 
         } else {
             console.log("定跡をOFFにします");
@@ -239,6 +243,8 @@ function handleEngineMessage(msg) {
         }
 
         statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        console.log("Ready OK!");
+
         if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
     }
     else if (typeof msg === "string" && msg.startsWith("bestmove")) {
@@ -246,6 +252,7 @@ function handleEngineMessage(msg) {
         let bestMove = parts[1]; // エンジンが選んだ最善手
         
         if (isStoppingPonder) {
+             console.log("Ponder停止によるbestmoveを無視");
              isStoppingPonder = false;
              return;
         }
@@ -261,10 +268,10 @@ function handleEngineMessage(msg) {
         }
 
         // ▼▼▼ ここが核心：ノイズを加えて手を選び直す処理 ▼▼▼
-        if (currentLevelInfo.noise > 0 && candidateMoves.length > 0) {
+        if (currentLevelSetting.noise > 0 && candidateMoves.length > 0) {
             
             // 候補手それぞれにノイズを足して並び替え
-            const noiseRange = currentLevelInfo.noise;
+            const noiseRange = currentLevelSetting.noise;
             
             const noisyCandidates = candidateMoves.map(c => {
                 // -noiseRange ～ +noiseRange の乱数を作る
@@ -276,13 +283,12 @@ function handleEngineMessage(msg) {
                 };
             });
 
-            // スコアが高い順に並び替え
+            // ノイズ込みのスコアが高い順に並び替え
             noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
 
-            // ノイズ込みで一番良かった手を採用する
+            // 一番スコアが高くなった手を採用する
             const selected = noisyCandidates[0];
             
-            // ログで確認できるようにする
             console.log(`[ノイズ判定] 本来:${bestMove} -> 採用:${selected.move} (元点:${selected.rawScore} ノイズ後:${Math.floor(selected.finalScore)})`);
             
             bestMove = selected.move;
@@ -293,7 +299,6 @@ function handleEngineMessage(msg) {
         if (!gameOver) setTimeout(startPondering, 500);
     }
 }
-
 function playBGM() {
   if (!bgm) return;
   bgm.volume = 0.3;
@@ -1157,6 +1162,8 @@ function playSkillEffect(imageName, soundName, flashColor) {
 
 // AI思考ロジック
 // AI思考ロジック
+// script/yaneuraou_level.js の cpuMove をこれに書き換え
+
 function cpuMove() {
     if (gameOver) return;
     if (!isEngineReady) {
@@ -1167,10 +1174,10 @@ function cpuMove() {
 
     stopPondering(); 
     
-    // ★追加：候補手リストをリセット
+    // ★追加：思考開始前に候補手リストをリセット
     candidateMoves = [];
 
-    statusDiv.textContent = `考え中... (${currentLevelInfo.name})`;
+    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
     let positionCmd = "";
 
     if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
@@ -1182,17 +1189,20 @@ function cpuMove() {
     }
     sendToEngine(positionCmd);
 
-    // ★追加：MultiPV（候補手の数）を設定する
-    const pvNum = currentLevelInfo.multiPV || 1;
+    // ★MultiPVの設定を送る（レベル設定から取得）
+    const pvNum = currentLevelSetting.multiPV || 1;
     sendToEngine(`setoption name MultiPV value ${pvNum}`);
 
-    const nodesLimit = currentLevelInfo.nodes;
-    const depthLimit = currentLevelInfo.depth || 30;
+    // ★深さとノード数の制限を取得
+    const nodesLimit = currentLevelSetting.nodes;
+    const depthLimit = currentLevelSetting.depth || 30;
     
-    console.log(`Lv:${currentLevelInfo.name}, Nodes:${nodesLimit}, Depth:${depthLimit}, MultiPV:${pvNum}`);
+    console.log(`Lv:${currentLevelSetting.name}, Nodes:${nodesLimit}, Depth:${depthLimit}, MultiPV:${pvNum}`);
     
+    // コマンド送信
     sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
 }
+
 function convertToUsi(sel, toX, toY, promoted, pieceName) {
     const fileTo = 9 - toX;
     const rankTo = String.fromCharCode(97 + toY);
@@ -1448,37 +1458,32 @@ function updateChart() {
 }
 
 
+// script/yaneuraou_level.js の startPondering をこれに書き換え
+
 function startPondering() {
     if (gameOver || isPondering) return;
-
-    // ▼▼▼ 追加：レベルが低いときは先読みしない！ ▼▼▼
-    // Lv7未満（Lv1〜6）なら、先読みせずにここで終了。
-    // これにより、低レベルAIは「あなたの手番中」に思考しなくなります。
-    if (currentLevelSetting.id < 20) {
-        return;
-    }
-    // ▲▲▲ 追加ここまで ▲▲▲
+    
+    // ★重要：Lv10未満（IDが10より小さい）は先読みしない
+    if (currentLevelSetting.id < 10) return;
 
     let positionCmd = "";
-    if (typeof skillUsed !== 'undefined' && skillUsed) {
+    if (typeof window.skillUsed !== 'undefined' && window.skillUsed) {
         positionCmd = "position sfen " + generateSfen();
     } else {
         positionCmd = "position startpos moves " + usiHistory.join(" ");
     }
-    
-    // 先読み開始
     sendToEngine(positionCmd);
-    sendToEngine("go infinite");
-    isPondering = true;
     
+    // 先読み時はMultiPVは1でOK（全力で最善を読むため）
+    sendToEngine("setoption name MultiPV value 1");
+    sendToEngine("go infinite");
+    
+    isPondering = true;
     statusDiv.textContent = "「次、どうくるかな…？（先読み中）」";
     
     if (ponderTimer) clearTimeout(ponderTimer);
     ponderTimer = setTimeout(() => {
-        if (isPondering) {
-            stopPondering();
-            statusDiv.textContent = "「ちょっときゅうけい…」";
-        }
+        if (isPondering) stopPondering();
     }, 60000);
 }
 
@@ -1865,6 +1870,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
