@@ -494,13 +494,18 @@ input, textarea {
       overflow-y: auto;
     }
     .mail-reward-area {
-      margin-top: 15px;
-      padding: 15px;
-      background: #ECDBBF;
-      border: 2px dashed #ff9800;
-      border-radius: 10px;
-      text-align: center;
-    }
+  margin-top: 10px;
+  padding: 5px 15px; /* 上下の余白を小さくする */
+  background: #ECDBBF;
+  border: 2px dashed #ff9800;
+  border-radius: 10px;
+  
+  /* ★★★ ここがポイント：横並びにして高さを減らす ★★★ */
+  display: flex;
+  justify-content: space-between; /* 左にテキスト、右にボタン */
+  align-items: center;            /* 上下中央揃え */
+  min-height: 60px;               /* 最低限の高さを確保 */
+}
 
     /* --- 左側の浮遊ボタンエリア --- */
     .right-side-menu {
@@ -1062,10 +1067,13 @@ input, textarea {
         </div>
         
         <div id="rewardArea" class="mail-reward-area">
-          <div style="font-weight:bold; margin-bottom:5px;">🎁 添付アイテム</div>
-          <div id="rewardContent" style="color:#d35400; font-size:1.1rem; margin-bottom:10px;">1000 G</div>
-          <button id="claimRewardBtn" class="sub-btn" style="background: #28a745;">受け取る</button>
-        </div>
+  <div style="text-align: left;">
+    <div style="font-weight:bold; font-size: 0.8rem;">🎁 添付アイテム</div>
+    <div id="rewardContent" style="color:#d35400; font-weight:bold; font-size: 1.1rem;">1000 G</div>
+  </div>
+  
+  <button id="claimRewardBtn" class="sub-btn" style="background: #28a745; width: auto; padding: 8px 15px; margin: 0;">受け取る</button>
+</div>
 
         <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="backToMailList()">戻る</button>
       </div>
@@ -1826,6 +1834,7 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
 
 
 
