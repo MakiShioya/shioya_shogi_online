@@ -6,17 +6,22 @@
 // --- ★レベル別設定テーブル ---
 // nodes: 読む局面の数（少ないほど弱く、早い）
 // name: 画面表示用の名前
+// --- ★レベル別設定テーブル ---
+// nodes: 思考量
+// depth: 読みの深さ
+// multiPV: 候補手の数（多いほど、2番手・3番手の悪手を選ぶ余地が生まれる）
+// noise: 評価値に加える乱数の幅（点数）。大きいほど判断が狂う。
 const LEVEL_CONFIG = [
-    { id: 1,  nodes: 50,      depth: 1,   name: "Lv1 (激弱)" },    // 1手先しか読まない
-    { id: 2,  nodes: 100,     depth: 2,   name: "Lv2 (入門)" },    // 2手先まで
-    { id: 3,  nodes: 300,     depth: 3,   name: "Lv3 (初心者)" },  // 3手先まで
-    { id: 4,  nodes: 600,     depth: 4,   name: "Lv4 (初級)" },
-    { id: 5,  nodes: 1000,    depth: 5,   name: "Lv5 (中級手前)" },
-    { id: 6,  nodes: 3000,    depth: 6,   name: "Lv6 (中級)" },
-    { id: 7,  nodes: 10000,   depth: 8,   name: "Lv7 (上級)" },
-    { id: 8,  nodes: 50000,   depth: 10,  name: "Lv8 (有段者)" },
-    { id: 9,  nodes: 200000,  depth: 14,  name: "Lv9 (強豪)" },
-    { id: 10, nodes: 1000000, depth: 20,  name: "Lv10 (最強)" }
+    { id: 1,  nodes: 50,      depth: 1,  multiPV: 5, noise: 2000, useBook: false, name: "Lv1 (入門)" },
+    { id: 2,  nodes: 100,     depth: 2,  multiPV: 4, noise: 1500, useBook: false, name: "Lv2 (初心)" },
+    { id: 3,  nodes: 300,     depth: 3,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
+    { id: 4,  nodes: 600,     depth: 4,  multiPV: 3, noise: 500,  useBook: false, name: "Lv4 (初級+)" },
+    { id: 5,  nodes: 1000,    depth: 5,  multiPV: 2, noise: 200,  useBook: false, name: "Lv5 (中級)" },
+    { id: 6,  nodes: 3000,    depth: 6,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" },
+    { id: 7,  nodes: 10000,   depth: 8,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv7 (上級)" },
+    { id: 8,  nodes: 50000,   depth: 10, multiPV: 1, noise: 0,    useBook: true,  name: "Lv8 (有段者)" },
+    { id: 9,  nodes: 200000,  depth: 14, multiPV: 1, noise: 0,    useBook: true,  name: "Lv9 (強豪)" },
+    { id: 10, nodes: 1000000, depth: 20, multiPV: 1, noise: 0,    useBook: true,  name: "Lv10 (最強)" }
 ];
 
 // 現在のレベル（初期値はLv1にしておきます）
@@ -40,6 +45,7 @@ let isPondering = false; // 先読み中かどうか
 let ponderTimer = null;  // 休憩用のタイマー
 let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
+let candidateMoves = [];
 
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
@@ -168,81 +174,124 @@ function sendToEngine(msg) {
     }
 }
 
+// メッセージ受信処理（ノイズ対応版）
 function handleEngineMessage(msg) {
-    // console.log("Engine says:", msg); // ログが多い場合はコメントアウト
+    // 1. 候補手情報の解析（info ... pv ...）
+    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
+        
+        // 何番目の手か（multipv）を取得
+        let pvIndex = 1;
+        const matchPv = msg.match(/multipv (\d+)/);
+        if (matchPv) pvIndex = parseInt(matchPv[1]);
 
-    // ★評価値解析（修正版：上書き更新型）
-    if (typeof msg === "string" && msg.includes("info") && msg.includes("score cp")) {
-        const parts = msg.split(" ");
-        const scoreIdx = parts.indexOf("cp") + 1;
-        let score = parseInt(parts[scoreIdx]);
+        // スコアを取得
+        let score = 0;
+        const matchScore = msg.match(/score cp ([\-\d]+)/);
+        const matchMate = msg.match(/score mate ([\-\d]+)/);
 
-        if (turn === "white") {
-            score = -score;
-        }
-        
-        // 現在の手数位置の評価値を更新（pushではなく代入）
-        evalHistory[moveCount] = score;
-        
-        // 過去の欠損（undefined）があれば埋める
-        for(let i = 0; i < moveCount; i++) {
-            if (evalHistory[i] === undefined) evalHistory[i] = evalHistory[i-1] || 0;
-        }
-        
-        // グラフを更新（引数なしで呼ぶ）
-        updateChart();
-    }
+        if (matchScore) {
+            score = parseInt(matchScore[1]);
+        } else if (matchMate) {
+            // 詰みの場合は超高得点にする
+            const mateVal = parseInt(matchMate[1]);
+            score = (mateVal > 0) ? 30000 : -30000;
+        }
 
-    if (msg === "usiok") {
-        console.log("USI OK! -> isready");
-        sendToEngine("isready");
-    }
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        console.log("定跡をオフにします...");
-        sendToEngine("setoption name BookFile value no_book");
-        // ★メッセージの出し分け
-        if (cpuSide === "white") {
-             statusDiv.textContent = "対局開始！ あなたは【先手】です。";
-        } else {
-             statusDiv.textContent = "対局開始！ あなたは【後手】です。";
-        }
-        
-        console.log("Ready OK!");
+        // 指し手を取得
+        const matchMove = msg.match(/pv ([a-zA-Z0-9\+\*]+)/);
+        if (matchMove) {
+            const move = matchMove[1];
+            
+            // リストに保存（同じmultipvの更新が来たら上書き）
+            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
+            if (existingIdx !== -1) {
+                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
+            } else {
+                candidateMoves.push({ id: pvIndex, move: move, score: score });
+            }
+        }
+        
+        // グラフ用には最善手(multipv 1)のスコアだけ使う
+        if (pvIndex === 1) {
+            let graphScore = score;
+            if (turn === "white") graphScore = -graphScore;
+            evalHistory[moveCount] = graphScore;
+            for(let i = 0; i < moveCount; i++) {
+                if (evalHistory[i] === undefined) evalHistory[i] = evalHistory[i-1] || 0;
+            }
+            updateChart();
+        }
+    }
 
-        // ★★★ 2. AIが先手の場合、思考開始 ★★★
-        if (turn === cpuSide) {
-             setTimeout(() => cpuMove(), 1000);
-        }
-    }
-    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
-        const parts = msg.split(" ");
-        const bestMove = parts[1];
-        
-        if (isStoppingPonder) {
-             console.log("Ponder停止によるbestmoveを無視");
-             isStoppingPonder = false;
-             return;
-        }
+    if (msg === "usiok") {
+        sendToEngine("isready");
+    }
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        
+        // 定跡の制御
+        if (currentLevelInfo.useBook) {
+            console.log("定跡をONにします");
+            // sendToEngine("setoption name BookFile value user_book1.db"); 
+        } else {
+            console.log("定跡をOFFにします");
+            sendToEngine("setoption name BookFile value no_book"); 
+        }
 
-        // 自分の手番でないなら無視
-        if (turn !== cpuSide) {
-             return;
-        }
-        
-        if (bestMove === "resign") {
-            resignGame(); 
-        } else if (bestMove === "win") {
-            statusDiv.textContent = "エンジンの勝ち宣言";
-            gameOver = true;
-        } else {
-            applyUsiMove(bestMove);
-            
-            if (!gameOver) {
-                setTimeout(startPondering, 500); 
-            }
-        }
-    }
+        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
+    }
+    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
+        const parts = msg.split(" ");
+        let bestMove = parts[1]; // エンジンが選んだ最善手
+        
+        if (isStoppingPonder) {
+             isStoppingPonder = false;
+             return;
+        }
+        if (turn !== cpuSide) return;
+        
+        if (bestMove === "resign") {
+            resignGame(); 
+            return;
+        } else if (bestMove === "win") {
+            statusDiv.textContent = "エンジンの勝ち宣言";
+            gameOver = true;
+            return;
+        }
+
+        // ▼▼▼ ここが核心：ノイズを加えて手を選び直す処理 ▼▼▼
+        if (currentLevelInfo.noise > 0 && candidateMoves.length > 0) {
+            
+            // 候補手それぞれにノイズを足して並び替え
+            const noiseRange = currentLevelInfo.noise;
+            
+            const noisyCandidates = candidateMoves.map(c => {
+                // -noiseRange ～ +noiseRange の乱数を作る
+                const noise = (Math.random() - 0.5) * 2 * noiseRange;
+                return {
+                    move: c.move,
+                    rawScore: c.score,
+                    finalScore: c.score + noise // ノイズを足したスコア
+                };
+            });
+
+            // スコアが高い順に並び替え
+            noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
+
+            // ノイズ込みで一番良かった手を採用する
+            const selected = noisyCandidates[0];
+            
+            // ログで確認できるようにする
+            console.log(`[ノイズ判定] 本来:${bestMove} -> 採用:${selected.move} (元点:${selected.rawScore} ノイズ後:${Math.floor(selected.finalScore)})`);
+            
+            bestMove = selected.move;
+        }
+        // ▲▲▲▲▲▲
+
+        applyUsiMove(bestMove);
+        if (!gameOver) setTimeout(startPondering, 500);
+    }
 }
 
 function playBGM() {
@@ -1107,6 +1156,7 @@ function playSkillEffect(imageName, soundName, flashColor) {
 // script/yaneuraou_level.js の cpuMove 関数をこれに書き換えてください
 
 // AI思考ロジック
+// AI思考ロジック
 function cpuMove() {
     if (gameOver) return;
     if (!isEngineReady) {
@@ -1115,12 +1165,12 @@ function cpuMove() {
         return;
     }
 
-    // ▼▼▼ 追加：念のための停止処理 ▼▼▼
-    stopPondering();
-    // ▲▲▲ 追加ここまで ▲▲▲
+    stopPondering(); 
+    
+    // ★追加：候補手リストをリセット
+    candidateMoves = [];
 
-    statusDiv.textContent = "考え中...";
-
+    statusDiv.textContent = `考え中... (${currentLevelInfo.name})`;
     let positionCmd = "";
 
     if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
@@ -1130,21 +1180,19 @@ function cpuMove() {
     else {
         positionCmd = "position startpos moves " + usiHistory.join(" ");
     }
-
     sendToEngine(positionCmd);
 
-    // ★修正：レベル設定から nodes と depth の両方を取得
-    const nodesLimit = currentLevelSetting.nodes;
-    const depthLimit = currentLevelSetting.depth; // ★追加
-    
-    console.log(`現在のレベル: ${currentLevelSetting.name}, 制限ノード数: ${nodesLimit}, 深さ: ${depthLimit}`);
-    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
+    // ★追加：MultiPV（候補手の数）を設定する
+    const pvNum = currentLevelInfo.multiPV || 1;
+    sendToEngine(`setoption name MultiPV value ${pvNum}`);
 
-    // ★修正：コマンド送信
-    // "go btime 0 wtime 0 nodes X depth Y" と送ることで、両方の制限を適用します
+    const nodesLimit = currentLevelInfo.nodes;
+    const depthLimit = currentLevelInfo.depth || 30;
+    
+    console.log(`Lv:${currentLevelInfo.name}, Nodes:${nodesLimit}, Depth:${depthLimit}, MultiPV:${pvNum}`);
+    
     sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
 }
-
 function convertToUsi(sel, toX, toY, promoted, pieceName) {
     const fileTo = 9 - toX;
     const rankTo = String.fromCharCode(97 + toY);
@@ -1817,6 +1865,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
