@@ -5,14 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>しおや将棋 ショップ</title>
   
+  <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
+  
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   
   <style>
+    /* ★追加：フォント定義 */
+    @font-face {
+      font-family: 'SetoFont';
+      src: url('script/font/setofont.ttf') format('truetype');
+      font-display: block;
+    }
+
+    /* ★追加：全体にフォント適用 */
+    * {
+      font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    }
+
+    /* ★追加：ロード画面のスタイル */
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(240, 230, 140, 0.9); /* 背景色(#f0e68c)に合わせて調整 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    .loader-content {
+      text-align: center;
+      color: #8b4513; /* 文字色は茶色に */
+      font-family: "SetoFont", sans-serif;
+    }
+
+    /* ぐるぐる回るアニメーション */
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(139, 69, 19, 0.3);
+      border-top: 5px solid #8b4513;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* チップスのテキスト表示エリア */
+    #loading-tips {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      max-width: 250px;
+      line-height: 1.5;
+      min-height: 3em;
+    }
+
+    /* --- 以下、既存スタイル --- */
     body {
       margin: 0; padding: 0;
-      font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      /* font-family: "Hiragino Kaku Gothic ProN", ... ←削除（*で指定済み） */
       background-color: #f0e68c;
       color: #333;
       overflow-x: hidden;
@@ -111,7 +175,7 @@
       border-radius: 5px; font-size: 0.8rem; width: 100%; box-sizing: border-box;
     }
 
-    /* ★★★ 追加：試聴ボタンのスタイル ★★★ */
+    /* 試聴ボタンのスタイル */
     .preview-btn {
       position: absolute;
       bottom: 5px; right: 5px; /* 画像の右下に配置 */
@@ -151,6 +215,14 @@
 </head>
 <body>
 
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <div id="loading-tips"></div>
+      <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+    </div>
+  </div>
+
   <div class="header-bar">
     <button class="back-btn" onclick="window.location.href='home.html'">← ホームへ</button>
     <span class="gold-display">💰 <span id="userGold">---</span> G</span>
@@ -185,9 +257,9 @@
   let currentUserGold = 0;
   let currentUserInventory = [];
   
-  // ★★★ 追加：試聴用の音声オブジェクト ★★★
-  let currentPreviewAudio = null; // 現在再生中のAudio
-  let currentPreviewId = null;    // 現在再生中のアイテムID
+  // 試聴用の音声オブジェクト
+  let currentPreviewAudio = null; 
+  let currentPreviewId = null;    
 
   document.addEventListener("DOMContentLoaded", () => {
     firebase.auth().onAuthStateChanged((user) => {
@@ -243,9 +315,8 @@
       // カードの上半分（画像エリア）
       let imageAreaHTML = `<div class="item-image" style="${imageStyle}">${imageText}`;
       
-      // ★★★ 追加：BGMなら試聴ボタンを画像の中に埋め込む ★★★
+      // BGMなら試聴ボタンを画像の中に埋め込む
       if (item.type === 'bgm') {
-          // data-id属性を持たせて、後で制御しやすくする
           imageAreaHTML += `<button class="preview-btn" id="btn-${item.id}" onclick="playPreview('${item.id}', '${item.src}')">▶</button>`;
       }
       
@@ -281,28 +352,24 @@
     });
   }
 
-  // ★★★ 追加：試聴処理関数 ★★★
+  // 試聴処理関数
   function playPreview(id, src) {
-      // 1. もし同じ曲が再生中なら、停止する
       if (currentPreviewId === id) {
           stopPreview();
           return;
       }
 
-      // 2. 別の曲が再生中なら、それを止める
       if (currentPreviewAudio) {
           stopPreview();
       }
 
-      // 3. 新しい曲を再生する
       currentPreviewAudio = new Audio(src);
-      currentPreviewAudio.volume = 0.5; // 音量は控えめに
+      currentPreviewAudio.volume = 0.5;
       currentPreviewId = id;
 
-      // ボタンの見た目を「再生中（■）」に変える
       const btn = document.getElementById(`btn-${id}`);
       if (btn) {
-          btn.textContent = "■"; // 停止マーク
+          btn.textContent = "■"; 
           btn.classList.add("playing");
       }
 
@@ -312,20 +379,18 @@
           stopPreview();
       });
 
-      // 曲が終わったらボタンを元に戻す
       currentPreviewAudio.onended = () => {
           stopPreview();
       };
   }
 
-  // ★★★ 追加：停止処理関数 ★★★
+  // 停止処理関数
   function stopPreview() {
       if (currentPreviewAudio) {
           currentPreviewAudio.pause();
           currentPreviewAudio = null;
       }
       
-      // ボタンの見た目を元に戻す
       if (currentPreviewId) {
           const btn = document.getElementById(`btn-${currentPreviewId}`);
           if (btn) {
@@ -341,7 +406,6 @@
     const user = firebase.auth().currentUser;
     if (!user) return;
 
-    // ★追加：購入時に試聴を止める
     stopPreview();
 
     if (currentUserInventory.includes(item.id)) {
@@ -368,7 +432,7 @@
     });
   }
 
-  // 画面遷移時（戻るボタンなど）に音を止める
+  // 画面遷移時に音を止める
   window.onbeforeunload = function() {
       stopPreview();
   };
@@ -389,9 +453,47 @@
   }
 </script>
 
+<script>
+    const loadingTipsList = [
+        "【tips】キャラクターにはそれぞれ固有の必殺技があります。",
+        "【tips】オンライン対局は、先に入室した方が先手になります。",
+        "【tips】棋譜では、自分のこれまでの対局を振り返るだけでなく、解析もできます。",
+        "【tips】メニューボタンから、ホーム画面のキャラクターを変更できます。",
+        "【tips】CPUの必殺技は、2回行動です。",
+        "【tips】CPUは必殺技ゲージが300たまると必ず必殺技を打ってきます。"
+    ];
+
+    function showRandomTips() {
+        const tipEl = document.getElementById('loading-tips');
+        if (!tipEl) return;
+        const randomTip = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+        tipEl.textContent = randomTip;
+    }
+
+    let tipsInterval = null;
+
+    // 画像の読み込みを待たずにTipsを表示
+    document.addEventListener('DOMContentLoaded', () => {
+        showRandomTips();
+        tipsInterval = setInterval(showRandomTips, 3000);
+    });
+
+    // 画像とフォントの読み込みが終わってからロード画面を消す
+    window.addEventListener('load', () => {
+        const loader = document.getElementById('loading-screen');
+        
+        // フォントの準備完了を待つ
+        document.fonts.ready.then(() => {
+            setTimeout(() => {
+                clearInterval(tipsInterval);
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 800); // 演出のため少し待機
+        });
+    });
+</script>
+
 </body>
 </html>
-
-
-
-
