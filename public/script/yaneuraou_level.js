@@ -12,18 +12,26 @@
 // multiPV: 候補手の数（多いほど、2番手・3番手の悪手を選ぶ余地が生まれる）
 // noise: 評価値に加える乱数の幅（点数）。大きいほど判断が狂う。
 const LEVEL_CONFIG = [
-    { id: 1,  nodes: 5000,      depth: 1,  multiPV: 5, noise: 2000, useBook: false, name: "Lv1 (入門)" },
-    { id: 2,  nodes: 5000,     depth: 2,  multiPV: 4, noise: 1500, useBook: false, name: "Lv2 (初心)" },
-    { id: 3,  nodes: 5000,     depth: 3,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
-    { id: 4,  nodes: 5000,     depth: 4,  multiPV: 3, noise: 500,  useBook: false, name: "Lv4 (初級+)" },
-    { id: 5,  nodes: 5000,    depth: 5,  multiPV: 2, noise: 200,  useBook: false, name: "Lv5 (中級)" },
-    { id: 6,  nodes: 5000,    depth: 6,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" },
-    { id: 7,  nodes: 10000,   depth: 8,  multiPV: 1, noise: 0,    useBook: true,  name: "Lv7 (上級)" },
-    { id: 8,  nodes: 50000,   depth: 10, multiPV: 1, noise: 0,    useBook: true,  name: "Lv8 (有段者)" },
-    { id: 9,  nodes: 200000,  depth: 14, multiPV: 1, noise: 0,    useBook: true,  name: "Lv9 (強豪)" },
-    { id: 10, nodes: 1000000, depth: 20, multiPV: 1, noise: 0,    useBook: true,  name: "Lv10 (最強)" }
-];
+    // --- 低レベル帯：計算はさせるが、ノイズで判断を狂わせる ---
+    { id: 1,  nodes: 5000,    depth: 5,  multiPV: 5, noise: 3000, useBook: false, name: "Lv1 (入門)" }, // 3000点のノイズ＝王手放置レベルのミスもする
+    { id: 2,  nodes: 10000,   depth: 6,  multiPV: 4, noise: 2000, useBook: false, name: "Lv2 (初心)" },
+    { id: 3,  nodes: 20000,   depth: 7,  multiPV: 3, noise: 1000, useBook: false, name: "Lv3 (初級)" },
+    { id: 4,  nodes: 30000,   depth: 8,  multiPV: 3, noise: 600,  useBook: false, name: "Lv4 (初級+)" },
+    
+    // --- 中レベル帯：少し迷う ---
+    { id: 5,  nodes: 50000,   depth: 10, multiPV: 2, noise: 300,  useBook: false, name: "Lv5 (中級)" },
+    { id: 6,  nodes: 100000,  depth: 12, multiPV: 1, noise: 0,    useBook: true,  name: "Lv6 (中級+)" }, // ここからガチ
+    
+    // --- 高レベル帯：全力 ---
+    { id: 7,  nodes: 200000,  depth: 15, multiPV: 1, noise: 0,    useBook: true,  name: "Lv7 (上級)" },
+    { id: 8,  nodes: 500000,  depth: 18, multiPV: 1, noise: 0,    useBook: true,  name: "Lv8 (有段者)" },
+    { id: 9,  nodes: 1000000, depth: 22, multiPV: 1, noise: 0,    useBook: true,  name: "Lv9 (強豪)" },
+    { id: 10, nodes: 3000000, depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv10 (最強)" },
 
+    // HTML側のボタンに対応する追加レベル
+    { id: 15, nodes: 5000000, depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv15 (有段)" },
+    { id: 20, nodes: 10000000,depth: 30, multiPV: 1, noise: 0,    useBook: true,  name: "Lv20 (最強)" }
+];
 // 現在のレベル（初期値はLv1にしておきます）
 let currentLevelSetting = LEVEL_CONFIG[0];
 
@@ -1902,6 +1910,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
