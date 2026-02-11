@@ -1,10 +1,5 @@
-/* ★最強の4コア強制設定（決定版）★ */
 var Module = typeof Module !== 'undefined' ? Module : {};
-
-// これが「12」を無視して「4」にする魔法の呪文です
 Module.pthreadPoolSize = 4; 
-
-// 念のため、ブラウザの情報も偽装します
 var navigator = { hardwareConcurrency: 4, userAgent: 'Chrome' };
 if (typeof self !== 'undefined' && self.navigator) {
     try {
@@ -14,19 +9,12 @@ if (typeof self !== 'undefined' && self.navigator) {
         });
     } catch(e) {}
 }
-/* -------------------------------- */
-
-// (ここから下に、元の var YaneuraOu_K_P = ... が続く)
-
-// (ここから下に、元々の var YaneuraOu_K_P = ... が続く)
-
 var YaneuraOu_K_P = (() => {
   var _scriptDir = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
   if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;
   return (
 function(YaneuraOu_K_P) {
   YaneuraOu_K_P = YaneuraOu_K_P || {};
-
 
 function d(){g.buffer!=r&&u(g.buffer);return aa}function x(){g.buffer!=r&&u(g.buffer);return ba}function z(){g.buffer!=r&&u(g.buffer);return ca}function A(){g.buffer!=r&&u(g.buffer);return da}function ea(){g.buffer!=r&&u(g.buffer);return fa}"use strict";var B;B||(B=typeof YaneuraOu_K_P !== 'undefined' ? YaneuraOu_K_P : {});var ha,ia;B.ready=new Promise(function(a,b){ha=a;ia=b});
 (function(){function a(){var h=e.shift();if(!b&&void 0!==h){if("quit"===h)return B.terminate();var l=B.ccall("usi_command","number",["string"],[h]);l&&e.unshift(h);f=l?2*f:1;setTimeout(a,f)}}var b=!1,c=[];B.print=function(h){0===c.length?console.log(h):setTimeout(function(){for(var l=0;l<c.length;l++)c[l](h)})};B.addMessageListener=function(h){c.push(h)};B.removeMessageListener=function(h){h=c.indexOf(h);0<=h&&c.splice(h,1)};B.terminate=function(){b=!0;C.lb()};var e=[],f=1;B.postMessage=function(h){e.push(h)};
