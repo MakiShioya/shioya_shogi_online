@@ -256,43 +256,44 @@ input, textarea {
     }
     .menu-btn:active { transform: scale(0.95); }
 
-    /* ▼▼▼ 追加：右側のゲームモードメニュー ▼▼▼ */
+/* ▼▼▼ 右側のゲームモードメニュー（コンテナ） ▼▼▼ */
     .right-mode-menu {
       position: absolute;
       right: 15px;
-      /* 左メニューより少し下げるか、中央付近に配置 */
-      bottom: 120px; 
+      bottom: 110px; /* 下部メニューの上あたり */
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 15px; /* ボタン同士の間隔 */
       z-index: 20;
     }
 
-    .mode-circle-btn {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      border: 3px solid white;
+    /* ▼▼▼ 変更：少し大きめの四角いボタン ▼▼▼ */
+    .mode-rect-btn {
+      width: 120px;  /* 下部メニュー(約70~80px幅)より大きく */
+      height: 70px;  /* 高さも少しリッチに */
+      
+      /* 角丸の四角形にする設定 */
+      border-radius: 12px; 
+      border: 2px solid white;
+      
       color: white;
       font-weight: bold;
-      font-size: 0.9rem;
+      font-size: 1.1rem; /* 文字も少し大きく */
       cursor: pointer;
+      
+      /* 影をつけて浮いている感を出す */
       box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      text-align: center;
       text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+      
+      /* ふわふわ動くアニメーション（前の設定を引き継ぎ） */
       animation: float-btn 3s infinite ease-in-out;
     }
     
-    .mode-circle-btn:active { transform: scale(0.95); }
-    /* 左側の動きと少しタイミングをずらす */
+    .mode-rect-btn:active { transform: scale(0.95); }
+    
+    /* タイミングをずらす用 */
     .delay-1 { animation-delay: 0.5s; }
     .delay-2 { animation-delay: 1.0s; }
-
-    /* ▲▲▲ 追加ここまで ▲▲▲ */
 
 
     .overlay {
@@ -715,10 +716,10 @@ input, textarea {
   </div>
 
   <div class="right-mode-menu">
-    <button class="mode-circle-btn online-color delay-1" onclick="goToCharacterSelect('online')">
+    <button class="mode-rect-btn online-color delay-1" onclick="goToCharacterSelect('online')">
       オンライン
     </button>
-    <button class="mode-circle-btn offline-color delay-2" onclick="openModal('offlineMenu')">
+    <button class="mode-rect-btn offline-color delay-2" onclick="openModal('offlineMenu')">
       オフライン
     </button>
   </div>
@@ -1804,3 +1805,4 @@ window.addEventListener('load', () => {
 
 </body>
 </html>
+
