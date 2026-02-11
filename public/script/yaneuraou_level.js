@@ -7,16 +7,16 @@
 // nodes: 読む局面の数（少ないほど弱く、早い）
 // name: 画面表示用の名前
 const LEVEL_CONFIG = [
-    { id: 1,  nodes: 50,      name: "Lv1 (激弱)" },       // ほぼ即指し、王手放置レベル
-    { id: 2,  nodes: 100,     name: "Lv2 (入門)" },
-    { id: 3,  nodes: 300,     name: "Lv3 (初心者)" },
-    { id: 4,  nodes: 600,     name: "Lv4 (初級)" },
-    { id: 5,  nodes: 1000,    name: "Lv5 (中級手前)" },   // ここら辺から少し強くなる
-    { id: 6,  nodes: 3000,    name: "Lv6 (中級)" },
-    { id: 7,  nodes: 10000,   name: "Lv7 (上級)" },
-    { id: 8,  nodes: 50000,   name: "Lv8 (有段者)" },
-    { id: 9,  nodes: 200000,  name: "Lv9 (強豪)" },
-    { id: 10, nodes: 1000000, name: "Lv10 (最強)" }      // かなり強い
+    { id: 1,  nodes: 50,      depth: 1,   name: "Lv1 (激弱)" },    // 1手先しか読まない
+    { id: 2,  nodes: 100,     depth: 2,   name: "Lv2 (入門)" },    // 2手先まで
+    { id: 3,  nodes: 300,     depth: 3,   name: "Lv3 (初心者)" },  // 3手先まで
+    { id: 4,  nodes: 600,     depth: 4,   name: "Lv4 (初級)" },
+    { id: 5,  nodes: 1000,    depth: 5,   name: "Lv5 (中級手前)" },
+    { id: 6,  nodes: 3000,    depth: 6,   name: "Lv6 (中級)" },
+    { id: 7,  nodes: 10000,   depth: 8,   name: "Lv7 (上級)" },
+    { id: 8,  nodes: 50000,   depth: 10,  name: "Lv8 (有段者)" },
+    { id: 9,  nodes: 200000,  depth: 14,  name: "Lv9 (強豪)" },
+    { id: 10, nodes: 1000000, depth: 20,  name: "Lv10 (最強)" }
 ];
 
 // 現在のレベル（初期値はLv1にしておきます）
@@ -1104,6 +1104,8 @@ function playSkillEffect(imageName, soundName, flashColor) {
   }
 }
 
+// script/yaneuraou_level.js の cpuMove 関数をこれに書き換えてください
+
 // AI思考ロジック
 function cpuMove() {
     if (gameOver) return;
@@ -1114,7 +1116,6 @@ function cpuMove() {
     }
 
     // ▼▼▼ 追加：念のための停止処理 ▼▼▼
-    // もし先読み中だったり、前の思考が残っていたりする場合に備えて停止を送る
     stopPondering();
     // ▲▲▲ 追加ここまで ▲▲▲
 
@@ -1122,7 +1123,7 @@ function cpuMove() {
 
     let positionCmd = "";
 
-    if ((typeof skillUsed !== 'undefined' && skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
+    if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
         const sfen = generateSfen();
         positionCmd = "position sfen " + sfen;
     } 
@@ -1132,14 +1133,16 @@ function cpuMove() {
 
     sendToEngine(positionCmd);
 
+    // ★修正：レベル設定から nodes と depth の両方を取得
     const nodesLimit = currentLevelSetting.nodes;
+    const depthLimit = currentLevelSetting.depth; // ★追加
     
-    console.log(`現在のレベル: ${currentLevelSetting.name}, 制限ノード数: ${nodesLimit}`);
+    console.log(`現在のレベル: ${currentLevelSetting.name}, 制限ノード数: ${nodesLimit}, 深さ: ${depthLimit}`);
     statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
 
-    // コマンド送信
-    // btime 0 wtime 0 を付けることで、持ち時間を気にせずnodes制限に従わせます
-    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit}`);
+    // ★修正：コマンド送信
+    // "go btime 0 wtime 0 nodes X depth Y" と送ることで、両方の制限を適用します
+    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
 }
 
 function convertToUsi(sel, toX, toY, promoted, pieceName) {
@@ -1814,6 +1817,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
