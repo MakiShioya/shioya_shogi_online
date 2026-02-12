@@ -327,56 +327,61 @@ function handleEngineMessage(msg) {
             return;
         }
 
-        if (currentLevelSetting.noise > 0 && candidateMoves.length > 0) {
-            
-            const noiseRange = currentLevelSetting.noise;
-            const isOddLevel = (currentLevelSetting.id % 2 !== 0); // 奇数レベルか？
-            const isOpening = (moveCount <= 12); // 序盤（12手目まで）か？
+        // ... (bestMove === "win" ブロックの直後)
 
-            const noisyCandidates = candidateMoves.map(c => {
-                // 1. ノイズ計算
-                const noise = (Math.random() - 0.5) * 2 * noiseRange;
-                let finalScore = c.score + noise;
-                let bonusLog = "";
+        // ★修正：ノイズが0でも、奇数レベルの序盤なら選択ロジックを動かす
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0); 
+        const isOpening = (moveCount <= 16); // 手数条件も少し緩和
+        const shouldRunLogic = (currentLevelSetting.noise > 0) || (isOddLevel && isOpening);
 
-                // 2. ★振り飛車ボーナス判定
-                // 奇数レベル かつ 序盤なら、飛車を振る手にボーナスを与える
-                if (isOddLevel && isOpening) {
-                    let isRangingRook = false;
-                    
-                    if (turn === "black") {
-                        // 先手(2h)から 3h,4h,5h,6h,7h,8h への移動
-                        // 正規表現: 2h から始まって、[3-8]の数字＋h で終わる手
-                        if (c.move.match(/^2h[3-8]h/)) isRangingRook = true;
-                    } else {
-                        // 後手(8b)から 7b,6b,5b,4b,3b,2b への移動
-                        // 正規表現: 8b から始まって、[2-7]の数字＋b で終わる手
-                        if (c.move.match(/^8b[2-7]b/)) isRangingRook = true;
-                    }
+        if (shouldRunLogic && candidateMoves.length > 0) {
+            
+            const noiseRange = currentLevelSetting.noise;
 
-                    if (isRangingRook) {
-                        // ノイズに負けないよう、強力な加点をする（例: +2000点）
-                        finalScore += 2000; 
-                        bonusLog = " [振り飛車ボーナス!]";
-                    }
-                }
+            const noisyCandidates = candidateMoves.map(c => {
+                // ノイズ計算（ノイズ0なら 0 になる）
+                const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
+                
+                let finalScore = c.score + noise;
+                let bonusLog = "";
 
-                // ログ出力（デバッグ用）
-                console.log(`手:${c.move} | 元:${c.score} + ノイズ:${Math.floor(noise)}${bonusLog} = 最終:${Math.floor(finalScore)}`);
-                
-                return {
-                    move: c.move,
-                    finalScore: finalScore 
-                };
-            });
+                // 2. ★振り飛車ボーナス判定
+                if (isOddLevel && isOpening) {
+                    let isRangingRook = false;
+                    
+                    if (turn === "black") {
+                        // 先手(2h)から 3h～8h への移動
+                        if (c.move.match(/^2h[3-8]h/)) isRangingRook = true;
+                    } else {
+                        // 後手(8b)から 7b～2b への移動
+                        if (c.move.match(/^8b[2-7]b/)) isRangingRook = true;
+                    }
 
-            // スコアが高い順に並び替え
-            noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
+                    if (isRangingRook) {
+                        finalScore += 3000; // ボーナスを強化 (+3000点)
+                        bonusLog = " [振り飛車!]";
+                    }
+                }
 
-            // 採用
-            const selected = noisyCandidates[0];
-            bestMove = selected.move;
-        }
+                // ログ出力
+                if (bonusLog || noiseRange > 0) {
+                    console.log(`手:${c.move} | 元:${c.score} + 補正:${Math.floor(finalScore - c.score)} = 最終:${Math.floor(finalScore)}${bonusLog}`);
+                }
+                
+                return {
+                    move: c.move,
+                    finalScore: finalScore 
+                };
+            });
+
+            // スコアが高い順に並び替え
+            noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
+
+            // 採用
+            const selected = noisyCandidates[0];
+            bestMove = selected.move;
+        }
+        // ▲▲▲▲▲▲
 
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
@@ -1282,9 +1287,15 @@ function cpuMove() {
     }
     sendToEngine(positionCmd);
 
-    const pvNum = currentLevelSetting.multiPV || 1;
+    let pvNum = currentLevelSetting.multiPV || 1;
+    const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+    
+    // 16手目までは、奇数レベルなら最低でも5手は読む
+    if (isOddLevel && usiHistory.length <= 16) {
+        if (pvNum < 5) pvNum = 5;
+    }
+    
     sendToEngine(`setoption name MultiPV value ${pvNum}`);
-
     // ★追加：序盤の思考時間短縮ロジック
     let nodesLimit = currentLevelSetting.nodes;
     let depthLimit = currentLevelSetting.depth || 30;
@@ -1972,3 +1983,4 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
