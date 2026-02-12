@@ -111,7 +111,7 @@ window.skillUsed = false;
 window.isCaptureRestricted = false;
 let lastSkillKifu = "";
 let pendingMove = null;
-
+let lastMoveFrom = null;
 // ★CPU 2回行動用
 let isCpuDoubleAction = false;
 let cpuSkillUseCount = 0;
@@ -905,7 +905,17 @@ function executeMove(sel, x, y, doPromote) {
   const pieceBefore = sel.fromHand ? hands[sel.player][sel.index] : boardState[sel.y][sel.x];
   
   // 履歴保存
+  // 履歴保存
   history.push(deepCopyState());
+
+  // ★★★ 追加：移動元の座標を記録 ★★★
+  if (sel.fromHand) {
+      lastMoveFrom = null;
+  } else {
+      lastMoveFrom = { x: sel.x, y: sel.y };
+  }
+  // ★★★★★★★★★★★★★★★★★★★★★
+
   const boardBefore = boardState.map(r => r.slice());
   const moveNumber = kifu.length + 1; 
 
@@ -1962,4 +1972,5 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
