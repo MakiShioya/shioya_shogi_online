@@ -275,11 +275,11 @@ function handleEngineMessage(msg) {
         const strategyType = Math.floor(Math.random() * 4);
         
         if (cpuSide === "white") {
-            const files = [5, 4, 3, 2];
+            const files = [5, 4, 3];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
         } else {
-            const files = [5, 6, 7, 8];
+            const files = [5, 6, 7];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
         }
@@ -2008,6 +2008,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
