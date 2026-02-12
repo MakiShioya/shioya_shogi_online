@@ -14,7 +14,7 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* --- 基本設定 (Home.htmlから継承) --- */
+    /* --- 基本設定 --- */
     @font-face {
       font-family: 'SetoFont';
       src: url('script/font/setofont.ttf') format('truetype');
@@ -27,69 +27,43 @@
     }
     
     body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      position: fixed;
-      background-color: #2c3e50;
-      overflow: hidden;
-      overscroll-behavior: none;
-      -webkit-user-select: none;
-      user-select: none;
-      touch-action: none;
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      position: fixed; background-color: #2c3e50;
+      overflow: hidden; overscroll-behavior: none;
+      -webkit-user-select: none; user-select: none; touch-action: none;
     }
 
-    /* 背景 */
     #bg-image {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       z-index: -1;
       background-image: linear-gradient(rgba(44, 62, 80, 0.6), rgba(44, 62, 80, 0.6)), url('script/image/shogi_title.PNG');
-      background-size: cover;
-      background-position: center;
+      background-size: cover; background-position: center;
     }
 
     input, textarea {
-      user-select: text;
-      -webkit-user-select: text;
-      touch-action: auto;
+      user-select: text; -webkit-user-select: text; touch-action: auto;
     }
 
-    /* --- ① キャラクター表示 (高さ95vhに変更) --- */
+    /* キャラクター */
     .character-stand {
-      position: absolute;
-      bottom: 0;
-      left: 20%;
-      transform: translateX(-50%);
-      height: 95vh; /* 85vh -> 95vh に変更 */
-      width: auto;
-      max-width: 90%;
-      z-index: 1;
-      filter: drop-shadow(0 0 15px rgba(0,0,0,0.6));
-      pointer-events: none;
+      position: absolute; bottom: 0; left: 20%;
+      transform: translateX(-50%); height: 95vh;
+      width: auto; max-width: 90%; z-index: 1;
+      filter: drop-shadow(0 0 15px rgba(0,0,0,0.6)); pointer-events: none;
     }
 
-    /* --- ② ユーザー情報パネル (Top 5%に変更) --- */
+    /* プロフィールパネル (デザイン復旧) */
     .profile-panel {
-      position: absolute;
-      top: 5%; /* 10% -> 5% に変更 */
-      right: 5%;
-      width: 55%;
-      max-width: 550px;
+      position: absolute; top: 5%; right: 5%;
+      width: 55%; max-width: 550px;
       
-      background: rgba(236, 219, 191, 0.95); /* ベージュ */
-      border: 4px solid #8b4513; /* こげ茶枠 */
-      border-radius: 15px;
-      padding: 20px;
+      /* ここが重要：ベージュの背景色 */
+      background: rgba(236, 219, 191, 0.95);
+      border: 4px solid #8b4513; border-radius: 15px;
       
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      
-      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
-      z-index: 10;
+      padding: 20px; 
+      display: flex; flex-direction: column; gap: 15px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5); z-index: 10;
       
       animation: slideInRight 0.5s ease-out;
     }
@@ -100,294 +74,149 @@
     }
 
     .profile-header {
-      border-bottom: 2px dashed #8b4513;
-      padding-bottom: 10px;
-      text-align: center;
+      border-bottom: 2px dashed #8b4513; padding-bottom: 10px; text-align: center;
     }
-
     .user-name-display {
-      font-size: 1.8rem;
-      font-weight: bold;
-      color: #432517;
-      text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
-      margin-bottom: 5px;
+      font-size: 1.8rem; font-weight: bold; color: #432517;
+      text-shadow: 1px 1px 0px rgba(255,255,255,0.5); margin-bottom: 5px;
     }
 
+    /* ID表示エリア */
+    .id-container {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      background: rgba(255,255,255,0.5); padding: 5px 10px; border-radius: 5px;
+      margin-top: 5px;
+      flex-wrap: wrap; /* 長い場合に折り返す */
+    }
     .user-id-display {
-      font-size: 0.9rem;
-      color: #8b4513;
-      font-family: monospace;
-      opacity: 0.7;
+      font-size: 0.8rem; color: #555; font-family: monospace;
+      word-break: break-all; /* 長いIDを強制的に折り返す */
     }
+    .copy-btn {
+      background: #8b4513; color: #ECDBBF; border: none;
+      border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer;
+      white-space: nowrap; font-family: "SetoFont";
+    }
+    .copy-btn:active { transform: scale(0.95); }
 
-    /* ③ レート・連勝削除に伴うレイアウト変更 */
+    /* 戦績 */
     .stats-container {
-      display: flex; /* gridからflexに変更して中央寄せ */
-      justify-content: space-around;
-      align-items: center;
-      background: rgba(255, 255, 255, 0.5);
-      padding: 15px;
-      border-radius: 8px;
+      display: flex; justify-content: space-around; align-items: center;
+      background: rgba(255, 255, 255, 0.5); padding: 15px; border-radius: 8px;
     }
-
     .stat-item { text-align: center; }
     .stat-label { font-size: 0.9rem; color: #666; margin-bottom: 5px; }
     .stat-value { font-size: 1.8rem; font-weight: bold; color: #d35400; }
-    
-    /* ひとことエリア */
+
+    /* ひとこと */
     .bio-container {
-      position: relative;
-      background: rgba(255,255,255,0.6);
-      padding: 10px;
-      border-radius: 5px;
-      min-height: 80px;
+      position: relative; background: rgba(255,255,255,0.6);
+      padding: 10px; border-radius: 5px; min-height: 80px;
     }
-    
     .bio-label {
-      font-size: 0.9rem;
-      font-weight: bold;
-      color: #432517;
-      margin-bottom: 5px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 0.9rem; font-weight: bold; color: #432517;
+      margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;
     }
-
-    .bio-text {
-      font-size: 1rem;
-      color: #432517;
-      line-height: 1.5;
-      white-space: pre-wrap;
-    }
-
+    .bio-text { font-size: 1rem; color: #432517; line-height: 1.5; white-space: pre-wrap; }
     .bio-edit-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 1.2rem;
-      padding: 0;
-      opacity: 0.6;
-      transition: opacity 0.2s;
+      background: none; border: none; cursor: pointer; font-size: 1.2rem;
+      padding: 0; opacity: 0.6; transition: opacity 0.2s;
     }
     .bio-edit-btn:hover { opacity: 1; transform: scale(1.1); }
-
-    /* 編集モード用 */
-    .bio-edit-area {
-      display: none;
-      width: 100%;
-    }
+    .bio-edit-area { display: none; width: 100%; }
     .bio-textarea {
-      width: 100%;
-      height: 80px;
-      font-size: 1rem;
-      padding: 5px;
-      border: 2px solid #8b4513;
-      border-radius: 5px;
-      resize: none;
-      font-family: "SetoFont", sans-serif;
-      background: #fff;
+      width: 100%; height: 80px; font-size: 1rem; padding: 5px;
+      border: 2px solid #8b4513; border-radius: 5px; resize: none;
+      font-family: "SetoFont", sans-serif; background: #fff;
     }
-    .bio-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 5px;
-    }
+    .bio-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 5px; }
     .bio-save-btn { background: #28a745; color: white; border: none; border-radius: 5px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
     .bio-cancel-btn { background: #666; color: white; border: none; border-radius: 5px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
 
-    /* --- 下部メニュー (Home.htmlの配色) --- */
+    /* 下部メニュー */
     .bottom-menu {
-      position: absolute;
-      bottom: 10px;
-      width: 96%;
-      left: 2%;
-      display: flex;
-      justify-content: space-around;
-      align-items: flex-end;
-      gap: 5px;
-      z-index: 20;
+      position: absolute; bottom: 10px; width: 96%; left: 2%;
+      display: flex; justify-content: space-around; align-items: flex-end; gap: 5px; z-index: 20;
     }
-
     .menu-btn {
-      flex: 1;
-      height: 60px;
-      border-radius: 10px;
-      color: #ECDBBF;
-      font-weight: bold;
-      font-size: 1.1rem;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      flex: 1; height: 60px; border-radius: 10px;
+      color: #ECDBBF; font-weight: bold; font-size: 1.1rem;
+      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px #432517;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      display: flex; justify-content: center; align-items: center;
     }
     .menu-btn:active { transform: scale(0.95); }
 
-    /* 配色クラス */
-    .mypage-color { /* 紫 */
-      background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important;
-      border: 2px solid #432517 !important;
-    }
-    .analysis-color { /* 青 */
-      background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important;
-      border: 2px solid #432517 !important;
-    }
-    .ready-color { /* 緑 */
-      background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important;
-      border: 2px solid #432517 !important;
-    }
-    .menu-color { /* 茶色 */
-      background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%) !important;
-      border: 2px solid #432517 !important;
-    }
-    .chat-color { /* グレー */
-      background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important;
-      border: 2px solid #432517 !important;
-    }
+    .mypage-color { background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .analysis-color { background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .ready-color { background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .menu-color { background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
 
-    /* --- モーダル --- */
+    /* モーダル */
     .overlay {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7);
-      z-index: 100;
-      justify-content: center;
-      align-items: center;
-      overscroll-behavior: none;
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      justify-content: center; align-items: center; overscroll-behavior: none;
     }
-    
     .modal-box {
-      position: relative; 
-      background: #fff8dc;
-      padding: 15px;
-      border-radius: 10px;
-      border: 4px solid #8b4513;
-      text-align: center;
-      width: 90%;
-      max-width: 800px;
-      height: 85vh;
-      display: flex;
-      flex-direction: column;
-      box-sizing: border-box;
+      position: relative; background: #fff8dc; padding: 15px;
+      border-radius: 10px; border: 4px solid #8b4513; text-align: center;
+      width: 90%; max-width: 800px; height: 85vh;
+      display: flex; flex-direction: column; box-sizing: border-box;
     }
-
-    /* 閉じるボタン */
     .close-small-btn {
-      position: absolute;
-      top: 8px; 
-      right: 8px;
-      padding: 4px 10px; 
-      background: #666; 
-      color: #ECDBBF;
-      border: none; 
-      border-radius: 12px;
-      font-size: 0.75rem; 
-      font-weight: bold;
-      cursor: pointer; 
-      z-index: 101;
-    }
-
-    #lobbyChatTitle {
-      color: #005bea; margin: 0 0 5px 0; text-align: left;
-      padding-left: 5px; font-size: 0.9rem; line-height: 1.5;
+      position: absolute; top: 8px; right: 8px; padding: 4px 10px; 
+      background: #666; color: #ECDBBF; border: none; border-radius: 12px;
+      font-size: 0.75rem; font-weight: bold; cursor: pointer; z-index: 101;
     }
     #lobbyChatHistory {
-      flex: 1; overflow-y: auto;
-      background: rgba(255, 255, 255, 0.5);
-      border: 1px solid #ccc; padding: 8px;
-      border-radius: 8px;
-      display: flex; flex-direction: column; gap: 5px;
-      min-height: 100px;
+      flex: 1; overflow-y: auto; background: rgba(255, 255, 255, 0.5);
+      border: 1px solid #ccc; padding: 8px; border-radius: 8px;
+      display: flex; flex-direction: column; gap: 5px; min-height: 100px;
     }
-    .chat-input-area {
-      display: flex; gap: 5px; margin-top: 8px;
-    }
+    .chat-input-area { display: flex; gap: 5px; margin-top: 8px; }
 
-    /* チャット吹き出し・アイコン関連 */
+    /* チャット吹き出し */
     .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
-    
     .icon-container { display: flex; flex-direction: column; align-items: center; width: 60px; }
-    
     .chat-name-badge {
       background: #ECDBBF; border: 1px solid #8b4513; border-radius: 10px;
-      z-index: 2; margin-bottom: -10px;
-      width: 50px; height: 18px;
-      display: flex; justify-content: center; align-items: center;
-      padding: 0 4px; overflow: hidden;
+      z-index: 2; margin-bottom: -10px; width: 50px; height: 18px;
+      display: flex; justify-content: center; align-items: center; padding: 0 4px; overflow: hidden;
     }
     .chat-name-text {
       font-size: 12px; font-weight: bold; fill: #333;
       text-anchor: middle; dominant-baseline: central;
     }
-    
     .chat-icon-img { 
-      width: 50px; height: 50px; 
-      border: 3px solid #56ab2f; border-radius: 12px; 
+      width: 50px; height: 50px; border: 3px solid #56ab2f; border-radius: 12px; 
       background: #ECDBBF; object-fit: cover; 
     }
     .chat-row.mine .chat-icon-img { border: 3px solid #FFA500; }
-    
     .chat-bubble { 
       position: relative; padding: 10px; border-radius: 15px; 
       font-size: 0.75rem; font-weight: bold; margin-top: 5px; 
       word-break: break-all; text-align: left;
     }
-    .chat-row .chat-bubble { 
-      background: #ECDBBF; border: 2px solid #e0e0e0; border-top-left-radius: 0; 
-    }
-    .chat-row.mine .chat-bubble { 
-      background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; 
-    }
-    /* ★★★ ID表示の修正箇所 ★★★ */
-    .id-container {
-      display: flex; align-items: center; justify-content: center; gap: 5px;
-      background: rgba(255,255,255,0.5); padding: 5px; border-radius: 5px;
-      margin-top: 5px;
-    }
-    .user-id-display {
-      font-size: 0.75rem; color: #555; font-family: monospace;
-      word-break: break-all; /* 長いIDを折り返す */
-      text-align: center;
-    }
-    .copy-btn {
-      background: #8b4513; color: #ECDBBF; border: none;
-      border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;
-      white-space: nowrap;
-    }
-    .copy-btn:active { transform: scale(0.95); }
+    .chat-row .chat-bubble { background: #ECDBBF; border: 2px solid #e0e0e0; border-top-left-radius: 0; }
+    .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; }
 
     @media (max-aspect-ratio: 1/1) {
-      .character-stand {
-        left: 50%;
-        height: 55vh;
-        bottom: 80px;
-      }
-      .profile-panel {
-        top: 20px;
-        right: 50%;
-        transform: translateX(50%);
-        width: 90%;
-        max-width: none;
-        animation: slideInDown 0.5s ease-out;
-      }
-      @keyframes slideInDown {
-        from { transform: translate(50%, -50px); opacity: 0; }
-        to { transform: translate(50%, 0); opacity: 1; }
-      }
+      .character-stand { left: 50%; height: 55vh; bottom: 80px; }
+      .profile-panel { top: 20px; right: 50%; transform: translateX(50%); width: 90%; max-width: none; animation: slideInDown 0.5s ease-out; }
+      @keyframes slideInDown { from { transform: translate(50%, -50px); opacity: 0; } to { transform: translate(50%, 0); opacity: 1; } }
     }
   </style>
 </head>
 <body>
 
   <div id="bg-image"></div>
-
   <img class="character-stand" src="script/image/komiya_touka.png" alt="Character">
 
-  <div class="profile-header">
+  <div class="profile-panel">
+    <div class="profile-header">
       <div id="userNameDisplay" class="user-name-display">ゲスト</div>
       
       <div class="id-container">
@@ -451,18 +280,14 @@
   <script src="script/auth.js"></script>
 
   <script>
-    // --- 初期化処理 ---
     document.addEventListener("DOMContentLoaded", () => {
       const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
       if (window.CHARACTERS && window.CHARACTERS[savedCharId]) {
         const imgEl = document.querySelector('.character-stand');
-        if (imgEl) {
-          imgEl.src = window.CHARACTERS[savedCharId].image;
-        }
+        if (imgEl) imgEl.src = window.CHARACTERS[savedCharId].image;
       }
     });
 
-    // --- コピー機能 (グローバル関数として定義) ---
     function copyMyId() {
       const idText = document.getElementById("userIdDisplay").textContent;
       if (!idText || idText === "---") return;
@@ -477,10 +302,6 @@
       });
     }
 
-    // --- チャット関連の変数 ---
-    let chatUnsubscribe = null;
-
-    // --- ユーザーデータ取得 ---
     firebase.auth().onAuthStateChanged((user) => {
         const urlParams = new URLSearchParams(window.location.search);
         const targetUserId = urlParams.get('uid');
@@ -488,15 +309,11 @@
         const fetchUserId = targetUserId || myUserId;
         const isMe = (myUserId === fetchUserId);
 
-        // 編集ボタン制御
         const editBtn = document.querySelector(".bio-edit-btn");
-        if (editBtn) {
-            editBtn.style.display = isMe ? "inline" : "none";
-        }
+        if (editBtn) editBtn.style.display = isMe ? "inline" : "none";
 
         if (fetchUserId) {
             const docRef = db.collection("users").doc(fetchUserId);
-            
             docRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
@@ -505,10 +322,7 @@
                     // ID全表示
                     document.getElementById("userIdDisplay").textContent = fetchUserId;
                     
-                    // 勝敗計算
-                    let wins = 0;
-                    let loses = 0;
-
+                    let wins = 0; let loses = 0;
                     if (data.history && Array.isArray(data.history)) {
                         data.history.forEach(h => {
                             const res = (h.result || "").toString().toLowerCase();
@@ -516,23 +330,18 @@
                             if (res.includes('lose') || res.includes('defeat')) loses++;
                         });
                     } else {
-                        wins = data.wins || 0;
-                        loses = data.loses || 0;
+                        wins = data.wins || 0; loses = data.loses || 0;
                     }
 
                     document.getElementById("statsWin").textContent = wins;
                     document.getElementById("statsLose").textContent = loses;
 
-                    // ひとこと
                     if (data.bio) {
                       document.getElementById("bioTextDisplay").textContent = data.bio;
-                      if (isMe) {
-                          document.getElementById("bioInput").value = data.bio;
-                      }
+                      if (isMe) document.getElementById("bioInput").value = data.bio;
                     } else {
                         document.getElementById("bioTextDisplay").textContent = "ひとことはまだありません。";
                     }
-
                 } else {
                     document.getElementById("userNameDisplay").textContent = "ユーザーが見つかりません";
                 }
@@ -540,153 +349,95 @@
         } else {
             document.getElementById("userNameDisplay").textContent = "ゲスト";
         }
-        
-        // チャット初期化
         initLobbyChat();
     });
 
-    // --- ひとこと編集機能 ---
+    // ひとこと編集
     function startBioEdit() {
       const bioDisplay = document.getElementById("bioTextDisplay");
       if(bioDisplay.style.display === "none") return;
-
-      const currentText = bioDisplay.textContent;
-      document.getElementById("bioInput").value = currentText;
-      
+      document.getElementById("bioInput").value = bioDisplay.textContent;
       document.getElementById("bioTextDisplay").style.display = "none";
       document.getElementById("bioEditArea").style.display = "block";
       const btn = document.querySelector(".bio-edit-btn");
       if(btn) btn.style.display = "none";
     }
-
     function cancelBioEdit() {
       document.getElementById("bioTextDisplay").style.display = "block";
       document.getElementById("bioEditArea").style.display = "none";
       const btn = document.querySelector(".bio-edit-btn");
       if(btn) btn.style.display = "inline";
     }
-
     function saveBio() {
       const user = firebase.auth().currentUser;
-      if (!user) return; 
-
+      if (!user) return;
       const urlParams = new URLSearchParams(window.location.search);
       const targetUserId = urlParams.get('uid');
-      if (targetUserId && targetUserId !== user.uid) {
-          alert("他人のプロフィールは編集できません");
-          return;
-      }
-
+      if (targetUserId && targetUserId !== user.uid) return;
       const newBio = document.getElementById("bioInput").value;
-
-      db.collection("users").doc(user.uid).update({ bio: newBio })
-        .then(() => {
-          document.getElementById("bioTextDisplay").textContent = newBio;
-          cancelBioEdit();
-        })
-        .catch((error) => {
-          console.error("Error updating bio: ", error);
-          alert("保存に失敗しました");
-        });
+      db.collection("users").doc(user.uid).update({ bio: newBio }).then(() => {
+        document.getElementById("bioTextDisplay").textContent = newBio;
+        cancelBioEdit();
+      });
     }
 
-    // --- チャット機能 ---
+    // チャット
+    let chatUnsubscribe = null;
     function openLobbyChat() {
       document.getElementById('lobbyChatModal').style.display = 'flex';
       initLobbyChat();
     }
-
     function initLobbyChat() {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
         if (chatUnsubscribe) return; 
-
-        chatUnsubscribe = db.collection("lobby_chat")
-            .orderBy("createdAt", "desc")
-            .limit(50)
-            .onSnapshot((snapshot) => {
-                const historyDiv = document.getElementById("lobbyChatHistory");
-                let messages = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    data.id = doc.id;
-                    messages.push(data);
-                });
-                historyDiv.innerHTML = "";
-                messages.forEach(msg => addMessageToLobbyChatFirestore(msg));
-                historyDiv.scrollTop = 0;
-            });
+        chatUnsubscribe = db.collection("lobby_chat").orderBy("createdAt", "desc").limit(50).onSnapshot((snapshot) => {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            let messages = [];
+            snapshot.forEach(doc => { const data = doc.data(); data.id = doc.id; messages.push(data); });
+            historyDiv.innerHTML = "";
+            messages.forEach(msg => addMessageToLobbyChatFirestore(msg));
+            historyDiv.scrollTop = 0;
+        });
     }
-
     function addMessageToLobbyChatFirestore(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         const user = firebase.auth().currentUser;
         const currentMyId = user ? user.uid : null;
-        const msgUserId = data.userId || "unknown";
-        const isMe = (msgUserId === currentMyId);
-
+        const isMe = (data.userId === currentMyId);
         const rowDiv = document.createElement("div");
-        rowDiv.className = "chat-row";
-        if (isMe) rowDiv.classList.add("mine");
-
+        rowDiv.className = "chat-row" + (isMe ? " mine" : "");
         const iconCol = document.createElement("div");
         iconCol.className = "icon-container";
-
         const nameDiv = document.createElement("div");
         nameDiv.className = "chat-name-badge";
         const safeName = data.name || "名無し";
         const textWidth = Math.max(80, safeName.length * 12); 
         nameDiv.innerHTML = `<svg viewBox="0 0 ${textWidth} 20" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"><text x="50%" y="50%" class="chat-name-text">${safeName}</text></svg>`;
-
         const iconImg = document.createElement("img");
         iconImg.src = data.icon || "script/image/test.icon.PNG";
         iconImg.className = "chat-icon-img";
         iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
-
-        iconCol.appendChild(nameDiv);
-        iconCol.appendChild(iconImg);
-
+        iconCol.appendChild(nameDiv); iconCol.appendChild(iconImg);
         const bubbleDiv = document.createElement("div");
         bubbleDiv.className = "chat-bubble";
         bubbleDiv.textContent = data.text;
-
-        rowDiv.appendChild(iconCol);
-        rowDiv.appendChild(bubbleDiv);
+        rowDiv.appendChild(iconCol); rowDiv.appendChild(bubbleDiv);
         historyDiv.appendChild(rowDiv);
     }
-
     function sendLobbyMessage() {
         const input = document.getElementById("lobbyChatInput");
-        const text = input.value.trim();
-        if (!text) return;
-
+        if (!input.value.trim()) return;
         const user = firebase.auth().currentUser;
-        let myName = "ゲスト";
-        let myId = "guest";
-        let iconUrl = "script/image/test.icon.PNG";
-
-        if (user) {
-            myId = user.uid;
-            myName = document.getElementById("userNameDisplay").textContent || "名無し";
-        }
-
+        let myName = document.getElementById("userNameDisplay").textContent || "ゲスト";
+        let myId = user ? user.uid : "guest";
         db.collection("lobby_chat").add({
-            text: text,
-            name: myName,
-            userId: myId,
-            icon: iconUrl,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            role: 'lobby'
-        }).then(() => {
-            input.value = "";
+            text: input.value, name: myName, userId: myId, icon: "script/image/test.icon.PNG",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(), role: 'lobby'
         });
+        input.value = "";
     }
-    
-    document.getElementById("lobbyChatInput").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") sendLobbyMessage();
-    });
+    document.getElementById("lobbyChatInput").addEventListener("keypress", (e) => { if (e.key === "Enter") sendLobbyMessage(); });
   </script>
 </body>
 </html>
-
-
