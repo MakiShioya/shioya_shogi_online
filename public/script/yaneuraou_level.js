@@ -27,28 +27,28 @@ const LEVEL_CONFIG = [
     { id: 3,  name: "Lv3",  nodes: 1000,  depth: 3,  multiPV: 10, noise: 2500, useBook: false },
     { id: 4,  name: "Lv4",  nodes: 2000,  depth: 4,  multiPV: 10, noise: 2200, useBook: false },
     { id: 5,  name: "Lv5",  nodes: 4000,  depth: 5,  multiPV: 10, noise: 1900, useBook: false },
-    { id: 6,  name: "Lv6",  nodes: 8000, depth: 6,  multiPV: 9, noise: 1600, useBook: false },
-    { id: 7,  name: "Lv7",  nodes: 8600, depth: 7,  multiPV: 9,  noise: 1400, useBook: false },
-    { id: 8,  name: "Lv8",  nodes: 9200, depth: 7,  multiPV: 9,  noise: 1200, useBook: false },
-    { id: 9,  name: "Lv9",  nodes: 10000, depth: 7,  multiPV: 9,  noise: 1000, useBook: false },
-    { id: 10, name: "Lv10", nodes: 11000, depth: 8,  multiPV: 9,  noise: 900, useBook: false },
+    { id: 6,  name: "Lv6",  nodes: 8000, depth: 6,  multiPV: 9, noise: 1700, useBook: false },
+    { id: 7,  name: "Lv7",  nodes: 8600, depth: 7,  multiPV: 9,  noise: 1500, useBook: false },
+    { id: 8,  name: "Lv8",  nodes: 9200, depth: 7,  multiPV: 9,  noise: 1400, useBook: false },
+    { id: 9,  name: "Lv9",  nodes: 10000, depth: 7,  multiPV: 9,  noise: 1300, useBook: false },
+    { id: 10, name: "Lv10", nodes: 11000, depth: 8,  multiPV: 9,  noise: 1200, useBook: false },
 
-    { id: 11, name: "Lv11", nodes: 12000, depth: 8, multiPV: 8,  noise: 800, useBook: false },
-    { id: 12, name: "Lv12", nodes: 14000, depth: 8, multiPV: 8,  noise: 700, useBook: false },
-    { id: 13, name: "Lv13", nodes: 15000, depth: 9, multiPV: 8,  noise: 600,  useBook: false },
-    { id: 14, name: "Lv14", nodes: 16000, depth: 9, multiPV: 8,  noise: 500,  useBook: false },
-    { id: 15, name: "Lv15", nodes: 18000, depth: 9, multiPV: 8,  noise: 450,  useBook: false },
-    { id: 16, name: "Lv16", nodes: 20000, depth: 10, multiPV: 7,  noise: 400,  useBook: false },
-    { id: 17, name: "Lv17", nodes: 22000, depth: 10, multiPV: 7,  noise: 350,  useBook: false },
-    { id: 18, name: "Lv18", nodes: 25000, depth: 10, multiPV: 7,  noise: 300,  useBook: false },
-    { id: 19, name: "Lv19", nodes: 28000, depth: 11, multiPV: 7,  noise: 250,  useBook: false },
-    { id: 20, name: "Lv20", nodes: 31000, depth: 11, multiPV: 7,  noise: 200,    useBook: false }, 
+    { id: 11, name: "Lv11", nodes: 12000, depth: 8, multiPV: 8,  noise: 1100, useBook: false },
+    { id: 12, name: "Lv12", nodes: 14000, depth: 8, multiPV: 8,  noise: 1000, useBook: false },
+    { id: 13, name: "Lv13", nodes: 15000, depth: 9, multiPV: 8,  noise: 900,  useBook: false },
+    { id: 14, name: "Lv14", nodes: 16000, depth: 9, multiPV: 8,  noise: 800,  useBook: false },
+    { id: 15, name: "Lv15", nodes: 18000, depth: 9, multiPV: 8,  noise: 700,  useBook: false },
+    { id: 16, name: "Lv16", nodes: 20000, depth: 10, multiPV: 7,  noise: 600,  useBook: false },
+    { id: 17, name: "Lv17", nodes: 22000, depth: 10, multiPV: 7,  noise: 500,  useBook: false },
+    { id: 18, name: "Lv18", nodes: 25000, depth: 10, multiPV: 7,  noise: 450,  useBook: false },
+    { id: 19, name: "Lv19", nodes: 28000, depth: 11, multiPV: 7,  noise: 400,  useBook: false },
+    { id: 20, name: "Lv20", nodes: 31000, depth: 11, multiPV: 7,  noise: 350,    useBook: false }, 
 
-    { id: 21, name: "Lv21", nodes: 35000,  depth: 11, multiPV: 6, noise: 180, useBook: false },
-    { id: 22, name: "Lv22", nodes: 38000, depth: 12, multiPV: 6, noise: 160, useBook: false },
-    { id: 23, name: "Lv23", nodes: 41000, depth: 12, multiPV: 6, noise: 140, useBook: false },
-    { id: 24, name: "Lv24", nodes: 45000, depth: 12, multiPV: 6, noise: 120, useBook: false },
-    { id: 25, name: "Lv25", nodes: 50000, depth: 13, multiPV: 6, noise: 110, useBook: false },
+    { id: 21, name: "Lv21", nodes: 35000,  depth: 11, multiPV: 6, noise: 300, useBook: false },
+    { id: 22, name: "Lv22", nodes: 38000, depth: 12, multiPV: 6, noise: 250, useBook: false },
+    { id: 23, name: "Lv23", nodes: 41000, depth: 12, multiPV: 6, noise: 200, useBook: false },
+    { id: 24, name: "Lv24", nodes: 45000, depth: 12, multiPV: 6, noise: 150, useBook: false },
+    { id: 25, name: "Lv25", nodes: 50000, depth: 13, multiPV: 6, noise: 120, useBook: false },
     { id: 26, name: "Lv26", nodes: 55000, depth: 13, multiPV: 5, noise: 100, useBook: false },
     { id: 27, name: "Lv27", nodes: 60000, depth: 13, multiPV: 5, noise: 90, useBook: false },
     { id: 28, name: "Lv28", nodes: 66000, depth: 14, multiPV: 5, noise: 80, useBook: false },
@@ -2008,6 +2008,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
