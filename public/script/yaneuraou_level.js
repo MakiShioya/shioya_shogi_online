@@ -296,7 +296,7 @@ function handleEngineMessage(msg) {
         
         if (currentLevelSetting.useBook) {
             console.log("定跡をONにします");
-            // sendToEngine("setoption name BookFile value user_book1.db"); 
+            sendToEngine("setoption name BookFile value user_book1.db"); 
         } else {
             console.log("定跡をOFFにします");
             sendToEngine("setoption name BookFile value no_book"); 
@@ -1260,43 +1260,46 @@ function playSkillEffect(imageName, soundName, flashColor) {
 // AI思考ロジック
 // script/yaneuraou_level.js の cpuMove をこれに書き換え
 
+// AI思考ロジック（序盤短縮版）
 function cpuMove() {
-    if (gameOver) return;
-    if (!isEngineReady) {
-        statusDiv.textContent = "エンジン起動待ち...";
-        setTimeout(cpuMove, 1000);
-        return;
-    }
+    if (gameOver) return;
+    if (!isEngineReady) {
+        statusDiv.textContent = "エンジン起動待ち...";
+        setTimeout(cpuMove, 1000);
+        return;
+    }
 
-    stopPondering(); 
-    
-    // ★追加：思考開始前に候補手リストをリセット
-    candidateMoves = [];
+    stopPondering(); 
+    candidateMoves = [];
 
-    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
-    let positionCmd = "";
+    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
+    let positionCmd = "";
 
-    if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
-        const sfen = generateSfen();
-        positionCmd = "position sfen " + sfen;
-    } 
-    else {
-        positionCmd = "position startpos moves " + usiHistory.join(" ");
-    }
-    sendToEngine(positionCmd);
+    if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
+        positionCmd = "position sfen " + generateSfen();
+    } else {
+        positionCmd = "position startpos moves " + usiHistory.join(" ");
+    }
+    sendToEngine(positionCmd);
 
-    // ★MultiPVの設定を送る（レベル設定から取得）
-    const pvNum = currentLevelSetting.multiPV || 1;
-    sendToEngine(`setoption name MultiPV value ${pvNum}`);
+    const pvNum = currentLevelSetting.multiPV || 1;
+    sendToEngine(`setoption name MultiPV value ${pvNum}`);
 
-    // ★深さとノード数の制限を取得
-    const nodesLimit = currentLevelSetting.nodes;
-    const depthLimit = currentLevelSetting.depth || 30;
-    
-    console.log(`Lv:${currentLevelSetting.name}, Nodes:${nodesLimit}, Depth:${depthLimit}, MultiPV:${pvNum}`);
-    
-    // コマンド送信
-    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
+    // ★追加：序盤の思考時間短縮ロジック
+    let nodesLimit = currentLevelSetting.nodes;
+    let depthLimit = currentLevelSetting.depth || 30;
+
+    // 24手目までは、どんな高レベルでも60万ノード（約1~2秒）で打ち切る
+    if (usiHistory.length < 24) {
+        const OPENING_CAP = 600000; 
+        if (nodesLimit > OPENING_CAP) {
+            console.log(`[時短] 序盤のため計算量を制限: ${nodesLimit} -> ${OPENING_CAP}`);
+            nodesLimit = OPENING_CAP;
+        }
+    }
+
+    console.log(`Lv:${currentLevelSetting.name}, Nodes:${nodesLimit}, Depth:${depthLimit}`);
+    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
 }
 
 function convertToUsi(sel, toX, toY, promoted, pieceName) {
