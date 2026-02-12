@@ -50,7 +50,7 @@ const LEVEL_CONFIG = [
     { id: 22, name: "Lv22", nodes: 100000, depth: 15, multiPV: 1, noise: 0, useBook: true },
     { id: 23, name: "Lv23", nodes: 120000, depth: 16, multiPV: 1, noise: 0, useBook: true },
     { id: 24, name: "Lv24", nodes: 140000, depth: 16, multiPV: 1, noise: 0, useBook: true },
-    { id: 25, name: "Lv25", nodes: 160000, depth: 17, multiPV: 1, noise: 0, useBook: false },
+    { id: 25, name: "Lv25", nodes: 160000, depth: 17, multiPV: 1, noise: 0, useBook: true },
     { id: 26, name: "Lv26", nodes: 180000, depth: 17, multiPV: 1, noise: 0, useBook: true },
     { id: 27, name: "Lv27", nodes: 200000, depth: 18, multiPV: 1, noise: 0, useBook: true },
     { id: 28, name: "Lv28", nodes: 250000, depth: 18, multiPV: 1, noise: 0, useBook: true },
@@ -232,17 +232,10 @@ function sendToEngine(msg) {
     }
 }
 
-// メッセージ受信処理（ノイズ対応版）
-// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
-
-// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
-
-// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
-
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
 function handleEngineMessage(msg) {
-    // 1. エンジンからの思考情報を受信
+    // 1. 候補手情報の解析
     if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
         let pvIndex = 1;
         const matchPv = msg.match(/multipv (\d+)/);
@@ -266,7 +259,6 @@ function handleEngineMessage(msg) {
             }
         }
         
-        // グラフ更新（最善手のみ）
         if (pvIndex === 1) {
             let graphScore = score;
             if (turn === "white") graphScore = -graphScore;
@@ -275,39 +267,39 @@ function handleEngineMessage(msg) {
         }
     }
 
-    // 2. 準備完了時
     if (msg === "usiok") {
         sendToEngine("isready");
     }
     else if (msg === "readyok") {
         isEngineReady = true;
         
-        // ★対局開始時：今回の「振り飛車の種類」をランダムに決める
+        // 作戦決定
         const strategyType = Math.floor(Math.random() * 4);
         
         if (cpuSide === "white") {
-            // 後手番: 5(中), 4(四), 3(三), 2(向)
             const files = [5, 4, 3, 2];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
         } else {
-            // 先手番: 5(中), 6(四), 7(三), 8(向)
             const files = [5, 6, 7, 8];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
         }
 
-        // 定跡の設定（奇数レベルは無視するので一応設定しておくだけでOK）
-        if (currentLevelSetting.useBook) {
+        // 定跡制御：奇数レベルなら一旦OFF
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+
+        if (currentLevelSetting.useBook && !isOddLevel) {
+            console.log("定跡をONにします");
             sendToEngine("setoption name BookFile value user_book1.db"); 
         } else {
+            console.log("定跡をOFFにします（戦型指定のため）");
             sendToEngine("setoption name BookFile value no_book"); 
         }
 
         statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
         if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
     }
-    // 3. 思考完了時（ここが重要！）
     else if (typeof msg === "string" && msg.startsWith("bestmove")) {
         const parts = msg.split(" ");
         let bestMove = parts[1];
@@ -326,57 +318,40 @@ function handleEngineMessage(msg) {
         const isOddLevel = (currentLevelSetting.id % 2 !== 0); 
         const isOpening = (moveCount <= 16); 
         
-        // ★注入ロジック：奇数レベルの序盤なら、候補手に「振り飛車」をねじ込む
+        // ★注入ロジック
         if (isOddLevel && isOpening) {
-            // 1. 現在の飛車の位置を探す
             let rookX = -1, rookY = -1;
             for(let y=0; y<9; y++){
                 for(let x=0; x<9; x++){
                     const p = boardState[y][x];
                     if(!p) continue;
-                    // 自分の飛車か？ (先手なら "R", 後手なら "r")
                     if (turn === "black" && p === "R") { rookX = x; rookY = y; }
                     else if (turn === "white" && p === "r") { rookX = x; rookY = y; }
                 }
             }
 
-            // 2. 飛車が見つかり、まだターゲットの筋にいなければ、手を作る
-            // targetRookFileは 1~9 の数字。配列インデックス(x)は 9 - file
-            // 例: 5筋なら x = 4
             if (rookX !== -1) {
                 const targetX = 9 - targetRookFile;
-                
-                // まだその筋にいないなら
                 if (rookX !== targetX) {
-                    // 移動先の座標 (横移動なのでYは同じ)
                     const targetY = rookY;
-                    
-                    // 合法手チェック（getLegalMovesを利用）
                     const legal = getLegalMoves(rookX, rookY);
                     const canMove = legal.some(m => m.x === targetX && m.y === targetY);
 
                     if (canMove) {
-                        // USI形式の文字列を作成 (例: "2h5h")
                         const fileFrom = 9 - rookX;
                         const rankFrom = String.fromCharCode(97 + rookY);
                         const fileTo = 9 - targetX;
                         const rankTo = String.fromCharCode(97 + targetY);
                         const furiMove = `${fileFrom}${rankFrom}${fileTo}${rankTo}`;
 
-                        // 候補手リストに既にないか確認
                         const exists = candidateMoves.some(c => c.move === furiMove);
                         
                         if (!exists) {
-                            // ★ここがポイント！
-                            // エンジンの最善手と同じスコアを持っていることにして追加する
-                            // さらに +500点 のボーナスを上乗せする
                             const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
                             const injectScore = baseScore + 500;
-
-                            console.log(`[強制注入] ${furiMove} を候補に追加しました (Score: ${injectScore})`);
                             
                             candidateMoves.push({
-                                id: 999, // 識別用ID
+                                id: 999, 
                                 move: furiMove,
                                 score: injectScore
                             });
@@ -386,29 +361,34 @@ function handleEngineMessage(msg) {
             }
         }
 
-        // ▼▼▼ ノイズ処理による最終選択 ▼▼▼
+        // ▼▼▼ 最終選択
         if (candidateMoves.length > 0) {
             const noiseRange = currentLevelSetting.noise;
-            
             const noisyCandidates = candidateMoves.map(c => {
-                // ノイズ計算
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
                 let finalScore = c.score + noise;
-                
-                // 既に+500点されているので、ここでは追加ボーナスは不要
-                // 必要ならログだけ出す
-                
                 return { move: c.move, finalScore: finalScore };
             });
 
             noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
-            
-            // デバッグログ
-            // console.log("選択候補:", noisyCandidates);
-            
             bestMove = noisyCandidates[0].move;
         }
-        // ▲▲▲▲▲▲
+        
+        // --- ★ここが追加箇所：狙い通りの手を指したら、定跡をONに戻す ---
+        if (isOddLevel && currentLevelSetting.useBook) {
+            let executedStrategy = false;
+            if (turn === "black") {
+                if (bestMove === `2h${targetRookFile}h`) executedStrategy = true;
+            } else {
+                if (bestMove === `8b${targetRookFile}b`) executedStrategy = true;
+            }
+
+            if (executedStrategy) {
+                console.log(`★狙い通りの${targetRookFile}筋に振りました！定跡(Book)をONに復帰させます。`);
+                sendToEngine("setoption name BookFile value user_book1.db");
+            }
+        }
+        // -----------------------------------------------------------------
 
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
@@ -2009,6 +1989,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
