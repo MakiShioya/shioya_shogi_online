@@ -57,11 +57,11 @@
       touch-action: auto;
     }
 
-    /* --- ① キャラクター表示 (位置調整済み) --- */
+    /* --- ① キャラクター表示 (左へ移動) --- */
     .character-stand {
       position: absolute;
       bottom: 0;
-      left: 35%; 
+      left: 20%; /* 35% -> 20% に変更（左へ） */
       transform: translateX(-50%);
       height: 85vh;
       width: auto;
@@ -71,23 +71,22 @@
       pointer-events: none;
     }
 
-    /* --- ③ ユーザー情報パネル (位置を上に調整) --- */
+    /* --- ③ ユーザー情報パネル (横幅を広く) --- */
     .profile-panel {
       position: absolute;
-      /* 上部のバーがないため、少し上に配置 */
-      top: 5%; 
+      top: 10%; 
       right: 5%;
-      width: 45%;
-      max-width: 400px;
+      width: 55%; /* 45% -> 55% に変更（横長に） */
+      max-width: 550px;
       
       background: rgba(236, 219, 191, 0.95); /* ベージュ */
       border: 4px solid #8b4513; /* こげ茶枠 */
       border-radius: 15px;
-      padding: 15px;
+      padding: 20px;
       
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 15px;
       
       box-shadow: 0 8px 16px rgba(0,0,0,0.5);
       z-index: 10;
@@ -102,14 +101,12 @@
 
     .profile-header {
       border-bottom: 2px dashed #8b4513;
-      padding-bottom: 5px;
+      padding-bottom: 10px;
       text-align: center;
     }
 
-    /* 「一般会員」などのランク表示は削除しました */
-
     .user-name-display {
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       font-weight: bold;
       color: #432517;
       text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
@@ -117,36 +114,25 @@
     }
 
     .user-id-display {
-      font-size: 0.8rem;
-      color: #888;
+      font-size: 0.9rem;
+      color: #8b4513;
       font-family: monospace;
+      opacity: 0.7;
     }
 
     .stats-container {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 10px;
       background: rgba(255, 255, 255, 0.5);
-      padding: 10px;
+      padding: 15px;
       border-radius: 8px;
     }
 
     .stat-item { text-align: center; }
-    .stat-label { font-size: 0.75rem; color: #666; margin-bottom: 2px; }
-    .stat-value { font-size: 1.2rem; font-weight: bold; color: #d35400; }
+    .stat-label { font-size: 0.8rem; color: #666; margin-bottom: 2px; }
+    .stat-value { font-size: 1.4rem; font-weight: bold; color: #d35400; }
     .rate-value { color: #28a745; }
-
-    .gold-display {
-      text-align: center;
-      background: #432517;
-      color: #ffd700;
-      padding: 8px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 1.1rem;
-      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
-      text-shadow: 1px 1px 2px #000;
-    }
 
     /* --- ひとことエリア (編集機能付き) --- */
     .bio-container {
@@ -154,11 +140,11 @@
       background: rgba(255,255,255,0.6);
       padding: 10px;
       border-radius: 5px;
-      min-height: 60px;
+      min-height: 80px;
     }
     
     .bio-label {
-      font-size: 0.8rem;
+      font-size: 0.9rem;
       font-weight: bold;
       color: #432517;
       margin-bottom: 5px;
@@ -168,9 +154,9 @@
     }
 
     .bio-text {
-      font-size: 0.9rem;
+      font-size: 1rem;
       color: #432517;
-      line-height: 1.4;
+      line-height: 1.5;
       white-space: pre-wrap;
     }
 
@@ -178,11 +164,12 @@
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 1.2rem;
       padding: 0;
       opacity: 0.6;
+      transition: opacity 0.2s;
     }
-    .bio-edit-btn:hover { opacity: 1; }
+    .bio-edit-btn:hover { opacity: 1; transform: scale(1.1); }
 
     /* 編集モード用 */
     .bio-edit-area {
@@ -191,24 +178,25 @@
     }
     .bio-textarea {
       width: 100%;
-      height: 60px;
-      font-size: 0.9rem;
+      height: 80px;
+      font-size: 1rem;
       padding: 5px;
-      border: 1px solid #8b4513;
+      border: 2px solid #8b4513;
       border-radius: 5px;
       resize: none;
       font-family: "SetoFont", sans-serif;
+      background: #fff;
     }
     .bio-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 5px;
+      gap: 10px;
       margin-top: 5px;
     }
-    .bio-save-btn { background: #28a745; color: white; border: none; border-radius: 3px; padding: 3px 10px; cursor: pointer; }
-    .bio-cancel-btn { background: #666; color: white; border: none; border-radius: 3px; padding: 3px 10px; cursor: pointer; }
+    .bio-save-btn { background: #28a745; color: white; border: none; border-radius: 5px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
+    .bio-cancel-btn { background: #666; color: white; border: none; border-radius: 5px; padding: 5px 15px; cursor: pointer; font-weight: bold; }
 
-    /* --- ② 下部メニュー (Home.htmlとデザイン統一) --- */
+    /* --- ② 下部メニュー (配色の統一) --- */
     .bottom-menu {
       position: absolute;
       bottom: 10px;
@@ -224,41 +212,39 @@
     .menu-btn {
       flex: 1;
       height: 60px;
-      border: 2px solid #ECDBBF;
       border-radius: 10px;
       color: #ECDBBF;
       font-weight: bold;
-      font-size: 1.1rem; /* Homeと同じサイズ感 */
+      font-size: 1.1rem;
       cursor: pointer;
       box-shadow: 0 4px 6px rgba(0,0,0,0.3);
       text-shadow: 1px 1px 2px #432517;
-      /* 絵文字なし、中央配置 */
       display: flex;
       justify-content: center;
       align-items: center;
     }
     .menu-btn:active { transform: scale(0.95); }
 
-    /* 和風カラー設定 (Home.htmlのテイストに合わせる) */
-    .home-color { 
-      background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%); 
-      border-color: #ECDBBF; 
+    /* Home.html と同じ配色クラス定義 */
+    .mypage-color { /* 紫 */
+      background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important;
+      border: 2px solid #432517 !important;
     }
-    .history-color { 
-      background: linear-gradient(to bottom, #d35400 0%, #ECDBBF 100%); 
-      border-color: #432517; 
+    .analysis-color { /* 青 */
+      background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important;
+      border: 2px solid #432517 !important;
     }
-    .friend-color { 
-      background: linear-gradient(to bottom, #28a745 0%, #ECDBBF 100%); 
-      border-color: #432517; 
+    .ready-color { /* 緑 */
+      background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important;
+      border: 2px solid #432517 !important;
     }
-    .collection-color { 
-      background: linear-gradient(to bottom, #ff9800 0%, #ECDBBF 100%); 
-      border-color: #432517; 
+    .menu-color { /* 茶色 */
+      background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%) !important;
+      border: 2px solid #432517 !important;
     }
-    .chat-color { 
-      background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%); 
-      border-color: #432517; 
+    .chat-color { /* グレー */
+      background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important;
+      border: 2px solid #432517 !important;
     }
 
 
@@ -275,6 +261,8 @@
     }
     
     .modal-box {
+      /* 重要：相対配置にして閉じるボタンの基準にする */
+      position: relative; 
       background: #fff8dc;
       padding: 15px;
       border-radius: 10px;
@@ -288,15 +276,22 @@
       box-sizing: border-box;
     }
 
-    /* --- ⑥ チャットスタイル (Home.htmlから完全移植) --- */
+    /* --- ① チャットの閉じるボタン (Home.htmlと同じスタイル) --- */
     .close-small-btn {
       position: absolute;
-      top: 8px; right: 8px;
-      padding: 4px 10px; background: #666; color: #ECDBBF;
-      border: none; border-radius: 12px;
-      font-size: 0.75rem; font-weight: bold;
-      cursor: pointer; z-index: 101;
+      top: 8px; 
+      right: 8px;
+      padding: 4px 10px; 
+      background: #666; 
+      color: #ECDBBF;
+      border: none; 
+      border-radius: 12px;
+      font-size: 0.75rem; 
+      font-weight: bold;
+      cursor: pointer; 
+      z-index: 101;
     }
+
     #lobbyChatTitle {
       color: #005bea; margin: 0 0 5px 0; text-align: left;
       padding-left: 5px; font-size: 0.9rem; line-height: 1.5;
@@ -354,14 +349,15 @@
     @media (max-aspect-ratio: 1/1) {
       .character-stand {
         left: 50%;
-        height: 60vh;
+        height: 55vh;
         bottom: 80px;
       }
       .profile-panel {
-        top: 30px; /* 上に詰める */
+        top: 20px;
         right: 50%;
         transform: translateX(50%);
-        width: 85%;
+        width: 90%;
+        max-width: none;
         animation: slideInDown 0.5s ease-out;
       }
       @keyframes slideInDown {
@@ -402,10 +398,6 @@
       </div>
     </div>
 
-    <div class="gold-display">
-      💰 <span id="userGoldDisplay">0</span> G
-    </div>
-
     <div class="bio-container">
       <div class="bio-label">
         ひとこと
@@ -425,16 +417,21 @@
   </div>
 
   <div class="bottom-menu">
-    <button class="menu-btn home-color" onclick="window.location.href='home.html'">ホーム</button>
-    <button class="menu-btn history-color" onclick="window.location.href='mypage.html'">対局履歴</button>
-    <button class="menu-btn friend-color" onclick="window.location.href='friend.html'">フレンド</button>
-    <button class="menu-btn collection-color" onclick="window.location.href='collection.html'">所持品</button>
+    <button class="menu-btn mypage-color" onclick="window.location.href='home.html'">ホーム</button>
+    
+    <button class="menu-btn analysis-color" onclick="window.location.href='mypage.html'">対局履歴</button>
+    
+    <button class="menu-btn ready-color" onclick="window.location.href='friend.html'">フレンド</button>
+    
+    <button class="menu-btn menu-color" onclick="window.location.href='collection.html'">所持品</button>
+    
     <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
   </div>
 
   <div id="lobbyChatModal" class="overlay">
     <div class="modal-box">
       <button class="close-small-btn" onclick="document.getElementById('lobbyChatModal').style.display='none'">閉じる</button>
+      
       <h3 id="lobbyChatTitle">ロビーチャット</h3>
       <div id="lobbyChatHistory"></div>
       <div class="chat-input-area">
@@ -475,12 +472,11 @@
                     // 基本情報
                     document.getElementById("userNameDisplay").textContent = data.name || "名無し";
                     document.getElementById("userIdDisplay").textContent = "ID: " + user.uid.substring(0, 8);
-                    document.getElementById("userGoldDisplay").textContent = (data.gold || 0).toLocaleString();
                     
                     // 戦績 (データ構造に合わせて調整)
                     let wins = data.wins || 0;
                     let loses = data.loses || 0;
-                    let streak = data.maxStreak || 0; // 最大連勝があれば
+                    let streak = data.maxStreak || 0; // 最大連勝
 
                     // history配列がある場合は再計算（整合性のため）
                     if (data.history && Array.isArray(data.history)) {
@@ -531,7 +527,7 @@
       db.collection("users").doc(user.uid).update({
         bio: newBio
       }).then(() => {
-        // 保存成功（onSnapshotで画面は更新されるが、念のため手動でも戻す）
+        // 保存成功
         document.getElementById("bioTextDisplay").textContent = newBio;
         cancelBioEdit();
       }).catch((error) => {
