@@ -230,6 +230,8 @@ function sendToEngine(msg) {
 
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
+// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
+
 function handleEngineMessage(msg) {
     // 1. 候補手情報の解析
     if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
@@ -273,11 +275,11 @@ function handleEngineMessage(msg) {
         const strategyType = Math.floor(Math.random() * 4);
         
         if (cpuSide === "white") {
-            const files = [5, 4, 3];
+            const files = [5, 4, 3, 2];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
         } else {
-            const files = [5, 6, 7];
+            const files = [5, 6, 7, 8];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
         }
@@ -327,43 +329,41 @@ function handleEngineMessage(msg) {
             }
 
             if (rookX !== -1) {
-                // --- ★追加：飛車が「初期位置」にいる場合だけ発動する ---
-                // 先手(2h)は [7][7]、後手(8b)は [1][1] の座標になります
-                // (xは 9-筋、yは 段-1)
+                // --- ★ここが追加された初期位置チェック ---
+                // 先手(2h)は [7][7]、後手(8b)は [1][1]
                 const isInitialPos = (turn === "black" && rookX === 7 && rookY === 7) || 
                                      (turn === "white" && rookX === 1 && rookY === 1);
 
                 if (isInitialPos) {
                     const targetX = 9 - targetRookFile;
-                if (rookX !== targetX) {
-                    const targetY = rookY;
-                    const legal = getLegalMoves(rookX, rookY);
-                    const canMove = legal.some(m => m.x === targetX && m.y === targetY);
-
-                    if (canMove) {
-                        const fileFrom = 9 - rookX;
-                        const rankFrom = String.fromCharCode(97 + rookY);
-                        const fileTo = 9 - targetX;
-                        const rankTo = String.fromCharCode(97 + targetY);
-                        const furiMove = `${fileFrom}${rankFrom}${fileTo}${rankTo}`;
-
-                        const exists = candidateMoves.some(c => c.move === furiMove);
-                        
-                        if (!exists) {
-                            // エンジンの最善手と同じスコア（ボーナスなし）で追加しておく
-                            // ※ボーナスは後のループで一括で与えるため、ここでは足さない
-                            const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
+                    if (rookX !== targetX) {
+                        const targetY = rookY;
+                        const legal = getLegalMoves(rookX, rookY);
+                        const canMove = legal.some(m => m.x === targetX && m.y === targetY);
+    
+                        if (canMove) {
+                            const fileFrom = 9 - rookX;
+                            const rankFrom = String.fromCharCode(97 + rookY);
+                            const fileTo = 9 - targetX;
+                            const rankTo = String.fromCharCode(97 + targetY);
+                            const furiMove = `${fileFrom}${rankFrom}${fileTo}${rankTo}`;
+    
+                            const exists = candidateMoves.some(c => c.move === furiMove);
                             
-                            console.log(`[強制注入] ${furiMove} を候補に追加しました`);
-                            
-                            candidateMoves.push({
-                                id: 999, 
-                                move: furiMove,
-                                score: baseScore 
-                            });
+                            if (!exists) {
+                                // 注入時はボーナスなしのスコアで追加
+                                const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
+                                console.log(`[強制注入] ${furiMove} を候補に追加しました`);
+                                candidateMoves.push({
+                                    id: 999, 
+                                    move: furiMove,
+                                    score: baseScore 
+                                });
+                            }
                         }
                     }
                 }
+                // --- チェック終了 ---
             }
         }
 
@@ -375,16 +375,14 @@ function handleEngineMessage(msg) {
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
                 let finalScore = c.score + noise;
                 
-                // ★修正：エンジンが見つけた手でも、注入した手でも、狙いの筋ならボーナスを与える
+                // 狙いの筋ならボーナスを与える（注入された手も、元からあった手も）
                 if (isOddLevel && isOpening) {
                     let isTarget = false;
                     if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
                     if (turn === "white" && c.move === `8b${targetRookFile}b`) isTarget = true;
                     
                     if (isTarget) {
-                        // 中飛車などはエンジン評価が低めなので、強めに2000点加算して無理やり選ばせる
                         finalScore += 2000; 
-                        // console.log(`★ボーナス適用: ${c.move} (+2000)`);
                     }
                 }
 
@@ -2010,6 +2008,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
