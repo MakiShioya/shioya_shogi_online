@@ -429,9 +429,11 @@
   <script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
 
- <script>
+<script>
     // --- 初期化処理 ---
     document.addEventListener("DOMContentLoaded", () => {
+      // ※注意: 他人のページを見たときも、今は「自分の設定しているキャラ」が表示されます。
+      // 他人の設定しているキャラを表示するには、FirestoreにキャラIDを保存する仕組みが別途必要です。
       const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
       if (window.CHARACTERS && window.CHARACTERS[savedCharId]) {
         const imgEl = document.querySelector('.character-stand');
@@ -443,92 +445,125 @@
 
     // ユーザーデータの取得と表示 (Firebase)
     firebase.auth().onAuthStateChanged((user) => {
-        if (user) {
-            const docRef = db.collection("users").doc(user.uid);
+        // 1. URLパラメータから uid を取得 (?uid=xxxxx の部分)
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUserId = urlParams.get('uid');
+
+        // 2. 自分のIDを取得
+        const myUserId = user ? user.uid : null;
+
+        // 3. どちらのデータを表示するか決定
+        // URLに指定があればそれを、なければ自分のIDを使う
+        const fetchUserId = targetUserId || myUserId;
+
+        // 4. 表示モードの判定（自分自身を見ているかどうか）
+        const isMe = (myUserId === fetchUserId);
+
+        // 編集ボタンの制御（他人のページなら隠す）
+        const editBtn = document.querySelector(".bio-edit-btn");
+        if (editBtn) {
+            editBtn.style.display = isMe ? "inline" : "none";
+        }
+
+        if (fetchUserId) {
+            // 指定されたID (fetchUserId) のデータを取得
+            const docRef = db.collection("users").doc(fetchUserId);
+            
             docRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     
-                    // ★デバッグ用: コンソールにデータを表示
-                    console.log("【ユーザーデータ取得】:", data);
-
-                    // 基本情報
+                    // --- 基本情報表示 ---
                     document.getElementById("userNameDisplay").textContent = data.name || "名無し";
-                    document.getElementById("userIdDisplay").textContent = "ID: " + user.uid.substring(0, 8);
+                    // 他人の場合でもIDは表示してOK（フレンド申請などに使うため）
+                    document.getElementById("userIdDisplay").textContent = "ID: " + fetchUserId.substring(0, 8);
                     
-                    // --- ④ 勝敗の計算ロジック（修正版） ---
+                    // --- 勝敗の計算ロジック ---
                     let wins = 0;
                     let loses = 0;
 
-                    // パターンA: history配列から集計するタイプ
-                    let historyWins = 0;
-                    let historyLoses = 0;
-                    
                     if (data.history && Array.isArray(data.history)) {
                         data.history.forEach(h => {
-                            // 結果の文字を小文字に統一して判定 (Win, win, WIN すべて対応)
                             const res = (h.result || "").toString().toLowerCase();
-                            
                             if (res === 'win' || res === 'victory' || res === 'sente_win' || res === 'gote_win') {
-                                // もし winner ID がある場合は自分のIDか確認する等の詳細ロジックが必要ですが、
-                                // 一旦「win」という文字が含まれていれば勝ちとみなす簡易判定にします
-                                historyWins++;
+                                wins++;
                             }
                             if (res === 'lose' || res === 'defeat') {
-                                historyLoses++;
+                                loses++;
                             }
                         });
-                        console.log("集計結果(history):", historyWins, "勝", historyLoses, "敗");
+                    } else {
+                        wins = data.wins || data.win || 0;
+                        loses = data.loses || data.lose || 0;
                     }
-
-                    // パターンB: 直接 wins/loses フィールドを持っているタイプ
-                    // (history集計が0だった場合や、直接フィールドの方が大きい場合はこちらを採用する保険)
-                    const directWins = data.wins || data.win || 0;
-                    const directLoses = data.loses || data.lose || 0;
-                    console.log("直接データ(wins):", directWins, "勝", directLoses, "敗");
-
-                    // 大きい方を採用する
-                    wins = Math.max(historyWins, directWins);
-                    loses = Math.max(historyLoses, directLoses);
 
                     document.getElementById("statsWin").textContent = wins;
                     document.getElementById("statsLose").textContent = loses;
 
-                    // ひとこと
+                    // --- ひとこと表示 ---
                     if (data.bio) {
                       document.getElementById("bioTextDisplay").textContent = data.bio;
-                      document.getElementById("bioInput").value = data.bio;
+                      // 編集用エリアにもセットしておく（自分の場合のみ有効）
+                      if (isMe) {
+                          document.getElementById("bioInput").value = data.bio;
+                      }
+                    } else {
+                        // 未設定の場合
+                        document.getElementById("bioTextDisplay").textContent = "ひとことはまだありません。";
                     }
+
                 } else {
                     console.log("データが見つかりません");
+                    document.getElementById("userNameDisplay").textContent = "ユーザーが見つかりません";
                 }
             });
-            
-            initLobbyChat();
         } else {
+            // ログインしておらず、URL指定もない場合
             document.getElementById("userNameDisplay").textContent = "ゲスト";
         }
+        
+        // チャットは常に初期化（ログインに関わらず見れるように）
+        initLobbyChat();
     });
 
-    // --- 「ひとこと」編集機能 ---
+    // --- 「ひとこと」編集機能（自分専用） ---
     function startBioEdit() {
-      const currentText = document.getElementById("bioTextDisplay").textContent;
+      // 念のため、ボタンが隠れていても押せないようにチェック
+      const bioDisplay = document.getElementById("bioTextDisplay");
+      if(bioDisplay.style.display === "none") return; // 既に編集中なら無視
+
+      const currentText = bioDisplay.textContent;
       document.getElementById("bioInput").value = currentText;
+      
       document.getElementById("bioTextDisplay").style.display = "none";
       document.getElementById("bioEditArea").style.display = "block";
-      document.querySelector(".bio-edit-btn").style.display = "none";
+      // ボタンを隠す
+      const btn = document.querySelector(".bio-edit-btn");
+      if(btn) btn.style.display = "none";
     }
 
     function cancelBioEdit() {
       document.getElementById("bioTextDisplay").style.display = "block";
       document.getElementById("bioEditArea").style.display = "none";
-      document.querySelector(".bio-edit-btn").style.display = "inline";
+      // ボタンを再表示
+      const btn = document.querySelector(".bio-edit-btn");
+      if(btn) btn.style.display = "inline";
     }
 
     function saveBio() {
       const user = firebase.auth().currentUser;
-      if (!user) return;
+      if (!user) return; // ログインしてないときは保存不可
+
+      // URLパラメータで他人のページを見ていないか最終チェック
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetUserId = urlParams.get('uid');
+      if (targetUserId && targetUserId !== user.uid) {
+          alert("他人のプロフィールは編集できません");
+          return;
+      }
+
       const newBio = document.getElementById("bioInput").value;
+
       db.collection("users").doc(user.uid).update({ bio: newBio })
         .then(() => {
           document.getElementById("bioTextDisplay").textContent = newBio;
@@ -640,4 +675,5 @@
   </script>
 </body>
 </html>
+
 
