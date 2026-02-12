@@ -100,7 +100,7 @@ let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 let candidateMoves = [];
 let targetRookFile = 0;
-let isBookHit = false;
+
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
 // ★必殺技・ゲージ関連の変数
@@ -233,233 +233,211 @@ function sendToEngine(msg) {
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
 function handleEngineMessage(msg) {
-    // ▼▼▼ 追加：エンジンの定跡ヒットメッセージを検知 ▼▼▼
-    if (typeof msg === "string" && msg.startsWith("info string") && (msg.includes("book") || msg.includes("Book"))) {
-        isBookHit = true;
-        console.log("★定跡ヒット！");
-    }
-    // ▲▲▲▲▲▲
+    // 1. 候補手情報の解析
+    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
+        let pvIndex = 1;
+        const matchPv = msg.match(/multipv (\d+)/);
+        if (matchPv) pvIndex = parseInt(matchPv[1]);
 
-    // 1. 候補手情報の解析
-    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
-        let pvIndex = 1;
-        const matchPv = msg.match(/multipv (\d+)/);
-        if (matchPv) pvIndex = parseInt(matchPv[1]);
+        let score = 0;
+        const matchScore = msg.match(/score cp ([\-\d]+)/);
+        const matchMate = msg.match(/score mate ([\-\d]+)/);
 
-        let score = 0;
-        const matchScore = msg.match(/score cp ([\-\d]+)/);
-        const matchMate = msg.match(/score mate ([\-\d]+)/);
+        if (matchScore) score = parseInt(matchScore[1]);
+        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
 
-        if (matchScore) score = parseInt(matchScore[1]);
-        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
+        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
+        if (matchMove) {
+            const move = matchMove[1];
+            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
+            if (existingIdx !== -1) {
+                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
+            } else {
+                candidateMoves.push({ id: pvIndex, move: move, score: score });
+            }
+        }
+        
+        if (pvIndex === 1) {
+            let graphScore = score;
+            if (turn === "white") graphScore = -graphScore;
+            evalHistory[moveCount] = graphScore;
+            updateChart();
+        }
+    }
 
-        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
-        if (matchMove) {
-            const move = matchMove[1];
-            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
-            if (existingIdx !== -1) {
-                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
-            } else {
-                candidateMoves.push({ id: pvIndex, move: move, score: score });
-            }
-        }
-        
-        if (pvIndex === 1) {
-            let graphScore = score;
-            if (turn === "white") graphScore = -graphScore;
-            evalHistory[moveCount] = graphScore;
-            updateChart();
-        }
-    }
+    if (msg === "usiok") {
+        sendToEngine("isready");
+    }
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        
+        // 作戦決定
+        const strategyType = Math.floor(Math.random() * 3);
+        
+        if (cpuSide === "white") {
+            const files = [5, 4, 3];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
+        } else {
+            const files = [5, 6, 7];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
+        }
 
-    if (msg === "usiok") {
-        sendToEngine("isready");
-    }
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        
-        // 作戦決定
-        const strategyType = Math.floor(Math.random() * 3);
-        
-        if (cpuSide === "white") {
-            const files = [5, 4, 3];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
-        } else {
-            const files = [5, 6, 7];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
-        }
+        // 定跡制御：奇数レベルなら一旦OFF
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
 
-        // 定跡制御：奇数レベルなら一旦OFF
-        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+        if (currentLevelSetting.useBook && !isOddLevel) {
+            console.log("定跡をONにします");
+            sendToEngine("setoption name BookFile value user_book1.db"); 
+        } else {
+            console.log("定跡をOFFにします（戦型指定のため）");
+            sendToEngine("setoption name BookFile value no_book"); 
+        }
 
-        if (currentLevelSetting.useBook && !isOddLevel) {
-            console.log("定跡をONにします");
-            sendToEngine("setoption name BookFile value user_book1.db"); 
-        } else {
-            console.log("定跡をOFFにします（戦型指定のため）");
-            sendToEngine("setoption name BookFile value no_book"); 
-        }
+        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
+    }
+    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
+        const parts = msg.split(" ");
+        let bestMove = parts[1];
+        
+        if (isStoppingPonder) {
+             isStoppingPonder = false;
+             return;
+        }
+        if (turn !== cpuSide) return;
+        
+        if (bestMove === "resign") { resignGame(); return; }
+        else if (bestMove === "win") { gameOver = true; return; }
 
-        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
-        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
-    }
-    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
-        const parts = msg.split(" ");
-        let bestMove = parts[1];
-        
-        if (isStoppingPonder) {
-             isStoppingPonder = false;
-             return;
-        }
-        if (turn !== cpuSide) return;
-        
-        if (bestMove === "resign") { resignGame(); return; }
-        else if (bestMove === "win") { gameOver = true; return; }
+        // ▼▼▼ 振り飛車 強制注入 & ノイズ処理 ▼▼▼
+        
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0); 
+        const isOpening = (moveCount <= 16); 
+        
+        // ★注入ロジック
+        if (isOddLevel && isOpening) {
+            let rookX = -1, rookY = -1;
+            for(let y=0; y<9; y++){
+                for(let x=0; x<9; x++){
+                    const p = boardState[y][x];
+                    if(!p) continue;
+                    if (turn === "black" && p === "R") { rookX = x; rookY = y; }
+                    else if (turn === "white" && p === "r") { rookX = x; rookY = y; }
+                }
+            }
 
-        // ▼▼▼ 振り飛車 強制注入 & ノイズ処理 ▼▼▼
-        
-        const isOddLevel = (currentLevelSetting.id % 2 !== 0); 
-        const isOpening = (moveCount <= 16); 
-        
-        // ★注入ロジック
-        if (isOddLevel && isOpening) {
-            let rookX = -1, rookY = -1;
-            for(let y=0; y<9; y++){
-                for(let x=0; x<9; x++){
-                    const p = boardState[y][x];
-                    if(!p) continue;
-                    if (turn === "black" && p === "R") { rookX = x; rookY = y; }
-                    else if (turn === "white" && p === "r") { rookX = x; rookY = y; }
-                }
-            }
+            if (rookX !== -1) {
+                // 先手(2h)は [7][7]、後手(8b)は [1][1]
+                const isInitialPos = (turn === "black" && rookX === 7 && rookY === 7) || 
+                                     (turn === "white" && rookX === 1 && rookY === 1);
 
-            if (rookX !== -1) {
-                // 先手(2h)は [7][7]、後手(8b)は [1][1]
-                const isInitialPos = (turn === "black" && rookX === 7 && rookY === 7) || 
-                                     (turn === "white" && rookX === 1 && rookY === 1);
+                if (isInitialPos) {
+                    const targetX = 9 - targetRookFile;
+                    if (rookX !== targetX) {
+                        const targetY = rookY;
+                        const legal = getLegalMoves(rookX, rookY);
+                        const canMove = legal.some(m => m.x === targetX && m.y === targetY);
+    
+                        if (canMove) {
+                            const fileFrom = 9 - rookX;
+                            const rankFrom = String.fromCharCode(97 + rookY);
+                            const fileTo = 9 - targetX;
+                            const rankTo = String.fromCharCode(97 + targetY);
+                            const furiMove = `${fileFrom}${rankFrom}${fileTo}${rankTo}`;
+    
+                            const exists = candidateMoves.some(c => c.move === furiMove);
+                            
+                            if (!exists) {
+                                // 注入時はボーナスなしのスコアで追加
+                                const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
+                                console.log(`[強制注入] ${furiMove} を候補に追加しました`);
+                                candidateMoves.push({
+                                    id: 999, // 強制注入の手は ID:999 とする
+                                    move: furiMove,
+                                    score: baseScore 
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-                if (isInitialPos) {
-                    const targetX = 9 - targetRookFile;
-                    if (rookX !== targetX) {
-                        const targetY = rookY;
-                        const legal = getLegalMoves(rookX, rookY);
-                        const canMove = legal.some(m => m.x === targetX && m.y === targetY);
-    
-                        if (canMove) {
-                            const fileFrom = 9 - rookX;
-                            const rankFrom = String.fromCharCode(97 + rookY);
-                            const fileTo = 9 - targetX;
-                            const rankTo = String.fromCharCode(97 + targetY);
-                            const furiMove = `${fileFrom}${rankFrom}${fileTo}${rankTo}`;
-    
-                            const exists = candidateMoves.some(c => c.move === furiMove);
-                            
-                            if (!exists) {
-                                // 注入時はボーナスなしのスコアで追加
-                                const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
-                                console.log(`[強制注入] ${furiMove} を候補に追加しました`);
-                                candidateMoves.push({
-                                    id: 999, // 強制注入の手は ID:999 とする
-                                    move: furiMove,
-                                    score: baseScore 
-                                });
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // ▼▼▼ 最終選択（コンソール表示機能を追加した修正版） ▼▼▼
+        if (candidateMoves.length > 0) {
+            console.group(`▼ AI思考詳細 (Lv${currentLevelSetting.name})`); // ログをグループ化
 
-        // ▼▼▼ 最終選択（修正：定跡表示対応版） ▼▼▼
-        if (candidateMoves.length > 0) {
-            console.group(`▼ AI思考詳細 (Lv${currentLevelSetting.name})`); 
+            const noiseRange = currentLevelSetting.noise;
+            
+            // map処理の中で詳細なデータを生成する
+            const noisyCandidates = candidateMoves.map(c => {
+                // ノイズ計算
+                const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
+                let finalScore = c.score + noise;
+                let note = ""; // 特殊処理のメモ用
 
-            const noiseRange = currentLevelSetting.noise;
-            
-            const noisyCandidates = candidateMoves.map(c => {
-                const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
-                let finalScore = c.score + noise;
-                let note = ""; 
+                // 強制注入された手の判定
+                if (c.id === 999) {
+                    note += "★強制注入 ";
+                }
+                
+                // 狙いの筋ならボーナスを与える
+                if (isOddLevel && isOpening) {
+                    let isTarget = false;
+                    if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
+                    if (turn === "white" && c.move === `8b${targetRookFile}b`) isTarget = true;
+                    
+                    if (isTarget) {
+                        finalScore += 300; 
+                        note += "★作戦ボーナス(+300) ";
+                    }
+                }
 
-                if (c.id === 999) {
-                    note += "★強制注入 ";
-                }
-                
-                if (isOddLevel && isOpening) {
-                    let isTarget = false;
-                    if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
-                    if (turn === "white" && c.move === `8b${targetRookFile}b`) isTarget = true;
-                    
-                    if (isTarget) {
-                        finalScore += 300; 
-                        note += "★作戦ボーナス(+300) ";
-                    }
-                }
+                return { 
+                    move: c.move, 
+                    baseScore: c.score,   // 元の評価値
+                    noise: Math.floor(noise), // 加えたノイズ
+                    finalScore: Math.floor(finalScore), // 最終スコア
+                    note: note // 特殊フラグ
+                };
+            });
 
-                return { 
-                    move: c.move, 
-                    baseScore: c.score,   
-                    noise: Math.floor(noise), 
-                    finalScore: Math.floor(finalScore), 
-                    note: note,
-                    id: c.id // IDも渡す
-                };
-            });
+            // 最終スコアが高い順にソート
+            noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
 
-            noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
+            // コンソールに表形式で出力
+            console.table(noisyCandidates);
+            
+            // 最善手を決定
+            bestMove = noisyCandidates[0].move;
+            console.log(`採用手: ${bestMove} (最終スコア: ${noisyCandidates[0].finalScore})`);
+            
+            console.groupEnd(); // ロググループ終了
+        }
+        
+        // --- 狙い通りの手を指したら、定跡をONに戻す ---
+        if (isOddLevel && currentLevelSetting.useBook) {
+            let executedStrategy = false;
+            if (turn === "black") {
+                if (bestMove === `2h${targetRookFile}h`) executedStrategy = true;
+            } else {
+                if (bestMove === `8b${targetRookFile}b`) executedStrategy = true;
+            }
 
-            console.table(noisyCandidates);
-            
-            // 最善手を決定
-            bestMove = noisyCandidates[0].move;
+            if (executedStrategy) {
+                console.log(`★狙い通りの${targetRookFile}筋に振りました！定跡(Book)をONに復帰させます。`);
+                sendToEngine("setoption name BookFile value user_book1.db");
+            }
+        }
+        // -----------------------------------------------------------------
 
-            // ▼▼▼ 表示文字列の作成 ▼▼▼
-            let logSuffix = "";
-            const topCand = noisyCandidates[0];
-
-            // 1. スクリプトによる強制注入の場合
-            if (topCand.id === 999 || topCand.note.includes("強制") || topCand.note.includes("作戦")) {
-                logSuffix = " (定跡/作戦)";
-            }
-            // 2. エンジンの定跡ヒットの場合
-            else if (isBookHit) {
-                // 採用手がエンジン定跡手と同じか確認（ノイズで別の手を指していないか）
-                if (topCand.move === parts[1]) {
-                    logSuffix = " (定跡)";
-                }
-            }
-            
-            console.log(`採用手: ${bestMove} (最終スコア: ${topCand.finalScore})${logSuffix}`);
-            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-            console.groupEnd(); 
-        } else if (isBookHit) {
-            // ★候補手リストが空で、かつ定跡ヒットしている場合（エンジンが即指しした場合など）
-            console.log(`採用手: ${bestMove} (定跡)`);
-        }
-        
-        // --- 狙い通りの手を指したら、定跡をONに戻す ---
-        if (isOddLevel && currentLevelSetting.useBook) {
-            let executedStrategy = false;
-            if (turn === "black") {
-                if (bestMove === `2h${targetRookFile}h`) executedStrategy = true;
-            } else {
-                if (bestMove === `8b${targetRookFile}b`) executedStrategy = true;
-            }
-
-            if (executedStrategy) {
-                console.log(`★狙い通りの${targetRookFile}筋に振りました！定跡(Book)をONに復帰させます。`);
-                sendToEngine("setoption name BookFile value user_book1.db");
-            }
-        }
-        // -----------------------------------------------------------------
-
-        applyUsiMove(bestMove);
-        if (!gameOver) setTimeout(startPondering, 500);
-    }
+        applyUsiMove(bestMove);
+        if (!gameOver) setTimeout(startPondering, 500);
+    }
 }
+
 
 function playBGM() {
   if (!bgm) return;
@@ -1347,7 +1325,6 @@ function cpuMove() {
 
     stopPondering(); 
     candidateMoves = [];
-    isBookHit = false;
 
     statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
     let positionCmd = "";
@@ -2055,5 +2032,3 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
-
-
