@@ -100,7 +100,7 @@ let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 let candidateMoves = [];
 let targetRookFile = 0;
-
+let isBookHit = false;
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
 // ★必殺技・ゲージ関連の変数
@@ -233,72 +233,79 @@ function sendToEngine(msg) {
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
 function handleEngineMessage(msg) {
-    // 1. 候補手情報の解析
-    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
-        let pvIndex = 1;
-        const matchPv = msg.match(/multipv (\d+)/);
-        if (matchPv) pvIndex = parseInt(matchPv[1]);
+    // ▼▼▼ 追加：エンジンの定跡ヒットメッセージを検知 ▼▼▼
+    if (typeof msg === "string" && msg.startsWith("info string") && (msg.includes("book") || msg.includes("Book"))) {
+        isBookHit = true;
+        console.log("★定跡ヒット！");
+    }
+    // ▲▲▲▲▲▲
 
-        let score = 0;
-        const matchScore = msg.match(/score cp ([\-\d]+)/);
-        const matchMate = msg.match(/score mate ([\-\d]+)/);
+    // 1. 候補手情報の解析
+    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
+        let pvIndex = 1;
+        const matchPv = msg.match(/multipv (\d+)/);
+        if (matchPv) pvIndex = parseInt(matchPv[1]);
 
-        if (matchScore) score = parseInt(matchScore[1]);
-        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
+        let score = 0;
+        const matchScore = msg.match(/score cp ([\-\d]+)/);
+        const matchMate = msg.match(/score mate ([\-\d]+)/);
 
-        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
-        if (matchMove) {
-            const move = matchMove[1];
-            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
-            if (existingIdx !== -1) {
-                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
-            } else {
-                candidateMoves.push({ id: pvIndex, move: move, score: score });
-            }
-        }
-        
-        if (pvIndex === 1) {
-            let graphScore = score;
-            if (turn === "white") graphScore = -graphScore;
-            evalHistory[moveCount] = graphScore;
-            updateChart();
-        }
-    }
+        if (matchScore) score = parseInt(matchScore[1]);
+        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
 
-    if (msg === "usiok") {
-        sendToEngine("isready");
-    }
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        
-        // 作戦決定
-        const strategyType = Math.floor(Math.random() * 4);
-        
-        if (cpuSide === "white") {
-            const files = [5, 4, 3];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
-        } else {
-            const files = [5, 6, 7];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
-        }
+        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
+        if (matchMove) {
+            const move = matchMove[1];
+            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
+            if (existingIdx !== -1) {
+                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
+            } else {
+                candidateMoves.push({ id: pvIndex, move: move, score: score });
+            }
+        }
+        
+        if (pvIndex === 1) {
+            let graphScore = score;
+            if (turn === "white") graphScore = -graphScore;
+            evalHistory[moveCount] = graphScore;
+            updateChart();
+        }
+    }
 
-        // 定跡制御：奇数レベルなら一旦OFF
-        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+    if (msg === "usiok") {
+        sendToEngine("isready");
+    }
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        
+        // 作戦決定
+        const strategyType = Math.floor(Math.random() * 4);
+        
+        if (cpuSide === "white") {
+            const files = [5, 4, 3];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
+        } else {
+            const files = [5, 6, 7];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
+        }
 
-        if (currentLevelSetting.useBook && !isOddLevel) {
-            console.log("定跡をONにします");
-            sendToEngine("setoption name BookFile value user_book1.db"); 
-        } else {
-            console.log("定跡をOFFにします（戦型指定のため）");
-            sendToEngine("setoption name BookFile value no_book"); 
-        }
+        // 定跡制御：奇数レベルなら一旦OFF
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
 
-        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
-        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
-    }
-    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
+        if (currentLevelSetting.useBook && !isOddLevel) {
+            console.log("定跡をONにします");
+            sendToEngine("setoption name BookFile value user_book1.db"); 
+        } else {
+            console.log("定跡をOFFにします（戦型指定のため）");
+            sendToEngine("setoption name BookFile value no_book"); 
+        }
+
+        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
+    }
+    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
         const parts = msg.split(" ");
         let bestMove = parts[1];
         
@@ -365,25 +372,21 @@ function handleEngineMessage(msg) {
             }
         }
 
-        // ▼▼▼ 最終選択（コンソール表示機能を追加した修正版） ▼▼▼
+        // ▼▼▼ 最終選択（修正：定跡表示対応版） ▼▼▼
         if (candidateMoves.length > 0) {
-            console.group(`▼ AI思考詳細 (Lv${currentLevelSetting.name})`); // ログをグループ化
+            console.group(`▼ AI思考詳細 (Lv${currentLevelSetting.name})`); 
 
             const noiseRange = currentLevelSetting.noise;
             
-            // map処理の中で詳細なデータを生成する
             const noisyCandidates = candidateMoves.map(c => {
-                // ノイズ計算
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
                 let finalScore = c.score + noise;
-                let note = ""; // 特殊処理のメモ用
+                let note = ""; 
 
-                // 強制注入された手の判定
                 if (c.id === 999) {
                     note += "★強制注入 ";
                 }
                 
-                // 狙いの筋ならボーナスを与える
                 if (isOddLevel && isOpening) {
                     let isTarget = false;
                     if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
@@ -397,24 +400,44 @@ function handleEngineMessage(msg) {
 
                 return { 
                     move: c.move, 
-                    baseScore: c.score,   // 元の評価値
-                    noise: Math.floor(noise), // 加えたノイズ
-                    finalScore: Math.floor(finalScore), // 最終スコア
-                    note: note // 特殊フラグ
+                    baseScore: c.score,   
+                    noise: Math.floor(noise), 
+                    finalScore: Math.floor(finalScore), 
+                    note: note,
+                    id: c.id // IDも渡す
                 };
             });
 
-            // 最終スコアが高い順にソート
             noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
 
-            // コンソールに表形式で出力
             console.table(noisyCandidates);
             
             // 最善手を決定
             bestMove = noisyCandidates[0].move;
-            console.log(`採用手: ${bestMove} (最終スコア: ${noisyCandidates[0].finalScore})`);
+
+            // ▼▼▼ 表示文字列の作成 ▼▼▼
+            let logSuffix = "";
+            const topCand = noisyCandidates[0];
+
+            // 1. スクリプトによる強制注入の場合
+            if (topCand.id === 999 || topCand.note.includes("強制") || topCand.note.includes("作戦")) {
+                logSuffix = " (定跡/作戦)";
+            }
+            // 2. エンジンの定跡ヒットの場合
+            else if (isBookHit) {
+                // 採用手がエンジン定跡手と同じか確認（ノイズで別の手を指していないか）
+                if (topCand.move === parts[1]) {
+                    logSuffix = " (定跡)";
+                }
+            }
             
-            console.groupEnd(); // ロググループ終了
+            console.log(`採用手: ${bestMove} (最終スコア: ${topCand.finalScore})${logSuffix}`);
+            // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+            console.groupEnd(); 
+        } else if (isBookHit) {
+            // ★候補手リストが空で、かつ定跡ヒットしている場合（エンジンが即指しした場合など）
+            console.log(`採用手: ${bestMove} (定跡)`);
         }
         
         // --- 狙い通りの手を指したら、定跡をONに戻す ---
@@ -437,7 +460,6 @@ function handleEngineMessage(msg) {
         if (!gameOver) setTimeout(startPondering, 500);
     }
 }
-
 
 function playBGM() {
   if (!bgm) return;
@@ -1325,6 +1347,7 @@ function cpuMove() {
 
     stopPondering(); 
     candidateMoves = [];
+    isBookHit = false;
 
     statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
     let positionCmd = "";
@@ -2032,3 +2055,4 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
