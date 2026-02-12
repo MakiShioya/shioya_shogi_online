@@ -150,6 +150,50 @@
     cursor: not-allowed;
 }
 
+    /* --- ★追加：ルーム設定用スタイル --- */
+.room-settings {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid #666;
+    border-radius: 10px;
+    padding: 10px;
+    margin: 15px auto;
+    max-width: 90%;
+}
+.room-settings h3 {
+    margin: 0 0 10px 0;
+    font-size: 1rem;
+    color: #ddd;
+}
+.mode-toggle-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+.mode-select-btn {
+    flex: 1;
+    padding: 8px;
+    border: 2px solid #555;
+    background: #333;
+    color: #aaa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: bold;
+}
+/* 選択されている側のスタイル */
+.mode-select-btn.selected {
+    background: #FFB347; /* かじゅある色 */
+    color: #333;
+    border-color: #FFB347;
+    box-shadow: 0 0 10px rgba(255, 179, 71, 0.5);
+}
+/* ふぉーまる選択時のスタイル上書き */
+#modeBtnFormal.selected {
+    background: #607d8b; /* ふぉーまる色 */
+    color: white;
+    border-color: #607d8b;
+    box-shadow: 0 0 10px rgba(96, 125, 139, 0.5);
+}
 
 </style>
 </head>
@@ -171,6 +215,26 @@
         </div>
     </div>
 
+
+    <div class="room-settings">
+    <h3>対局モード設定</h3>
+    <div class="mode-toggle-container">
+        <button id="modeBtnCasual" class="mode-select-btn selected" onclick="changeRoomMode('casual')">
+            かじゅある<br><span style="font-size:0.7rem">必殺技あり</span>
+        </button>
+        <button id="modeBtnFormal" class="mode-select-btn" onclick="changeRoomMode('formal')">
+            ふぉーまる<br><span style="font-size:0.7rem">必殺技なし</span>
+        </button>
+    </div>
+    <p id="modeInfoText" style="font-size:0.8rem; color:#aaa; margin-top:5px;">
+        ※現在の設定が対局に適用されます
+    </p>
+</div>
+
+    
+
+
+    
     <div class="button-group">
 
     <button id="readyBtn" onclick="toggleReady()">準備OK</button>
@@ -184,6 +248,7 @@
     let myUserId = localStorage.getItem('shogi_user_id');
     let myRole = null;
     let roomId = new URLSearchParams(window.location.search).get('room') || 'default';
+    let currentRoomMode = 'casual';
 
     // document.getElementById('roomTitle').textContent = `部屋: ${roomId}`;
 
@@ -336,7 +401,43 @@ if (typeof firebase !== 'undefined' && firebase.auth) {
     // ページ全体のスクロールを完全に無効化
     e.preventDefault();
   }, { passive: false });
+
+    // 1. ボタンを押したときの処理
+function changeRoomMode(mode) {
+    // サーバーに「モード変わったよ」と通知
+    // ※サーバー側でこれを受け取り、部屋内の全員に broadcast する必要があります
+    socket.emit('change room mode', { roomId: roomId, mode: mode });
+}
+
+// 2. サーバーから「モードが変わったよ」と通知が来たときの処理
+socket.on('update room mode', (mode) => {
+    currentRoomMode = mode;
+    updateModeUI(mode);
+});
+
+// 3. UIの見た目を更新する関数
+function updateModeUI(mode) {
+    const btnCasual = document.getElementById('modeBtnCasual');
+    const btnFormal = document.getElementById('modeBtnFormal');
+    
+    if (mode === 'casual') {
+        btnCasual.classList.add('selected');
+        btnFormal.classList.remove('selected');
+    } else {
+        btnCasual.classList.remove('selected');
+        btnFormal.classList.add('selected');
+    }
+}
+
+// 4. 【重要】対局画面へ移動する処理の修正
+function goToGame() {
+    // ★URLパラメータに mode を追加して渡す！
+    // これで「ホーム画面の設定」ではなく「部屋の設定」が優先されます
+    window.location.href = `player_vs_player_online.html?room=${encodeURIComponent(roomId)}&mode=${currentRoomMode}`;
+}
+    
 </script>
 
 </body>
 </html>
+
