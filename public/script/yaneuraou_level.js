@@ -382,7 +382,7 @@ function handleEngineMessage(msg) {
                     if (turn === "white" && c.move === `8b${targetRookFile}b`) isTarget = true;
                     
                     if (isTarget) {
-                        finalScore += 2000; 
+                        finalScore += 300; 
                     }
                 }
 
@@ -2008,6 +2008,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
