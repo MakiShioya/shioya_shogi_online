@@ -347,13 +347,16 @@ function handleEngineMessage(msg) {
                         const exists = candidateMoves.some(c => c.move === furiMove);
                         
                         if (!exists) {
+                            // エンジンの最善手と同じスコア（ボーナスなし）で追加しておく
+                            // ※ボーナスは後のループで一括で与えるため、ここでは足さない
                             const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
-                            const injectScore = baseScore + 500;
+                            
+                            console.log(`[強制注入] ${furiMove} を候補に追加しました`);
                             
                             candidateMoves.push({
                                 id: 999, 
                                 move: furiMove,
-                                score: injectScore
+                                score: baseScore 
                             });
                         }
                     }
@@ -361,12 +364,27 @@ function handleEngineMessage(msg) {
             }
         }
 
-        // ▼▼▼ 最終選択
+        // ▼▼▼ 最終選択（ここでボーナスを一括加算！）
         if (candidateMoves.length > 0) {
             const noiseRange = currentLevelSetting.noise;
+            
             const noisyCandidates = candidateMoves.map(c => {
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
                 let finalScore = c.score + noise;
+                
+                // ★修正：エンジンが見つけた手でも、注入した手でも、狙いの筋ならボーナスを与える
+                if (isOddLevel && isOpening) {
+                    let isTarget = false;
+                    if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
+                    if (turn === "white" && c.move === `8b${targetRookFile}b`) isTarget = true;
+                    
+                    if (isTarget) {
+                        // 中飛車などはエンジン評価が低めなので、強めに2000点加算して無理やり選ばせる
+                        finalScore += 2000; 
+                        // console.log(`★ボーナス適用: ${c.move} (+2000)`);
+                    }
+                }
+
                 return { move: c.move, finalScore: finalScore };
             });
 
@@ -374,7 +392,7 @@ function handleEngineMessage(msg) {
             bestMove = noisyCandidates[0].move;
         }
         
-        // --- ★ここが追加箇所：狙い通りの手を指したら、定跡をONに戻す ---
+        // --- 狙い通りの手を指したら、定跡をONに戻す ---
         if (isOddLevel && currentLevelSetting.useBook) {
             let executedStrategy = false;
             if (turn === "black") {
@@ -1989,6 +2007,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
