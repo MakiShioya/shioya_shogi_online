@@ -921,11 +921,6 @@ function movePieceWithSelected(sel, x, y) {
 }
 
 // script/yaneuraou_level.js の executeMove 関数
-
-// script/yaneuraou_level.js の executeMove 関数
-
-// script/yaneuraou_level.js の executeMove 関数（修正版）
-
 function executeMove(sel, x, y, doPromote) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
@@ -1125,6 +1120,9 @@ function executeMove(sel, x, y, doPromote) {
       const isPlayerAction = (sel.player === "black" && cpuSide === "white") || (sel.player === "white" && cpuSide === "black");
       if (isPlayerAction) addSkillPoint(gain);
       else addCpuSkillPoint(gain);
+    if (typeof checkFormations === "function") {
+          checkFormations(boardState, sel.player);
+      }
   }
   checkGameOver();
 }
@@ -2053,4 +2051,5 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
