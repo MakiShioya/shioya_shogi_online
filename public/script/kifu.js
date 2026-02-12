@@ -1,6 +1,7 @@
 // kifu.js
 
-function formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber) {
+
+function formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber, isBookMove) {
   const files = ["９","８","７","６","５","４","３","２","１"];
   const ranks = ["一","二","三","四","五","六","七","八","九"];
 
