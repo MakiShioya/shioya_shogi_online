@@ -450,11 +450,9 @@
   <script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
 
-<script>
+  <script>
     // --- 初期化処理 ---
     document.addEventListener("DOMContentLoaded", () => {
-      // ※注意: 他人のページを見たときも、今は「自分の設定しているキャラ」が表示されます。
-      // 他人の設定しているキャラを表示するには、FirestoreにキャラIDを保存する仕組みが別途必要です。
       const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
       if (window.CHARACTERS && window.CHARACTERS[savedCharId]) {
         const imgEl = document.querySelector('.character-stand');
@@ -464,101 +462,99 @@
       }
     });
 
-    // ユーザーデータの取得と表示 (Firebase)
+    // --- コピー機能 (グローバル関数として定義) ---
+    function copyMyId() {
+      const idText = document.getElementById("userIdDisplay").textContent;
+      if (!idText || idText === "---") return;
+      
+      navigator.clipboard.writeText(idText).then(() => {
+        const btn = document.querySelector(".copy-btn");
+        const originalText = btn.textContent;
+        btn.textContent = "OK!";
+        setTimeout(() => btn.textContent = originalText, 1500);
+      }).catch(err => {
+        alert("コピーできませんでした");
+      });
+    }
+
+    // --- チャット関連の変数 ---
+    let chatUnsubscribe = null;
+
+    // --- ユーザーデータ取得 ---
     firebase.auth().onAuthStateChanged((user) => {
-        // 1. URLパラメータから uid を取得 (?uid=xxxxx の部分)
         const urlParams = new URLSearchParams(window.location.search);
         const targetUserId = urlParams.get('uid');
-
-        // 2. 自分のIDを取得
         const myUserId = user ? user.uid : null;
-
-        // 3. どちらのデータを表示するか決定
-        // URLに指定があればそれを、なければ自分のIDを使う
         const fetchUserId = targetUserId || myUserId;
-
-        // 4. 表示モードの判定（自分自身を見ているかどうか）
         const isMe = (myUserId === fetchUserId);
 
-        // 編集ボタンの制御（他人のページなら隠す）
+        // 編集ボタン制御
         const editBtn = document.querySelector(".bio-edit-btn");
         if (editBtn) {
             editBtn.style.display = isMe ? "inline" : "none";
         }
 
         if (fetchUserId) {
-            // 指定されたID (fetchUserId) のデータを取得
             const docRef = db.collection("users").doc(fetchUserId);
             
             docRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
                     
-                    // --- 基本情報表示 ---
                     document.getElementById("userNameDisplay").textContent = data.name || "名無し";
-                    // 他人の場合でもIDは表示してOK（フレンド申請などに使うため）
+                    // ID全表示
                     document.getElementById("userIdDisplay").textContent = fetchUserId;
                     
-                    // --- 勝敗の計算ロジック ---
+                    // 勝敗計算
                     let wins = 0;
                     let loses = 0;
 
                     if (data.history && Array.isArray(data.history)) {
                         data.history.forEach(h => {
                             const res = (h.result || "").toString().toLowerCase();
-                            if (res === 'win' || res === 'victory' || res === 'sente_win' || res === 'gote_win') {
-                                wins++;
-                            }
-                            if (res === 'lose' || res === 'defeat') {
-                                loses++;
-                            }
+                            if (res.includes('win') || res.includes('victory')) wins++;
+                            if (res.includes('lose') || res.includes('defeat')) loses++;
                         });
                     } else {
-                        wins = data.wins || data.win || 0;
-                        loses = data.loses || data.lose || 0;
+                        wins = data.wins || 0;
+                        loses = data.loses || 0;
                     }
 
                     document.getElementById("statsWin").textContent = wins;
                     document.getElementById("statsLose").textContent = loses;
 
-                    // --- ひとこと表示 ---
+                    // ひとこと
                     if (data.bio) {
                       document.getElementById("bioTextDisplay").textContent = data.bio;
-                      // 編集用エリアにもセットしておく（自分の場合のみ有効）
                       if (isMe) {
                           document.getElementById("bioInput").value = data.bio;
                       }
                     } else {
-                        // 未設定の場合
                         document.getElementById("bioTextDisplay").textContent = "ひとことはまだありません。";
                     }
 
                 } else {
-                    console.log("データが見つかりません");
                     document.getElementById("userNameDisplay").textContent = "ユーザーが見つかりません";
                 }
             });
         } else {
-            // ログインしておらず、URL指定もない場合
             document.getElementById("userNameDisplay").textContent = "ゲスト";
         }
         
-        // チャットは常に初期化（ログインに関わらず見れるように）
+        // チャット初期化
         initLobbyChat();
     });
 
-    // --- 「ひとこと」編集機能（自分専用） ---
+    // --- ひとこと編集機能 ---
     function startBioEdit() {
-      // 念のため、ボタンが隠れていても押せないようにチェック
       const bioDisplay = document.getElementById("bioTextDisplay");
-      if(bioDisplay.style.display === "none") return; // 既に編集中なら無視
+      if(bioDisplay.style.display === "none") return;
 
       const currentText = bioDisplay.textContent;
       document.getElementById("bioInput").value = currentText;
       
       document.getElementById("bioTextDisplay").style.display = "none";
       document.getElementById("bioEditArea").style.display = "block";
-      // ボタンを隠す
       const btn = document.querySelector(".bio-edit-btn");
       if(btn) btn.style.display = "none";
     }
@@ -566,16 +562,14 @@
     function cancelBioEdit() {
       document.getElementById("bioTextDisplay").style.display = "block";
       document.getElementById("bioEditArea").style.display = "none";
-      // ボタンを再表示
       const btn = document.querySelector(".bio-edit-btn");
       if(btn) btn.style.display = "inline";
     }
 
     function saveBio() {
       const user = firebase.auth().currentUser;
-      if (!user) return; // ログインしてないときは保存不可
+      if (!user) return; 
 
-      // URLパラメータで他人のページを見ていないか最終チェック
       const urlParams = new URLSearchParams(window.location.search);
       const targetUserId = urlParams.get('uid');
       if (targetUserId && targetUserId !== user.uid) {
@@ -597,8 +591,6 @@
     }
 
     // --- チャット機能 ---
-    let chatUnsubscribe = null;
-
     function openLobbyChat() {
       document.getElementById('lobbyChatModal').style.display = 'flex';
       initLobbyChat();
@@ -624,21 +616,6 @@
                 messages.forEach(msg => addMessageToLobbyChatFirestore(msg));
                 historyDiv.scrollTop = 0;
             });
-    }
-
-  // --- コピー機能 ---
-    function copyMyId() {
-      const idText = document.getElementById("userIdDisplay").textContent;
-      if (!idText || idText === "---") return;
-      
-      navigator.clipboard.writeText(idText).then(() => {
-        const btn = document.querySelector(".copy-btn");
-        const originalText = btn.textContent;
-        btn.textContent = "OK!";
-        setTimeout(() => btn.textContent = originalText, 1500);
-      }).catch(err => {
-        alert("コピーできませんでした");
-      });
     }
 
     function addMessageToLobbyChatFirestore(data) {
@@ -711,6 +688,5 @@
   </script>
 </body>
 </html>
-
 
 
