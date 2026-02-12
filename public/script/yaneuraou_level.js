@@ -100,7 +100,7 @@ let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 let candidateMoves = [];
 let targetRookFile = 0;
-
+let aiUsedBook = false;
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
 // ★必殺技・ゲージ関連の変数
@@ -233,6 +233,11 @@ function sendToEngine(msg) {
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
 function handleEngineMessage(msg) {
+    if (typeof msg === "string") {
+        if (msg.includes("info") && (msg.includes("book") || msg.includes("定跡"))) {
+            aiUsedBook = true;
+        }
+    }
     // 1. 候補手情報の解析
     if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
         let pvIndex = 1;
@@ -433,7 +438,10 @@ function handleEngineMessage(msg) {
         }
         // -----------------------------------------------------------------
 
-        applyUsiMove(bestMove);
+        applyUsiMove(bestMove, aiUsedBook);
+        
+        // フラグをリセット
+        aiUsedBook = false;
         if (!gameOver) setTimeout(startPondering, 500);
     }
  }
@@ -923,7 +931,7 @@ function movePieceWithSelected(sel, x, y) {
 
 // script/yaneuraou_level.js の executeMove 関数（修正版）
 
-function executeMove(sel, x, y, doPromote) {
+function executeMove(sel, x, y, doPromote, isBookMove = false) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
 
@@ -1031,7 +1039,7 @@ function executeMove(sel, x, y, doPromote) {
       usiHistory.push(usiMove);
   }
 
-  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
+  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber, isBookMove);
   const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
 
   kifu.push(""); 
@@ -1379,8 +1387,8 @@ function convertToUsi(sel, toX, toY, promoted, pieceName) {
 }
 
 // AIの指し手反映（ポップアップ回避・強制実行）
-function applyUsiMove(usiMove) {
-    if (usiMove === "resign") return;
+function applyUsiMove(usiMove, isBook = false) {
+    if (usiMove === "resign") return;
 
     let sel = null;
     let toX = -1;
@@ -1411,7 +1419,7 @@ function applyUsiMove(usiMove) {
         doPromote = isPromote;
     }
     // AIはexecuteMoveを直接呼ぶ
-    executeMove(sel, toX, toY, doPromote);
+    executeMove(sel, toX, toY, doPromote, isBook);
 }
 
 // ★★★ SFEN生成（後手の持ち駒バグ修正版） ★★★
@@ -2031,6 +2039,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
