@@ -22,8 +22,8 @@
 
 const LEVEL_CONFIG = [
 
-    { id: 1,  name: "Lv1",  nodes: 250,  depth: 1,  multiPV: 10, noise: 4000, useBook: false },
-    { id: 2,  name: "Lv2",  nodes: 500,  depth: 2,  multiPV: 10, noise: 3000, useBook: false },
+    { id: 1,  name: "Lv1",  nodes: 1000,  depth: 1,  multiPV: 10, noise: 4000, useBook: false },
+    { id: 2,  name: "Lv2",  nodes: 1000,  depth: 2,  multiPV: 10, noise: 3000, useBook: false },
     { id: 3,  name: "Lv3",  nodes: 1000,  depth: 3,  multiPV: 10, noise: 2500, useBook: false },
     { id: 4,  name: "Lv4",  nodes: 2000,  depth: 4,  multiPV: 10, noise: 2200, useBook: false },
     { id: 5,  name: "Lv5",  nodes: 4000,  depth: 5,  multiPV: 10, noise: 1900, useBook: false },
@@ -49,32 +49,32 @@ const LEVEL_CONFIG = [
     { id: 23, name: "Lv23", nodes: 41000, depth: 12, multiPV: 6, noise: 80, useBook: false },
     { id: 24, name: "Lv24", nodes: 45000, depth: 12, multiPV: 6, noise: 70, useBook: false },
     { id: 25, name: "Lv25", nodes: 50000, depth: 13, multiPV: 6, noise: 60, useBook: false },
-    { id: 26, name: "Lv26", nodes: 55000, depth: 13, multiPV: 5, noise: 50, useBook: true },
-    { id: 27, name: "Lv27", nodes: 60000, depth: 13, multiPV: 5, noise: 45, useBook: true },
-    { id: 28, name: "Lv28", nodes: 66000, depth: 14, multiPV: 5, noise: 40, useBook: true },
-    { id: 29, name: "Lv29", nodes: 72000, depth: 14, multiPV: 5, noise: 35, useBook: true },
-    { id: 30, name: "Lv30", nodes: 80000, depth: 14, multiPV: 5, noise: 30, useBook: true },
+    { id: 26, name: "Lv26", nodes: 55000, depth: 13, multiPV: 5, noise: 50, useBook: false },
+    { id: 27, name: "Lv27", nodes: 60000, depth: 13, multiPV: 5, noise: 46, useBook: false },
+    { id: 28, name: "Lv28", nodes: 66000, depth: 14, multiPV: 5, noise: 44, useBook: false },
+    { id: 29, name: "Lv29", nodes: 72000, depth: 14, multiPV: 5, noise: 42, useBook: false },
+    { id: 30, name: "Lv30", nodes: 80000, depth: 14, multiPV: 5, noise: 40, useBook: false },
 
-    { id: 31, name: "Lv31", nodes: 82000,  depth: 15, multiPV: 4, noise: 27, useBook: true },
-    { id: 32, name: "Lv32", nodes: 90000,  depth: 15, multiPV: 4, noise: 24, useBook: true },
-    { id: 33, name: "Lv33", nodes: 100000,  depth: 15, multiPV: 4, noise: 21, useBook: true },
-    { id: 34, name: "Lv34", nodes: 110000,  depth: 16, multiPV: 4, noise: 18, useBook: true },
-    { id: 35, name: "Lv35", nodes: 120000,  depth: 16, multiPV: 4, noise: 15, useBook: true },
-    { id: 36, name: "Lv36", nodes: 140000, depth: 16, multiPV: 3, noise: 12, useBook: true },
-    { id: 37, name: "Lv37", nodes: 150000, depth: 17, multiPV: 3, noise: 9, useBook: true },
-    { id: 38, name: "Lv38", nodes: 160000, depth: 17, multiPV: 3, noise: 6, useBook: true },
-    { id: 39, name: "Lv39", nodes: 180000, depth: 17, multiPV: 3, noise: 3, useBook: true },
-    { id: 40, name: "Lv40", nodes: 200000, depth: 18, multiPV: 3, noise: 0, useBook: true },
+    { id: 31, name: "Lv31", nodes: 82000,  depth: 15, multiPV: 4, noise: 38, useBook: true },
+    { id: 32, name: "Lv32", nodes: 90000,  depth: 15, multiPV: 4, noise: 36, useBook: true },
+    { id: 33, name: "Lv33", nodes: 100000,  depth: 15, multiPV: 4, noise: 34, useBook: true },
+    { id: 34, name: "Lv34", nodes: 110000,  depth: 16, multiPV: 4, noise: 32, useBook: true },
+    { id: 35, name: "Lv35", nodes: 120000,  depth: 16, multiPV: 4, noise: 30, useBook: true },
+    { id: 36, name: "Lv36", nodes: 140000, depth: 16, multiPV: 3, noise: 28, useBook: true },
+    { id: 37, name: "Lv37", nodes: 150000, depth: 17, multiPV: 3, noise: 26, useBook: true },
+    { id: 38, name: "Lv38", nodes: 160000, depth: 17, multiPV: 3, noise: 24, useBook: true },
+    { id: 39, name: "Lv39", nodes: 180000, depth: 17, multiPV: 3, noise: 22, useBook: true },
+    { id: 40, name: "Lv40", nodes: 200000, depth: 18, multiPV: 3, noise: 20, useBook: true },
 
-    { id: 41, name: "Lv41", nodes: 220000,  depth: 18, multiPV: 2, noise: 0, useBook: true },
-    { id: 42, name: "Lv42", nodes: 250000,  depth: 18, multiPV: 2, noise: 0, useBook: true },
-    { id: 43, name: "Lv43", nodes: 300000,  depth: 19, multiPV: 2, noise: 0, useBook: true },
-    { id: 44, name: "Lv44", nodes: 350000,  depth: 19, multiPV: 2, noise: 0, useBook: true },
-    { id: 45, name: "Lv45", nodes: 400000,  depth: 19, multiPV: 2, noise: 0, useBook: true },
-    { id: 46, name: "Lv46", nodes: 460000,  depth: 20, multiPV: 1, noise: 0, useBook: true },
-    { id: 47, name: "Lv47", nodes: 520000,  depth: 20, multiPV: 1, noise: 0, useBook: true },
-    { id: 48, name: "Lv48", nodes: 600000,  depth: 20, multiPV: 1, noise: 0, useBook: true },
-    { id: 49, name: "Lv49", nodes: 800000,  depth: 21, multiPV: 1, noise: 0, useBook: true },
+    { id: 41, name: "Lv41", nodes: 220000,  depth: 18, multiPV: 2, noise: 18, useBook: true },
+    { id: 42, name: "Lv42", nodes: 250000,  depth: 18, multiPV: 2, noise: 16, useBook: true },
+    { id: 43, name: "Lv43", nodes: 300000,  depth: 19, multiPV: 2, noise: 14, useBook: true },
+    { id: 44, name: "Lv44", nodes: 350000,  depth: 19, multiPV: 2, noise: 12, useBook: true },
+    { id: 45, name: "Lv45", nodes: 400000,  depth: 19, multiPV: 2, noise: 10, useBook: true },
+    { id: 46, name: "Lv46", nodes: 460000,  depth: 20, multiPV: 1, noise: 8, useBook: true },
+    { id: 47, name: "Lv47", nodes: 520000,  depth: 20, multiPV: 1, noise: 6, useBook: true },
+    { id: 48, name: "Lv48", nodes: 600000,  depth: 20, multiPV: 1, noise: 4, useBook: true },
+    { id: 49, name: "Lv49", nodes: 800000,  depth: 21, multiPV: 1, noise: 2, useBook: true },
     { id: 50, name: "Lv50", nodes: 900000, depth: 22, multiPV: 1, noise: 0, useBook: true }
 ];
 // 現在のレベル（初期値はLv1にしておきます）
@@ -2003,6 +2003,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
