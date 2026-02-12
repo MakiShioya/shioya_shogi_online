@@ -436,7 +436,7 @@ function handleEngineMessage(msg) {
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
     }
-
+ }
 
 function playBGM() {
   if (!bgm) return;
@@ -2031,6 +2031,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
