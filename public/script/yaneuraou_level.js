@@ -22,7 +22,7 @@
 
 const LEVEL_CONFIG = [
     // --- 【入門・初心者帯】 (Lv1-10) 派手に間違える ---
-    { id: 1,  name: "Lv1",  nodes: 5000,  depth: 5,  multiPV: 30, noise: 1000, useBook: false },
+    { id: 1,  name: "Lv1",  nodes: 5000,  depth: 5,  multiPV: 20, noise: 6000, useBook: false },
     { id: 2,  name: "Lv2",  nodes: 6000,  depth: 5,  multiPV: 18, noise: 5500, useBook: false },
     { id: 3,  name: "Lv3",  nodes: 7000,  depth: 6,  multiPV: 16, noise: 5000, useBook: false },
     { id: 4,  name: "Lv4",  nodes: 8000,  depth: 6,  multiPV: 14, noise: 4500, useBook: false },
@@ -1983,5 +1983,6 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
