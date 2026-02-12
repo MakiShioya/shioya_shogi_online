@@ -329,7 +329,6 @@ function handleEngineMessage(msg) {
             }
 
             if (rookX !== -1) {
-                // --- ★ここが追加された初期位置チェック ---
                 // 先手(2h)は [7][7]、後手(8b)は [1][1]
                 const isInitialPos = (turn === "black" && rookX === 7 && rookY === 7) || 
                                      (turn === "white" && rookX === 1 && rookY === 1);
@@ -355,7 +354,7 @@ function handleEngineMessage(msg) {
                                 const baseScore = (candidateMoves.length > 0) ? candidateMoves[0].score : 0;
                                 console.log(`[強制注入] ${furiMove} を候補に追加しました`);
                                 candidateMoves.push({
-                                    id: 999, 
+                                    id: 999, // 強制注入の手は ID:999 とする
                                     move: furiMove,
                                     score: baseScore 
                                 });
@@ -363,19 +362,28 @@ function handleEngineMessage(msg) {
                         }
                     }
                 }
-                // --- チェック終了 ---
             }
         }
 
-        // ▼▼▼ 最終選択（ここでボーナスを一括加算！）
+        // ▼▼▼ 最終選択（コンソール表示機能を追加した修正版） ▼▼▼
         if (candidateMoves.length > 0) {
+            console.group(`▼ AI思考詳細 (Lv${currentLevelSetting.name})`); // ログをグループ化
+
             const noiseRange = currentLevelSetting.noise;
             
+            // map処理の中で詳細なデータを生成する
             const noisyCandidates = candidateMoves.map(c => {
+                // ノイズ計算
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
                 let finalScore = c.score + noise;
+                let note = ""; // 特殊処理のメモ用
+
+                // 強制注入された手の判定
+                if (c.id === 999) {
+                    note += "★強制注入 ";
+                }
                 
-                // 狙いの筋ならボーナスを与える（注入された手も、元からあった手も）
+                // 狙いの筋ならボーナスを与える
                 if (isOddLevel && isOpening) {
                     let isTarget = false;
                     if (turn === "black" && c.move === `2h${targetRookFile}h`) isTarget = true;
@@ -383,14 +391,30 @@ function handleEngineMessage(msg) {
                     
                     if (isTarget) {
                         finalScore += 300; 
+                        note += "★作戦ボーナス(+300) ";
                     }
                 }
 
-                return { move: c.move, finalScore: finalScore };
+                return { 
+                    move: c.move, 
+                    baseScore: c.score,   // 元の評価値
+                    noise: Math.floor(noise), // 加えたノイズ
+                    finalScore: Math.floor(finalScore), // 最終スコア
+                    note: note // 特殊フラグ
+                };
             });
 
+            // 最終スコアが高い順にソート
             noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
+
+            // コンソールに表形式で出力
+            console.table(noisyCandidates);
+            
+            // 最善手を決定
             bestMove = noisyCandidates[0].move;
+            console.log(`採用手: ${bestMove} (最終スコア: ${noisyCandidates[0].finalScore})`);
+            
+            console.groupEnd(); // ロググループ終了
         }
         
         // --- 狙い通りの手を指したら、定跡をONに戻す ---
@@ -412,7 +436,6 @@ function handleEngineMessage(msg) {
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
     }
-}
 
 
 function playBGM() {
@@ -2008,6 +2031,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
