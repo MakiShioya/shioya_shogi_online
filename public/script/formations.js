@@ -1,66 +1,108 @@
+// script/formations.js
+
+// 座標指定を直感的にするためのヘルパー関数
+// 例: pos(7, 8) => 7八 の配列インデックス {y:7, x:2} を返す
+function pos(suji, dan) {
+    return { y: dan - 1, x: 9 - suji };
+}
+
 // 戦法の定義リスト
 const FORMATION_DATA = [
     {
         id: "MINO",
         name: "美濃囲い",
-        image: "script/image/cutin/mino.png",
-        audio: "script/audio/se/mino.mp3",
-        // 先手(Black)視点の座標 {row, col, piece} 
-        // 1一を(0,0)とするか、9九を(8,8)とするかは既存のboard配列に合わせてください
+        image: "script/image/senpou/mino.png", // パスを確認してください
+        audio: "script/audio/senpou/mino.mp3", // パスを確認してください
+        // 先手番基準の配置
         requirements: [
-            { r: 8, c: 7, p: "S" }, // 8七銀
-            { r: 8, c: 8, p: "G" }, // 8八金
-            { r: 7, c: 8, p: "G" }, // 7八金
-            { r: 8, c: 9, p: "K" }  // 9九玉
+            { suji: 2, dan: 8, p: "K" }, // 2八玉
+            { suji: 3, dan: 8, p: "S" }, // 3八銀
+            { suji: 4, dan: 9, p: "G" }, // 4九金
+            { suji: 5, dan: 8, p: "G" }  // 5八金
         ]
     },
     {
         id: "SHIKEN",
         name: "四間飛車",
-        image: "script/image/cutin/shiken.png",
-        audio: "script/audio/se/shiken.mp3",
+        image: "script/image/senpou/shiken.png",
+        audio: "script/audio/senpou/shiken.mp3",
         requirements: [
-            { r: 6, c: 7, p: "R" }  // 7八飛
+            { suji: 6, dan: 8, p: "R" }  // 6八飛（先手の四間飛車は6筋です！）
+        ]
+    },
+    {
+        id: "SANKEN",
+        name: "三間飛車",
+        image: "script/image/senpou/sanken.png",
+        audio: "script/audio/senpou/sanken.mp3",
+        requirements: [
+            { suji: 7, dan: 8, p: "R" }  // 7八飛
+        ]
+    },
+    {
+        id: "NAKA",
+        name: "中飛車",
+        image: "script/image/senpou/naka.png",
+        audio: "script/audio/senpou/naka.mp3",
+        requirements: [
+            { suji: 5, dan: 8, p: "R" }  // 5八飛
         ]
     }
-    // ここにどんどん追加できます
 ];
 
-// すでに発動した戦法を記録（1対局1回まで）
+// すでに発動した戦法を記録（プレイヤーIDごとに管理すると安全ですが、簡易的に文字列で）
+// "black:MINO", "white:SHIKEN" のように記録します
 let triggeredFormations = new Set();
 
 /**
- * 座標を後手用に反転させる関数
- * row: 0~8, col: 0~8 を想定
+ * 戦法判定のメイン関数
+ * board: 現在の盤面配列
+ * player: "black" | "white" (現在の手番プレイヤー、または判定したい側のプレイヤー)
  */
-function getRelativePos(pos, isWhite) {
-    if (!isWhite) return pos; 
-    return {
-        r: 8 - pos.r, // 行を反転
-        c: 8 - pos.c, // 列を反転
-        p: pos.p      // 駒種はそのまま
-    };
-}
+function checkFormations(board, player) {
+    const isWhite = (player === "white");
 
-/**
- * 戦法が成立しているかチェックする
- */
-function checkFormations(board, isWhite) {
     for (const f of FORMATION_DATA) {
-        if (triggeredFormations.has(f.id)) continue;
+        // すでにこのプレイヤーが発動済みならスキップ
+        const key = `${player}:${f.id}`;
+        if (triggeredFormations.has(key)) continue;
 
+        // 全ての駒が配置通りにあるかチェック
         const isComplete = f.requirements.every(req => {
-            const rel = getRelativePos(req, isWhite);
-            const pieceOnBoard = board[rel.r][rel.c];
+            // 先手・後手で座標を変換
+            let targetX, targetY;
+
+            if (!isWhite) {
+                // 先手：定義通りの座標
+                const p = pos(req.suji, req.dan);
+                targetX = p.x;
+                targetY = p.y;
+            } else {
+                // 後手：180度回転 (点対称)
+                // 筋: (9 - suji) の逆 -> 9 - (10 - suji) ... 少しややこしいので配列基準で反転します
+                // 配列基準: x' = 8 - x, y' = 8 - y
+                const p = pos(req.suji, req.dan);
+                targetX = 8 - p.x;
+                targetY = 8 - p.y;
+            }
+
+            // 盤上の駒を取得
+            const pieceOnBoard = board[targetY][targetX]; // board[y][x] である点に注意
+
+            // 駒が一致するか（後手なら小文字に変換して比較）
+            // 定義(req.p)は常に大文字(K, R, G...)とする
+            const neededPiece = isWhite ? req.p.toLowerCase() : req.p.toUpperCase();
             
-            // 自分の駒種と一致するか（先手なら大文字、後手なら小文字など）
-            const targetPiece = isWhite ? req.p.toLowerCase() : req.p.toUpperCase();
-            return pieceOnBoard === targetPiece;
+            // 成り駒でもOKにする場合（例: 龍でも四間飛車判定するか？）
+            // 厳密にするなら === ですが、通常は成り駒も含めることが多いです。
+            // ここでは厳密一致（成り駒はNG）として記述します。
+            return pieceOnBoard === neededPiece;
         });
 
         if (isComplete) {
+            console.log(`戦法発動！: ${f.name} (${player})`);
             executeFormationEffect(f);
-            triggeredFormations.add(f.id);
+            triggeredFormations.add(key);
         }
     }
 }
@@ -69,18 +111,22 @@ function checkFormations(board, isWhite) {
  * 演出の実行
  */
 function executeFormationEffect(formation) {
-    // 画像の表示
+    // 画像
     const cutIn = document.getElementById('skillCutIn');
-    cutIn.src = formation.image;
-    cutIn.classList.add('cut-in-active');
-
-    // 音声の再生
-    const se = new Audio(formation.audio);
-    se.volume = 0.5;
-    se.play();
-
-    // 演出終了後にクラスを外す
-    setTimeout(() => {
+    if (cutIn) {
+        cutIn.src = formation.image;
+        
+        // アニメーションのリセット（連続発動対応）
         cutIn.classList.remove('cut-in-active');
-    }, 2000); // animationの長さに合わせる
+        void cutIn.offsetWidth; // リフロー発生
+        cutIn.classList.add('cut-in-active');
+    }
+
+    // 音声
+    // 画像や音声ファイルがない場合のエラーを防ぐ
+    if (formation.audio) {
+        const se = new Audio(formation.audio);
+        se.volume = 0.5;
+        se.play().catch(e => console.log("音声再生エラー:", e));
+    }
 }
