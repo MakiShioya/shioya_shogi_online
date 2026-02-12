@@ -283,13 +283,7 @@
   <script>
     // --- 初期化処理 ---
     
-    // Firestoreなどを使うための準備
-    let db = null;
-    try {
-        db = firebase.firestore();
-    } catch(e) {
-        console.error("Firestore init error", e);
-    }
+    // 【修正】auth.js で db が宣言済みのため、ここでは宣言を削除しました。
 
     // ロード画面消去
     window.addEventListener('load', () => {
@@ -319,6 +313,7 @@
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
             // Firestoreから最新情報を取得
+            // ※ここで db 変数を使っていますが、auth.js で定義されているものを参照します
             db.collection("users").doc(user.uid).onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
