@@ -273,11 +273,11 @@ function handleEngineMessage(msg) {
         const strategyType = Math.floor(Math.random() * 4);
         
         if (cpuSide === "white") {
-            const files = [5, 4, 3, 2];
+            const files = [5, 4, 3];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
         } else {
-            const files = [5, 6, 7, 8];
+            const files = [5, 6, 7];
             targetRookFile = files[strategyType];
             console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
         }
@@ -327,7 +327,14 @@ function handleEngineMessage(msg) {
             }
 
             if (rookX !== -1) {
-                const targetX = 9 - targetRookFile;
+                // --- ★追加：飛車が「初期位置」にいる場合だけ発動する ---
+                // 先手(2h)は [7][7]、後手(8b)は [1][1] の座標になります
+                // (xは 9-筋、yは 段-1)
+                const isInitialPos = (turn === "black" && rookX === 7 && rookY === 7) || 
+                                     (turn === "white" && rookX === 1 && rookY === 1);
+
+                if (isInitialPos) {
+                    const targetX = 9 - targetRookFile;
                 if (rookX !== targetX) {
                     const targetY = rookY;
                     const legal = getLegalMoves(rookX, rookY);
@@ -2003,6 +2010,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
