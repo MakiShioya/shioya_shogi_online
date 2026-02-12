@@ -11,8 +11,8 @@ const FORMATION_DATA = [
     {
         id: "MINO",
         name: "美濃囲い",
-        image: "script/image/senpou/mino.png", // パスを確認してください
-        audio: "script/audio/senpou/mino.mp3", // パスを確認してください
+        image: "script/senpou/mino.png", // パスを確認してください
+        audio: "script/senpou/mino.mp3", // パスを確認してください
         // 先手番基準の配置
         requirements: [
             { suji: 2, dan: 8, p: "K" }, // 2八玉
@@ -24,8 +24,8 @@ const FORMATION_DATA = [
     {
         id: "SHIKEN",
         name: "四間飛車",
-        image: "script/image/senpou/shiken.png",
-        audio: "script/audio/senpou/shiken.mp3",
+        image: "script/senpou/shiken.png",
+        audio: "script/senpou/shiken.mp3",
         requirements: [
             { suji: 6, dan: 8, p: "R" }  // 6八飛（先手の四間飛車は6筋です！）
         ]
@@ -33,8 +33,8 @@ const FORMATION_DATA = [
     {
         id: "SANKEN",
         name: "三間飛車",
-        image: "script/image/senpou/sanken.png",
-        audio: "script/audio/senpou/sanken.mp3",
+        image: "script/senpou/sanken.png",
+        audio: "script/senpou/sanken.mp3",
         requirements: [
             { suji: 7, dan: 8, p: "R" }  // 7八飛
         ]
@@ -42,8 +42,8 @@ const FORMATION_DATA = [
     {
         id: "NAKA",
         name: "中飛車",
-        image: "script/image/senpou/naka.png",
-        audio: "script/audio/senpou/naka.mp3",
+        image: "script/senpou/naka.png",
+        audio: "script/senpou/naka.mp3",
         requirements: [
             { suji: 5, dan: 8, p: "R" }  // 5八飛
         ]
