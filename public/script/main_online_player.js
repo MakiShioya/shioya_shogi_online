@@ -862,6 +862,12 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
     }
     // ▲▲▲ ここまで ▲▲▲
 
+  if (typeof checkFormations === "function") {
+        // boardState: 現在の盤面
+        // sel.player: 手を指したプレイヤー ("black" or "white")
+        checkFormations(boardState, sel.player);
+    }
+
     if (moveCount >= 500) {
         gameOver = true; winner = null;
         statusDiv.textContent = "500手引き分け";
