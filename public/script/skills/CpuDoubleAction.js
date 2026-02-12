@@ -2,7 +2,7 @@ const CpuDoubleAction = {
   name: "神速（２回行動）",
   
   // コスト設定（非常に強力なので重くする）
-  baseCost: 300,
+  baseCost: 200,
   costGrowth: 200,
 
   // コスト計算（CPUの使用回数に基づく）
@@ -13,3 +13,4 @@ const CpuDoubleAction = {
   }
 
 };
+
