@@ -303,27 +303,44 @@
     }
 
     // 開始と中止を切り替える関数
-    function toggleMatch() {
-        const area = document.getElementById('randomBtnArea');
-        const isSearching = area.classList.contains('searching');
+    // 開始と中止を切り替える関数
+function toggleMatch() {
+    const area = document.getElementById('randomBtnArea');
+    const isSearching = area.classList.contains('searching');
 
-        if (!isSearching) {
-            // マッチ開始
-            const userId = getUniqueUserId();
-            socket.emit('join random queue', userId);
+    if (!isSearching) {
+        // --- ★変更点：モード情報を取得して送信する ---
+        // localStorageから現在の設定を読み込む（デフォルトは casual）
+        const currentMode = localStorage.getItem('shogi_game_mode') || 'casual';
+        
+        // ユーザーID取得
+        const userId = getUniqueUserId();
 
-            document.getElementById('readyContent').style.display = 'none';
-            document.getElementById('waitingMsg').style.display = 'block';
-            area.classList.add('searching');
-        } else {
-            // マッチ中止
-            socket.emit('leave random queue');
-            
-            document.getElementById('readyContent').style.display = 'block';
-            document.getElementById('waitingMsg').style.display = 'none';
-            area.classList.remove('searching');
-        }
+        // ★サーバーに送るデータに mode を追加
+        // サーバー側でこれを見て、キューを振り分けてもらう必要があります
+        socket.emit('join random queue', { 
+            userId: userId, 
+            mode: currentMode 
+        });
+
+        // UI変更（変更なし）
+        document.getElementById('readyContent').style.display = 'none';
+        document.getElementById('waitingMsg').style.display = 'block';
+        area.classList.add('searching');
+        
+        // ★追加：今どちらのモードで探しているか表示すると親切です
+        const modeLabel = (currentMode === 'formal') ? "【ふぉーまる】で" : "【かじゅある】で";
+        document.querySelector('#waitingMsg p').textContent = `${modeLabel} 探索中…`;
+
+    } else {
+        // マッチ中止（変更なし）
+        socket.emit('leave random queue');
+        
+        document.getElementById('readyContent').style.display = 'block';
+        document.getElementById('waitingMsg').style.display = 'none';
+        area.classList.remove('searching');
     }
+}
 
     socket.on('match found', (roomId) => {
         window.location.href = `room_random.html?room=${encodeURIComponent(roomId)}`;
@@ -374,3 +391,4 @@
 
 </body>
 </html>
+
