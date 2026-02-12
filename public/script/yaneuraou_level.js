@@ -42,7 +42,7 @@ const LEVEL_CONFIG = [
     { id: 17, name: "Lv17", nodes: 22000, depth: 10, multiPV: 7,  noise: 500,  useBook: false },
     { id: 18, name: "Lv18", nodes: 25000, depth: 10, multiPV: 7,  noise: 450,  useBook: false },
     { id: 19, name: "Lv19", nodes: 28000, depth: 11, multiPV: 7,  noise: 400,  useBook: false },
-    { id: 20, name: "Lv20", nodes: 31000, depth: 11, multiPV: 7,  noise: 350,    useBook: false }, 
+    { id: 20, name: "Lv20", nodes: 31000, depth: 11, multiPV: 7,  noise: 350,    useBook: false }, 
 
     { id: 21, name: "Lv21", nodes: 35000,  depth: 11, multiPV: 6, noise: 300, useBook: false },
     { id: 22, name: "Lv22", nodes: 38000, depth: 12, multiPV: 6, noise: 250, useBook: false },
@@ -100,7 +100,7 @@ let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 let candidateMoves = [];
 let targetRookFile = 0;
-let aiUsedBook = false;
+
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
 // ★必殺技・ゲージ関連の変数
@@ -233,77 +233,72 @@ function sendToEngine(msg) {
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
 function handleEngineMessage(msg) {
-    if (typeof msg === "string") {
-        if (msg.includes("info") && (msg.includes("book") || msg.includes("定跡"))) {
-            aiUsedBook = true;
-        }
-    }
-    // 1. 候補手情報の解析
-    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
-        let pvIndex = 1;
-        const matchPv = msg.match(/multipv (\d+)/);
-        if (matchPv) pvIndex = parseInt(matchPv[1]);
+    // 1. 候補手情報の解析
+    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
+        let pvIndex = 1;
+        const matchPv = msg.match(/multipv (\d+)/);
+        if (matchPv) pvIndex = parseInt(matchPv[1]);
 
-        let score = 0;
-        const matchScore = msg.match(/score cp ([\-\d]+)/);
-        const matchMate = msg.match(/score mate ([\-\d]+)/);
+        let score = 0;
+        const matchScore = msg.match(/score cp ([\-\d]+)/);
+        const matchMate = msg.match(/score mate ([\-\d]+)/);
 
-        if (matchScore) score = parseInt(matchScore[1]);
-        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
+        if (matchScore) score = parseInt(matchScore[1]);
+        else if (matchMate) score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
 
-        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
-        if (matchMove) {
-            const move = matchMove[1];
-            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
-            if (existingIdx !== -1) {
-                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
-            } else {
-                candidateMoves.push({ id: pvIndex, move: move, score: score });
-            }
-        }
-        
-        if (pvIndex === 1) {
-            let graphScore = score;
-            if (turn === "white") graphScore = -graphScore;
-            evalHistory[moveCount] = graphScore;
-            updateChart();
-        }
-    }
+        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
+        if (matchMove) {
+            const move = matchMove[1];
+            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
+            if (existingIdx !== -1) {
+                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
+            } else {
+                candidateMoves.push({ id: pvIndex, move: move, score: score });
+            }
+        }
+        
+        if (pvIndex === 1) {
+            let graphScore = score;
+            if (turn === "white") graphScore = -graphScore;
+            evalHistory[moveCount] = graphScore;
+            updateChart();
+        }
+    }
 
-    if (msg === "usiok") {
-        sendToEngine("isready");
-    }
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        
-        // 作戦決定
-        const strategyType = Math.floor(Math.random() * 4);
-        
-        if (cpuSide === "white") {
-            const files = [5, 4, 3];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
-        } else {
-            const files = [5, 6, 7];
-            targetRookFile = files[strategyType];
-            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
-        }
+    if (msg === "usiok") {
+        sendToEngine("isready");
+    }
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        
+        // 作戦決定
+        const strategyType = Math.floor(Math.random() * 4);
+        
+        if (cpuSide === "white") {
+            const files = [5, 4, 3];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(後手)の狙い: ${targetRookFile}筋`);
+        } else {
+            const files = [5, 6, 7];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦] CPU(先手)の狙い: ${targetRookFile}筋`);
+        }
 
-        // 定跡制御：奇数レベルなら一旦OFF
-        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+        // 定跡制御：奇数レベルなら一旦OFF
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
 
-        if (currentLevelSetting.useBook && !isOddLevel) {
-            console.log("定跡をONにします");
-            sendToEngine("setoption name BookFile value user_book1.db"); 
-        } else {
-            console.log("定跡をOFFにします（戦型指定のため）");
-            sendToEngine("setoption name BookFile value no_book"); 
-        }
+        if (currentLevelSetting.useBook && !isOddLevel) {
+            console.log("定跡をONにします");
+            sendToEngine("setoption name BookFile value user_book1.db"); 
+        } else {
+            console.log("定跡をOFFにします（戦型指定のため）");
+            sendToEngine("setoption name BookFile value no_book"); 
+        }
 
-        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
-        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
-    }
-    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
+        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
+    }
+    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
         const parts = msg.split(" ");
         let bestMove = parts[1];
         
@@ -438,13 +433,11 @@ function handleEngineMessage(msg) {
         }
         // -----------------------------------------------------------------
 
-        applyUsiMove(bestMove, aiUsedBook);
-        
-        // フラグをリセット
-        aiUsedBook = false;
+        applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
     }
- }
+}
+
 
 function playBGM() {
   if (!bgm) return;
@@ -931,7 +924,7 @@ function movePieceWithSelected(sel, x, y) {
 
 // script/yaneuraou_level.js の executeMove 関数（修正版）
 
-function executeMove(sel, x, y, doPromote, isBookMove = false) {
+function executeMove(sel, x, y, doPromote) {
   // ★重要：こちらが手を指した瞬間も、AIの先読みを止める
   if (typeof stopPondering === "function") stopPondering();
 
@@ -1039,7 +1032,7 @@ function executeMove(sel, x, y, doPromote, isBookMove = false) {
       usiHistory.push(usiMove);
   }
 
-  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber, isBookMove);
+  const currentMoveStr = formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber);
   const currentMoveContent = currentMoveStr.split("：")[1] || currentMoveStr;
 
   kifu.push(""); 
@@ -1323,50 +1316,50 @@ function playSkillEffect(imageName, soundName, flashColor) {
 
 // AI思考ロジック（序盤短縮版）
 function cpuMove() {
-    if (gameOver) return;
-    if (!isEngineReady) {
-        statusDiv.textContent = "エンジン起動待ち...";
-        setTimeout(cpuMove, 1000);
-        return;
-    }
+    if (gameOver) return;
+    if (!isEngineReady) {
+        statusDiv.textContent = "エンジン起動待ち...";
+        setTimeout(cpuMove, 1000);
+        return;
+    }
 
-    stopPondering(); 
-    candidateMoves = [];
+    stopPondering(); 
+    candidateMoves = [];
 
-    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
-    let positionCmd = "";
+    statusDiv.textContent = `考え中... (${currentLevelSetting.name})`;
+    let positionCmd = "";
 
-    if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
-        positionCmd = "position sfen " + generateSfen();
-    } else {
-        positionCmd = "position startpos moves " + usiHistory.join(" ");
-    }
-    sendToEngine(positionCmd);
+    if ((typeof window.skillUsed !== 'undefined' && window.skillUsed) || usiHistory.length === 0 || isCpuDoubleAction) {
+        positionCmd = "position sfen " + generateSfen();
+    } else {
+        positionCmd = "position startpos moves " + usiHistory.join(" ");
+    }
+    sendToEngine(positionCmd);
 
-    let pvNum = currentLevelSetting.multiPV || 1;
-    const isOddLevel = (currentLevelSetting.id % 2 !== 0);
-    
-    // 16手目までは、奇数レベルなら最低でも5手は読む
-    if (isOddLevel && usiHistory.length <= 10) {
-        if (pvNum < 20) pvNum =20;
-    }
-    
-    sendToEngine(`setoption name MultiPV value ${pvNum}`);
-    // ★追加：序盤の思考時間短縮ロジック
-    let nodesLimit = currentLevelSetting.nodes;
-    let depthLimit = currentLevelSetting.depth || 30;
+    let pvNum = currentLevelSetting.multiPV || 1;
+    const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+    
+    // 16手目までは、奇数レベルなら最低でも5手は読む
+    if (isOddLevel && usiHistory.length <= 10) {
+        if (pvNum < 20) pvNum =20;
+    }
+    
+    sendToEngine(`setoption name MultiPV value ${pvNum}`);
+    // ★追加：序盤の思考時間短縮ロジック
+    let nodesLimit = currentLevelSetting.nodes;
+    let depthLimit = currentLevelSetting.depth || 30;
 
-    // 24手目までは、どんな高レベルでも60万ノード（約1~2秒）で打ち切る
-    if (usiHistory.length < 24) {
-        const OPENING_CAP = 600000; 
-        if (nodesLimit > OPENING_CAP) {
-            console.log(`[時短] 序盤のため計算量を制限: ${nodesLimit} -> ${OPENING_CAP}`);
-            nodesLimit = OPENING_CAP;
-        }
-    }
+    // 24手目までは、どんな高レベルでも60万ノード（約1~2秒）で打ち切る
+    if (usiHistory.length < 24) {
+        const OPENING_CAP = 600000; 
+        if (nodesLimit > OPENING_CAP) {
+            console.log(`[時短] 序盤のため計算量を制限: ${nodesLimit} -> ${OPENING_CAP}`);
+            nodesLimit = OPENING_CAP;
+        }
+    }
 
-    console.log(`Lv:${currentLevelSetting.name}, Nodes:${nodesLimit}, Depth:${depthLimit}`);
-    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
+    console.log(`Lv:${currentLevelSetting.name}, Nodes:${nodesLimit}, Depth:${depthLimit}`);
+    sendToEngine(`go btime 0 wtime 0 nodes ${nodesLimit} depth ${depthLimit}`);
 }
 
 function convertToUsi(sel, toX, toY, promoted, pieceName) {
@@ -1387,8 +1380,8 @@ function convertToUsi(sel, toX, toY, promoted, pieceName) {
 }
 
 // AIの指し手反映（ポップアップ回避・強制実行）
-function applyUsiMove(usiMove, isBook = false) {
-    if (usiMove === "resign") return;
+function applyUsiMove(usiMove) {
+    if (usiMove === "resign") return;
 
     let sel = null;
     let toX = -1;
@@ -1419,7 +1412,7 @@ function applyUsiMove(usiMove, isBook = false) {
         doPromote = isPromote;
     }
     // AIはexecuteMoveを直接呼ぶ
-    executeMove(sel, toX, toY, doPromote, isBook);
+    executeMove(sel, toX, toY, doPromote);
 }
 
 // ★★★ SFEN生成（後手の持ち駒バグ修正版） ★★★
@@ -2039,24 +2032,3 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
