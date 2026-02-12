@@ -117,20 +117,22 @@ function checkFormations(board, player) {
 function executeFormationEffect(formation) {
     if (typeof window.playSkillEffect === "function") {
         
-        // ★パスの調整処理
-        // playSkillEffect関数は、自動的に "script/image/" を頭につけて読み込みます。
-        // そのため、データ定義にある "script/image/senpou/xxx.png" から
-        // フォルダパス部分を削除して、ファイル名(とサブフォルダ)だけにする必要があります。
+        // ★パスの調整処理（ここを修正！）
+        // playSkillEffectは自動で "script/image/" をつけますが、
+        // ファイルは "script/senpou/" にあるため、"../" を使って
+        // 「imageフォルダから一つ戻って senpou フォルダに入る」ように指示します。
         
-        // 例: "script/image/senpou/mino.png" → "senpou/mino.png"
-        let imgName = formation.image.replace("script/", "");
+        // 元: "script/senpou/mino.png"
+        // 変換後: "../senpou/mino.png"
+        // 結果: "script/image/../senpou/mino.png" (＝ script/senpou/mino.png) となり成功します
+        let imgName = formation.image.replace("script/", "../");
         
-        // 例: "script/audio/senpou/mino.mp3" → "senpou/mino.mp3"
-        let audName = formation.audio.replace("script/", "");
+        // 音声も同様
+        // 元: "script/senpou/mino.mp3"
+        // 結果: "script/audio/../senpou/mino.mp3" (＝ script/senpou/mino.mp3)
+        let audName = formation.audio.replace("script/", "../");
 
         // ★必殺技と同じ演出関数を実行！
-        // 第3引数は盤面が光る色です ("silver", "gold", "blue", "red", "green" など)
-        // 戦法発動時は渋く "silver" (銀色) や "blue" (青) がおすすめです。
         window.playSkillEffect(imgName, audName, "silver");
 
     } else {
