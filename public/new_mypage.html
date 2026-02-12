@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
   <title>しおや将棋 - マイページ</title>
+  
   <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="icon" href="script/image/komiya_icon.png"> 
   
@@ -13,274 +14,318 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* --- 基本設定 (home.htmlと共通) --- */
+    /* --- 基本設定 (Home.htmlから継承) --- */
     @font-face {
       font-family: 'SetoFont';
       src: url('script/font/setofont.ttf') format('truetype');
       font-display: block;
     }
-    * { font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif; }
+
+    * {
+      font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      box-sizing: border-box;
+    }
     
     body {
-      margin: 0; padding: 0;
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      position: fixed;
       background-color: #2c3e50;
       overflow: hidden;
       overscroll-behavior: none;
-      -webkit-user-select: none; user-select: none; touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: none;
     }
-    html { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
-    input, textarea { user-select: text; -webkit-user-select: text; touch-action: auto; }
 
     /* 背景 */
     #bg-image {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
       z-index: -1;
-      background-image: url('script/image/shogi_title.PNG');
-      background-size: cover; background-position: center;
-      filter: blur(2px);
+      /* 背景画像を少し暗くして手前の情報を読みやすくする */
+      background-image: linear-gradient(rgba(44, 62, 80, 0.7), rgba(44, 62, 80, 0.7)), url('script/image/shogi_title.PNG');
+      background-size: cover;
+      background-position: center;
     }
 
-    /* --- ★★★ マイページ専用レイアウト（調整版） ★★★ --- */
-    
-    /* 左側のキャラクター */
-    .character-stand-mypage {
+    /* --- ① キャラクター表示 (左寄り) --- */
+    .character-stand {
       position: absolute;
-      bottom: 75px;  /* 下部メニュー(約70px)に被らない位置 */
-      left: 0;       /* ★修正: 画面左端から開始 */
-      
-      /* ★修正: 高さは画面の80%まで、かつ幅は画面の45%まで（右パネルと被りすぎないように） */
-      height: 80vh; 
-      max-width: 45vw; 
-      object-fit: contain; /* アスペクト比を維持して収める */
-      object-position: bottom left; /* 左下基準で配置 */
-      
+      bottom: 0;
+      /* 画面中央(50%)より少し左(35%付近)に配置 */
+      left: 35%; 
+      transform: translateX(-50%);
+      height: 85vh; /* Homeと同じ高さ */
+      width: auto;
+      max-width: 90%;
       z-index: 1;
-      filter: drop-shadow(0 0 10px rgba(0,0,0,0.5));
-      pointer-events: none; /* 画像をクリックしても裏の要素を邪魔しない */
+      filter: drop-shadow(0 0 15px rgba(0,0,0,0.6));
+      pointer-events: none; /* キャラをクリックして誤動作しないように */
     }
 
-    /* 右側のプロフィールエリアコンテナ */
-    .profile-container {
+    /* --- ③ 右側のユーザー情報パネル (マイページ独自) --- */
+    .profile-panel {
       position: absolute;
-      /* ★修正: 画面の上下中央に配置する設定 */
-      top: 50%;
+      top: 15%;
       right: 5%;
-      transform: translateY(-55%); /* 中央より少しだけ上にずらす（下メニュー考慮） */
+      width: 45%; /* 画面右半分を使う */
+      max-width: 400px;
       
-      width: 50%;       /* 画面幅の半分 */
-      max-width: 450px; /* PCなどで広がりすぎないように制限 */
-      
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px; /* パネルとボタンの間隔 */
-      z-index: 10;
-    }
-
-    /* ユーザー名表示パネル */
-    .user-name-panel {
-      background: rgba(67, 37, 23, 0.95);
-      color: #ECDBBF;
-      border: 3px solid #ECDBBF;
+      background: rgba(236, 219, 191, 0.95); /* ベージュ */
+      border: 4px solid #8b4513; /* こげ茶枠 */
       border-radius: 15px;
-      padding: 15px 10px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-      box-sizing: border-box; /* パディングを含めた幅計算 */
-    }
-    .mypage-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; word-break: break-all; }
-    .mypage-gold { color: #ffd700; font-weight: bold; font-size: 1.2rem; text-shadow: 1px 1px 2px #432517; }
-
-    /* ボタンエリア */
-    .mypage-buttons {
+      padding: 20px;
+      
       display: flex;
       flex-direction: column;
       gap: 15px;
-      width: 100%;
+      
+      box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+      z-index: 10;
+      
+      animation: slideInRight 0.5s ease-out;
     }
 
-    .big-link-btn {
-      background: linear-gradient(to bottom, #ff9800, #f57c00);
-      border: 3px solid #ECDBBF;
-      border-radius: 12px;
-      color: #fff;
-      font-size: 1.1rem;
+    @keyframes slideInRight {
+      from { transform: translateX(50px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .profile-header {
+      border-bottom: 2px dashed #8b4513;
+      padding-bottom: 10px;
+      text-align: center;
+    }
+
+    .user-rank-badge {
+      display: inline-block;
+      background: #8b4513;
+      color: #ECDBBF;
+      padding: 2px 10px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      margin-bottom: 5px;
+    }
+
+    .user-name-display {
+      font-size: 1.5rem;
       font-weight: bold;
-      padding: 12px;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-      text-shadow: 1px 1px 2px #432517;
-      transition: transform 0.1s;
+      color: #432517;
+      text-shadow: 1px 1px 0px rgba(255,255,255,0.5);
+    }
+
+    .stats-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.4);
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+    .stat-label { font-size: 0.8rem; color: #666; }
+    .stat-value { font-size: 1.1rem; font-weight: bold; color: #d35400; }
+
+    .gold-display {
+      text-align: center;
+      background: #432517;
+      color: #ffd700;
+      padding: 8px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    /* --- ② 下部メニュー (Home同様だが項目を変更) --- */
+    .bottom-menu {
+      position: absolute;
+      bottom: 10px;
+      width: 96%;
+      left: 2%;
       display: flex;
+      justify-content: space-around;
+      align-items: flex-end;
+      gap: 5px;
+      z-index: 20;
+    }
+
+    .menu-btn {
+      flex: 1;
+      height: 60px;
+      border: 2px solid #ECDBBF;
+      border-radius: 10px;
+      color: #ECDBBF;
+      font-weight: bold;
+      font-size: 0.9rem; /* 文字数が多いので少し小さく */
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      text-shadow: 1px 1px 2px #432517;
+      
+      display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 10px;
-      text-decoration: none;
-      box-sizing: border-box;
-    }
-    .big-link-btn:active { transform: scale(0.96); }
-    
-    .btn-history { background: linear-gradient(to bottom, #6C4B9C, #4a326e); }
-    .btn-friend { background: linear-gradient(to bottom, #28a745, #1e7e34); }
-
-    /* --- 下部メニュー --- */
-    .bottom-menu {
-      position: absolute; bottom: 10px; width: 96%; left: 2%;
-      display: flex; justify-content: space-around; align-items: flex-end;
-      gap: 5px; z-index: 20;
-    }
-    .menu-btn {
-      flex: 1; height: 60px;
-      border: 2px solid #ECDBBF; border-radius: 10px;
-      color: #ECDBBF; font-weight: bold; font-size: 1.0rem;
-      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-      text-shadow: 1px 1px 2px #432517;
-      white-space: nowrap; /* 文字折り返し防止 */
+      line-height: 1.2;
     }
     .menu-btn:active { transform: scale(0.95); }
+    
+    .menu-icon { font-size: 1.2rem; margin-bottom: 2px; }
 
-    .home-color { background: linear-gradient(to bottom, #432517 0%, #8d6e63 100%); }
-    .analysis-color { background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%); }
-    .shop-color { background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%); }
-    .menu-color { background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%); }
-    .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%); }
+    /* 各ボタンの色設定 */
+    .btn-home { background: linear-gradient(to bottom, #4facfe, #00f2fe); }
+    .btn-history { background: linear-gradient(to bottom, #ff9a9e, #fecfef); color: #432517; border-color: #432517; text-shadow: none; }
+    .btn-friend { background: linear-gradient(to bottom, #a18cd1, #fbc2eb); }
+    .btn-collection { background: linear-gradient(to bottom, #f6d365, #fda085); }
+    .btn-chat { background: linear-gradient(to bottom, #667eea, #764ba2); }
 
-    /* --- モーダル --- */
+
+    /* --- モーダル (チャット用など) --- */
     .overlay {
-      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.7); z-index: 100;
-      justify-content: center; align-items: center;
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
     }
+    
     .modal-box {
-      background: #fff8dc; padding: 15px; border-radius: 10px;
-      border: 4px solid #8b4513; text-align: center;
-      width: 80%; max-width: 800px; max-height: 85vh;
-      display: flex; flex-direction: column;
+      background: #fff8dc;
+      padding: 15px;
+      border-radius: 10px;
+      border: 4px solid #8b4513;
+      text-align: center;
+      width: 90%;
+      max-width: 600px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
     }
-    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
-    .sub-btn {
-      width: 100%; padding: 12px 5px; font-size: 1rem;
-      background: #432517; color: #ECDBBF; border: none; border-radius: 5px;
-      cursor: pointer; font-weight: bold;
-    }
-    .sub-btn:active { transform: scale(0.98); }
 
-    #lobbyChatHistory { flex: 1; overflow-y: auto; background: rgba(255, 255, 255, 0.5); border: 1px solid #ccc; padding: 8px; border-radius: 8px; margin-bottom: 10px;}
-    .chat-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;}
-    .chat-row.mine { flex-direction: row-reverse; }
-    .chat-bubble { background: #ECDBBF; padding: 8px; border-radius: 10px; font-size: 0.9rem; max-width: 70%; word-break: break-all;}
+    /* ロビーチャット用スタイル (Homeから移植) */
+    .close-small-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      padding: 4px 10px; background: #666; color: #ECDBBF;
+      border: none; border-radius: 12px;
+      cursor: pointer;
+    }
+    #lobbyChatHistory {
+      flex: 1; overflow-y: auto;
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid #ccc; padding: 8px;
+      border-radius: 8px; margin-bottom: 10px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .chat-row { display: flex; align-items: flex-start; gap: 10px; }
+    .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
+    .chat-bubble { background: #ECDBBF; padding: 8px; border-radius: 10px; font-size: 0.8rem; text-align: left; }
     .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; }
-    .chat-name-text { font-size: 0.7rem; font-weight: bold; color: #333; margin-bottom: 2px;}
+    .chat-input-area { display: flex; gap: 5px; }
 
-    #loading-screen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background-color: #432517; z-index: 9999;
-      display: flex; justify-content: center; align-items: center;
-      transition: opacity 0.5s ease;
+    /* モバイル縦画面時の調整 */
+    @media (max-aspect-ratio: 1/1) {
+      /* 縦長画面の場合、キャラを下部中央、パネルを上部中央にするなどの調整 */
+      .character-stand {
+        left: 50%; /* 中央 */
+        height: 60vh; /* 少し小さく */
+        bottom: 80px;
+      }
+      .profile-panel {
+        top: 60px;
+        right: 50%;
+        transform: translateX(50%); /* 中央寄せ */
+        width: 80%;
+        animation: slideInDown 0.5s ease-out;
+      }
+      @keyframes slideInDown {
+        from { transform: translate(50%, -50px); opacity: 0; }
+        to { transform: translate(50%, 0); opacity: 1; }
+      }
     }
-    .spinner {
-      width: 50px; height: 50px; border: 5px solid rgba(236, 219, 191, 0.3);
-      border-top: 5px solid #ECDBBF; border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
   </style>
 </head>
 <body>
 
-  <div id="loading-screen">
-    <div style="text-align:center; color:#ECDBBF;">
-      <div class="spinner" style="margin:0 auto 15px;"></div>
-      <p>読み込み中...</p>
-    </div>
-  </div>
-
   <div id="bg-image"></div>
 
-  <img id="myPageCharImg" class="character-stand-mypage" src="script/image/komiya_touka.png" alt="Character">
+  <img class="character-stand" src="script/image/komiya_touka.png" alt="Character">
 
-  <div class="profile-container">
-    
-    <div class="user-name-panel">
-      <div style="font-size:0.8rem; margin-bottom:5px; opacity: 0.8;">ID: <span id="userIdDisplay">---</span></div>
-      <div id="userNameDisplay" class="mypage-name">ゲスト</div>
-      <div style="margin-top:5px;">
-        💰 <span id="userGoldDisplay" class="mypage-gold">0</span> G
+  <div class="profile-panel">
+    <div class="profile-header">
+      <div class="user-rank-badge">一般会員</div>
+      <div id="userNameDisplay" class="user-name-display">ゲスト</div>
+      <div style="font-size: 0.7rem; color:#888; margin-top:5px;">ID: <span id="userIdDisplay">---</span></div>
+    </div>
+
+    <div class="stats-container">
+      <div class="stat-item">
+        <div class="stat-label">勝利</div>
+        <div class="stat-value"><span id="statsWin">0</span> 勝</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">敗北</div>
+        <div class="stat-value"><span id="statsLose">0</span> 敗</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">レート</div>
+        <div class="stat-value" style="color:#28a745;">1500</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">最大連勝</div>
+        <div class="stat-value">0</div>
       </div>
     </div>
 
-    <div class="mypage-buttons">
-      <a href="mypage.html" class="big-link-btn btn-history">
-        <span>📖</span> 対局履歴
-      </a>
-
-      <a href="friend.html" class="big-link-btn btn-friend">
-        <span>🤝</span> フレンド
-      </a>
-      
-      <button class="big-link-btn" style="background: linear-gradient(to bottom, #6c757d, #5a6268);" onclick="openModal('nameEditModal')">
-        <span>✏️</span> 名前変更
-      </button>
+    <div class="gold-display">
+      所持金: <span id="userGoldDisplay">0</span> G
     </div>
 
+    <div style="font-size:0.8rem; color:#432517; background:rgba(255,255,255,0.5); padding:8px; border-radius:5px; line-height:1.4;">
+      <span style="font-weight:bold;">ひとこと：</span><br>
+      将棋は心。今日も一局いかがですか？
+    </div>
   </div>
 
   <div class="bottom-menu">
-    <button class="menu-btn home-color" onclick="window.location.href='home.html'">ホーム</button>
-    <button class="menu-btn analysis-color" onclick="window.location.href='kaiseki.html'">解析</button>
-    <button class="menu-btn shop-color" onclick="window.location.href='shop.html'">ショップ</button>
-    <button class="menu-btn menu-color" onclick="openModal('unifiedMenuModal')">メニュー</button>
-    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
-  </div>
-
-  <div id="unifiedMenuModal" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513; margin-top: 0;">メニュー</h3>
-      <div class="modal-grid">
-        <button class="sub-btn" style="background: linear-gradient(to bottom, #FF9800 0%, #F57C00 100%);" onclick="window.location.href='inventory.html'">🎒 所持品</button>
-        <button class="sub-btn" style="background: #e91e63;" onclick="window.location.href='character.html'">👤 キャラ変更</button>
-        <button class="sub-btn" style="background: #17a2b8;" onclick="window.location.href='help.html'">❓ ヘルプ</button>
-        <button class="sub-btn" style="background: #6c757d;" onclick="openModal('settingsModal')">⚙️ 設定</button>
-      </div>
-      <button class="sub-btn" style="background:#666; margin-top: 10px;" onclick="closeModal('unifiedMenuModal')">閉じる</button>
-    </div>
-  </div>
-
-  <div id="nameEditModal" class="overlay">
-    <div class="modal-box">
-      <h3 style="color: #8b4513;">名前を変更</h3>
-      <div style="margin: 20px 0;">
-        <input type="text" maxlength="8" id="newNameInput" style="width: 80%; padding: 10px; font-size: 16px; text-align: center;">
-      </div>
-      <div style="display: flex; gap: 10px;">
-        <button class="sub-btn" style="background: #28a745;" onclick="saveNewName()">決定</button>
-        <button class="sub-btn" style="background: #ccc; color:#333;" onclick="closeModal('nameEditModal')">キャンセル</button>
-      </div>
-    </div>
+    <button class="menu-btn btn-home" onclick="window.location.href='home.html'">
+      <span class="menu-icon">🏠</span>ホーム
+    </button>
+    
+    <button class="menu-btn btn-history" onclick="window.location.href='mypage.html'">
+      <span class="menu-icon">📜</span>対局履歴
+    </button>
+    
+    <button class="menu-btn btn-friend" onclick="window.location.href='friend.html'">
+      <span class="menu-icon">🤝</span>フレンド
+    </button>
+    
+    <button class="menu-btn btn-collection" onclick="window.location.href='collection.html'">
+      <span class="menu-icon">🎒</span>所持品
+    </button>
+    
+    <button class="menu-btn btn-chat" onclick="openLobbyChat()">
+      <span class="menu-icon">💬</span>チャット
+    </button>
   </div>
 
   <div id="lobbyChatModal" class="overlay">
-    <div class="modal-box" style="height:85vh;">
-      <h3 style="margin:0 0 5px 0;">ロビーチャット</h3>
-      <div id="lobbyChatHistory"></div>
-      <div style="display: flex; gap: 5px; margin-top: 5px;">
-        <input type="text" id="lobbyChatInput" placeholder="メッセージ" style="flex:1; padding:10px;">
-        <button onclick="sendLobbyMessage()" style="background:#28a745; color:#fff; border:none; padding:10px; border-radius:5px;">送信</button>
-      </div>
-      <button class="sub-btn" style="background:#666; margin-top:10px;" onclick="closeModal('lobbyChatModal')">閉じる</button>
-    </div>
-  </div>
-  
-  <div id="settingsModal" class="overlay">
     <div class="modal-box">
-        <h3>設定</h3>
-        <button class="sub-btn" onclick="firebase.auth().signOut().then(()=>{alert('ログアウトしました'); location.reload();})">ログアウト</button>
-        <br><br>
-        <button class="sub-btn" style="background:#666;" onclick="closeModal('settingsModal')">閉じる</button>
+      <button class="close-small-btn" onclick="document.getElementById('lobbyChatModal').style.display='none'">閉じる</button>
+      <h3 style="color:#005bea; margin:0 0 10px 0;">ロビーチャット</h3>
+      <div id="lobbyChatHistory"></div>
+      <div class="chat-input-area">
+        <input type="text" id="lobbyChatInput" placeholder="メッセージを入力" style="flex:1; padding:10px; border-radius:5px; border:1px solid #ccc;">
+        <button onclick="sendLobbyMessage()" style="background:#28a745; color:#fff; border:none; padding:10px; border-radius:5px; font-weight:bold;">送信</button>
+      </div>
     </div>
   </div>
 
@@ -292,128 +337,149 @@
 
   <script>
     // --- 初期化処理 ---
-    window.addEventListener('load', () => {
-        const loader = document.getElementById('loading-screen');
-        setTimeout(() => {
-            loader.style.opacity = '0';
-            setTimeout(() => { loader.style.display = 'none'; }, 500);
-        }, 500);
-        
-        loadCharacterImage();
+    
+    // キャラクター画像の読み込み
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
+      
+      // グローバル変数のCHARACTERSが読み込まれているか確認
+      if (window.CHARACTERS && window.CHARACTERS[savedCharId]) {
+        const imgEl = document.querySelector('.character-stand');
+        if (imgEl) {
+          imgEl.src = window.CHARACTERS[savedCharId].image;
+        }
+      }
     });
 
-    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-
-    function loadCharacterImage() {
-        const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
-        if (window.CHARACTERS && window.CHARACTERS[savedCharId]) {
-            document.getElementById('myPageCharImg').src = window.CHARACTERS[savedCharId].image;
-        }
-    }
-
-    // --- ユーザーデータ同期 ---
+    // ユーザーデータの取得と表示 (Firebase)
+    // auth.js等で初期化されている前提ですが、念のためここでも簡略的に書きます
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
-            db.collection("users").doc(user.uid).onSnapshot((doc) => {
+            // ログイン中
+            const docRef = db.collection("users").doc(user.uid);
+            docRef.onSnapshot((doc) => {
                 if (doc.exists) {
                     const data = doc.data();
-                    const name = data.name || "名無し";
-                    document.getElementById("userNameDisplay").textContent = name;
-                    document.getElementById("userIdDisplay").textContent = user.uid.slice(0, 6) + "..."; 
-                    const gold = data.gold || 0;
-                    document.getElementById("userGoldDisplay").textContent = gold.toLocaleString();
+                    
+                    // 名前
+                    document.getElementById("userNameDisplay").textContent = data.name || "名無し";
+                    // ID (短縮表示)
+                    document.getElementById("userIdDisplay").textContent = user.uid.substring(0, 8);
+                    
+                    // 所持金
+                    document.getElementById("userGoldDisplay").textContent = (data.gold || 0).toLocaleString();
+                    
+                    // 戦績 (保存形式に合わせて調整してください)
+                    // home.htmlのstatsModalの実装を見ると、履歴から計算する方式のようなので
+                    // ここではdata内にwin/loseカウントを持っていると仮定、なければ履歴配列から計算
+                    
+                    let wins = data.wins || 0;
+                    let loses = data.loses || 0;
+                    
+                    // もし履歴配列(history)があるならそこから再計算
+                    if (data.history && Array.isArray(data.history)) {
+                        wins = data.history.filter(h => h.result === 'win').length;
+                        loses = data.history.filter(h => h.result === 'lose').length;
+                    }
+
+                    document.getElementById("statsWin").textContent = wins;
+                    document.getElementById("statsLose").textContent = loses;
                 }
             });
+            
+            // チャット初期化
             initLobbyChat();
+            
         } else {
-            document.getElementById("userNameDisplay").textContent = "ゲスト";
-            initLobbyChat(); 
+            // 未ログイン
+            document.getElementById("userNameDisplay").textContent = "ゲスト (未ログイン)";
+            // ログインを促すなど
         }
     });
 
-    // --- 名前変更 ---
-    function saveNewName() {
-        const user = firebase.auth().currentUser;
-        const newName = document.getElementById("newNameInput").value.trim();
-        if(!user) return alert("ログインしてください");
-        if(!newName) return alert("名前を入力してください");
+    // --- チャット機能 (Home.htmlから移植) ---
+    
+    let chatUnsubscribe = null;
 
-        db.collection("users").doc(user.uid).update({
-            name: newName
-        }).then(() => {
-            alert("名前を変更しました！");
-            closeModal("nameEditModal");
-        }).catch(err => {
-            alert("エラー: " + err);
-        });
-    }
-
-    // --- チャット ---
     function openLobbyChat() {
-        openModal('lobbyChatModal');
+      document.getElementById('lobbyChatModal').style.display = 'flex';
+      initLobbyChat();
     }
 
     function initLobbyChat() {
         const historyDiv = document.getElementById("lobbyChatHistory");
-        db.collection("lobby_chat").orderBy("createdAt", "desc").limit(30)
-          .onSnapshot((snapshot) => {
-             historyDiv.innerHTML = "";
-             const msgs = [];
-             snapshot.forEach(doc => msgs.push(doc.data()));
-             msgs.forEach(data => {
-                 const div = document.createElement("div");
-                 div.className = "chat-row" + (firebase.auth().currentUser && data.userId === firebase.auth().currentUser.uid ? " mine" : "");
-                 div.innerHTML = `
-                   <div style="display:flex; flex-direction:column; align-items:center;">
-                     <div class="chat-name-text">${data.name || '名無し'}</div>
-                     <div class="chat-bubble">${data.text}</div>
-                   </div>
-                 `;
-                 historyDiv.appendChild(div);
-             });
-             historyDiv.scrollTop = 0;
-          });
+        if (!historyDiv) return;
+        if (chatUnsubscribe) return; // 既に接続済みなら何もしない
+
+        chatUnsubscribe = db.collection("lobby_chat")
+            .orderBy("createdAt", "desc")
+            .limit(50)
+            .onSnapshot((snapshot) => {
+                const historyDiv = document.getElementById("lobbyChatHistory");
+                let messages = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    data.id = doc.id;
+                    messages.push(data);
+                });
+                
+                historyDiv.innerHTML = "";
+                messages.forEach(msg => renderChatMessage(msg));
+                historyDiv.scrollTop = 0;
+            });
+    }
+
+    function renderChatMessage(data) {
+        const historyDiv = document.getElementById("lobbyChatHistory");
+        const user = firebase.auth().currentUser;
+        const isMe = user && (data.userId === user.uid);
+
+        const row = document.createElement("div");
+        row.className = "chat-row" + (isMe ? " mine" : "");
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble";
+        
+        // 名前表示を含める
+        const nameSpan = document.createElement("div");
+        nameSpan.style.fontSize = "0.7rem";
+        nameSpan.style.fontWeight = "bold";
+        nameSpan.style.marginBottom = "2px";
+        nameSpan.style.color = "#8b4513";
+        nameSpan.textContent = data.name || "名無し";
+
+        const textSpan = document.createElement("div");
+        textSpan.textContent = data.text;
+
+        bubble.appendChild(nameSpan);
+        bubble.appendChild(textSpan);
+        row.appendChild(bubble);
+        historyDiv.appendChild(row);
     }
 
     function sendLobbyMessage() {
         const input = document.getElementById("lobbyChatInput");
         const text = input.value.trim();
-        const user = firebase.auth().currentUser;
         if (!text) return;
-        
-        const name = document.getElementById("userNameDisplay").textContent;
-        const uid = user ? user.uid : "guest";
+
+        const user = firebase.auth().currentUser;
+        const myName = document.getElementById("userNameDisplay").textContent;
+        const myId = user ? user.uid : "guest";
 
         db.collection("lobby_chat").add({
             text: text,
-            name: name,
-            userId: uid,
+            name: myName,
+            userId: myId,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             input.value = "";
         });
     }
-
-    // --- 画面回転 ---
-    function autoRotate() {
-        if(window.innerHeight > window.innerWidth) {
-            document.body.style.transform = "translate(-50%, -50%) rotate(90deg)";
-            document.body.style.width = window.innerHeight + "px";
-            document.body.style.height = window.innerWidth + "px";
-            document.body.style.position = "fixed";
-            document.body.style.top = "50%";
-            document.body.style.left = "50%";
-        } else {
-            document.body.style.transform = "";
-            document.body.style.width = "100%";
-            document.body.style.height = "100%";
-            document.body.style.top = "0";
-            document.body.style.left = "0";
-        }
-    }
-    window.addEventListener('resize', autoRotate);
-    window.addEventListener('load', autoRotate);
+    
+    // Enterキーで送信
+    document.getElementById("lobbyChatInput").addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendLobbyMessage();
+    });
 
   </script>
 </body>
