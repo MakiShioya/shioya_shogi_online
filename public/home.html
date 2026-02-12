@@ -714,7 +714,10 @@ input, textarea {
     .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important; 
   border: 2px solid #432517 !important; /* 枠 */
 }
-
+    .analysis-color { 
+    background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important; 
+    border: 2px solid #432517 !important; 
+}
     /* --- ★★★ 新しい左右分割用レイアウト ★★★ --- */
 
 /* 1. 本文と報酬を包むコンテナ */
@@ -841,6 +844,7 @@ input, textarea {
   <div class="bottom-menu">
     
     <button class="menu-btn mypage-color" onclick="window.location.href='mypage.html'">棋譜</button>
+    <button class="menu-btn analysis-color" onclick="window.location.href='kaiseki.html'">解析</button>
     <button class="menu-btn ready-color" onclick="window.location.href='shop.html'">ショップ</button>
     <button class="menu-btn" style="background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%); border: 2px solid #432517 !important;" onclick="openModal('unifiedMenuModal')">メニュー</button>
 
@@ -1970,6 +1974,7 @@ function updateModeButtonUI(mode) {
 
 </body>
 </html>
+
 
 
 
