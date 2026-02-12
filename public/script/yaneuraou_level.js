@@ -297,12 +297,17 @@ function handleEngineMessage(msg) {
             console.log(`[作戦決定] 今回のCPU(先手)は【${targetRookFile}筋】に振ります！`);
         }
 
-        // 定跡の設定
-        if (currentLevelSetting.useBook) {
+        // ★修正：奇数レベル（振り飛車させたい）の場合は、定跡を強制的にOFFにする
+        // そうしないと、ボーナス計算をする前に定跡の「居飛車」が即座に選ばれてしまうため
+        const isOddLevel = (currentLevelSetting.id % 2 !== 0);
+
+        if (currentLevelSetting.useBook && !isOddLevel) {
+            // 「偶数レベル」かつ「定跡ON」の場合のみ、定跡を使う
             console.log("定跡をONにします");
             sendToEngine("setoption name BookFile value user_book1.db"); 
         } else {
-            console.log("定跡をOFFにします");
+            // 奇数レベル、または定跡OFF設定なら、定跡を切って自力で考えさせる（ボーナスを効かせるため）
+            console.log("定跡をOFFにします（戦型指定のため）");
             sendToEngine("setoption name BookFile value no_book"); 
         }
 
@@ -1987,6 +1992,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
