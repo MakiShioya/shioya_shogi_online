@@ -22,6 +22,8 @@ let playerSkillPoint = 0; // 現在の所持ポイント
 let cpuSkillPoint = 0;
 const MAX_SKILL_POINT = 1000; // ポイントの上限（任意）
 
+const isFormalMode = localStorage.getItem('shogi_game_mode') === 'formal';
+console.log("現在のモード(Main):", isFormalMode ? "ふぉーまる(必殺技なし)" : "かじゅある(必殺技あり)");
 
 
 const SP_CONFIG = {
@@ -844,8 +846,22 @@ function closeSkillModal() {
 
 
 function updateSkillButton() {
-  const skillBtn = document.getElementById("skillBtn");
-  if (!skillBtn) return;
+    const skillBtn = document.getElementById("skillBtn");
+    if (!skillBtn) return;
+
+    // ★★★ 追加：ふぉーまるモードの場合 ★★★
+    if (isFormalMode) {
+        skillBtn.style.display = "inline-block"; // レイアウト維持
+        skillBtn.textContent = "---";           // 無効化テキスト
+        skillBtn.disabled = true;                // クリック不可
+        skillBtn.style.backgroundColor = "#555"; // グレー背景
+        skillBtn.style.color = "#888";           // 薄い文字
+        skillBtn.style.border = "2px solid #333";
+        skillBtn.style.cursor = "default";       // カーソル戻し
+        skillBtn.style.opacity = "0.5";          // 半透明
+        return; // 処理終了
+    }
+    // ★★★ ここまで ★★★
 
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
@@ -1175,10 +1191,13 @@ function applyUserSkin() {
 // script/main.js の末尾に追加
 
 function addSkillPoint(amount) {
+    // ★追加：ふぉーまるモードならポイントを加算しない
+    if (isFormalMode) return;
+
     playerSkillPoint += amount;
     if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
     updateSkillGaugeUI();
-    updateSkillButton(); // ボタンの有効/無効を更新
+    updateSkillButton(); 
 }
 
 function consumeSkillPoint(amount) {
@@ -1214,6 +1233,9 @@ function updateSkillGaugeUI() {
 // main.js の末尾に追加
 
 function addCpuSkillPoint(amount) {
+    // ★追加：CPUもポイントを加算しない
+    if (isFormalMode) return;
+
     cpuSkillPoint += amount;
     if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
     updateCpuSkillGaugeUI();
