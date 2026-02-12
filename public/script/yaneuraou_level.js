@@ -327,59 +327,56 @@ function handleEngineMessage(msg) {
             return;
         }
 
-        // ▼▼▼ デバッグ：候補手が正しく集まっているか確認 ▼▼▼
-        console.group("★思考結果詳細デバッグ");
-        console.log(`現在のレベル: ${currentLevelSetting.name}`);
-        console.log(`ノイズ設定値: ${currentLevelSetting.noise}`);
-        console.log(`収集された候補手:`, JSON.parse(JSON.stringify(candidateMoves)));
-
-        if (candidateMoves.length === 0) {
-            console.warn("警告：候補手が1つも取得できていません。エンジンのinfo出力形式が想定と異なるか、思考時間が短すぎます。");
-        } else if (candidateMoves.length === 1 && currentLevelSetting.multiPV > 1) {
-            console.warn(`警告：MultiPV=${currentLevelSetting.multiPV} の設定ですが、候補手が1つしか返ってきていません。エンジンが対応していない可能性があります。`);
-        }
-        // ▲▲▲▲▲▲
-
-        // ▼▼▼ ノイズ計算と選択処理 ▼▼▼
         if (currentLevelSetting.noise > 0 && candidateMoves.length > 0) {
             
             const noiseRange = currentLevelSetting.noise;
-            
+            const isOddLevel = (currentLevelSetting.id % 2 !== 0); // 奇数レベルか？
+            const isOpening = (moveCount <= 12); // 序盤（12手目まで）か？
+
             const noisyCandidates = candidateMoves.map(c => {
-                // -noiseRange ～ +noiseRange の乱数を生成
+                // 1. ノイズ計算
                 const noise = (Math.random() - 0.5) * 2 * noiseRange;
-                const finalScore = c.score + noise;
-                
-                // 計算過程をログ出力
-                console.log(`手:${c.move} | 元点:${c.score} + ノイズ:${Math.floor(noise)} = 最終点:${Math.floor(finalScore)}`);
+                let finalScore = c.score + noise;
+                let bonusLog = "";
+
+                // 2. ★振り飛車ボーナス判定
+                // 奇数レベル かつ 序盤なら、飛車を振る手にボーナスを与える
+                if (isOddLevel && isOpening) {
+                    let isRangingRook = false;
+                    
+                    if (turn === "black") {
+                        // 先手(2h)から 3h,4h,5h,6h,7h,8h への移動
+                        // 正規表現: 2h から始まって、[3-8]の数字＋h で終わる手
+                        if (c.move.match(/^2h[3-8]h/)) isRangingRook = true;
+                    } else {
+                        // 後手(8b)から 7b,6b,5b,4b,3b,2b への移動
+                        // 正規表現: 8b から始まって、[2-7]の数字＋b で終わる手
+                        if (c.move.match(/^8b[2-7]b/)) isRangingRook = true;
+                    }
+
+                    if (isRangingRook) {
+                        // ノイズに負けないよう、強力な加点をする（例: +2000点）
+                        finalScore += 2000; 
+                        bonusLog = " [振り飛車ボーナス!]";
+                    }
+                }
+
+                // ログ出力（デバッグ用）
+                console.log(`手:${c.move} | 元:${c.score} + ノイズ:${Math.floor(noise)}${bonusLog} = 最終:${Math.floor(finalScore)}`);
                 
                 return {
                     move: c.move,
-                    rawScore: c.score,
                     finalScore: finalScore 
                 };
             });
 
-            // ノイズ込みのスコアが高い順に並び替え
+            // スコアが高い順に並び替え
             noisyCandidates.sort((a, b) => b.finalScore - a.finalScore);
 
-            // 一番スコアが高くなった手を採用する
+            // 採用
             const selected = noisyCandidates[0];
-            
-            console.log(`【結果】採用する手: ${selected.move} (本来の最善手: ${bestMove})`);
-            
-            if (selected.move !== bestMove) {
-                console.log("%c★弱体化成功！わざと悪手を選びました。", "color: red; font-weight: bold;");
-            } else {
-                console.log("今回は運良く（運悪く？）最善手と同じ手が選ばれました。");
-            }
-            
             bestMove = selected.move;
-        } else {
-            console.log("ノイズなし、または候補手不足のため、エンジンの最善手をそのまま採用します。");
         }
-        console.groupEnd();
-        // ▲▲▲▲▲▲
 
         applyUsiMove(bestMove);
         if (!gameOver) setTimeout(startPondering, 500);
@@ -1972,6 +1969,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
