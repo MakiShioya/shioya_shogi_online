@@ -37,7 +37,6 @@
       user-select: text; -webkit-user-select: text; touch-action: auto;
     }
 
-    /* 背景 */
     #bg-image {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
       z-index: -1;
@@ -92,7 +91,7 @@
       font-weight: bold;
     }
 
-    /* --- タブとリストのデザイン --- */
+    /* タブとリスト */
     .tab-container {
       display: flex;
       padding-left: 10px;
@@ -131,6 +130,7 @@
     .list-view { display: none; }
     .list-view.active { display: block; }
 
+    /* フレンドリストアイテムのデザイン */
     .friend-item {
       background: rgba(255,255,255,0.6);
       border: 1px solid #8b4513; border-radius: 8px;
@@ -138,16 +138,21 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .friend-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .friend-avatar { width: 40px; height: 40px; border-radius: 50%; background: #ccc; border: 2px solid #8b4513; }
+    .friend-avatar { width: 40px; height: 40px; border-radius: 50%; background: #ccc; border: 2px solid #8b4513; object-fit: cover; }
     .friend-name { font-weight: bold; color: #432517; font-size: 1.1rem; }
+    .friend-status { font-size: 0.8rem; color: #666; margin-left: auto; margin-right: 10px;}
     
     .action-btn {
-      padding: 5px 10px; border-radius: 5px; border: none;
+      padding: 6px 12px; border-radius: 5px; border: none;
       font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-left: 5px;
     }
+    .btn-accept { background: #28a745; color: white; }
+    .btn-reject { background: #d32f2f; color: white; }
+    .btn-cancel { background: #666; color: white; }
+    
     .empty-msg { text-align: center; color: #888; margin-top: 30px; }
 
-    /* --- 下部メニュー --- */
+    /* 下部メニュー */
     .bottom-menu {
       position: absolute; bottom: 10px; width: 96%; left: 2%;
       display: flex; justify-content: space-around; align-items: flex-end; gap: 5px;
@@ -168,7 +173,7 @@
     .menu-color { background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
     .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
 
-    /* --- モーダル共通 --- */
+    /* モーダル */
     .overlay {
       display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.7); z-index: 100;
@@ -185,72 +190,43 @@
       border-radius: 5px; cursor: pointer; margin-top: 10px;
     }
 
-    /* --- ★★★ チャット用スタイル (Home/NewMypageと完全統一) ★★★ --- */
-    
-    /* 閉じるボタン */
+    /* チャット用スタイル */
     .close-small-btn {
       position: absolute; top: 8px; right: 8px; padding: 4px 10px;
       background: #666; color: #ECDBBF; border: none; border-radius: 12px;
       font-size: 0.75rem; font-weight: bold; cursor: pointer; z-index: 101;
     }
-
-    /* チャット履歴エリア */
     #lobbyChatHistory {
-      flex: 1; overflow-y: auto;
-      background: rgba(255, 255, 255, 0.5);
-      border: 1px solid #ccc; padding: 8px;
-      border-radius: 8px;
+      height: 60vh; overflow-y: auto; background: rgba(255, 255, 255, 0.5);
+      border: 1px solid #ccc; padding: 8px; border-radius: 8px; margin-top: 10px;
       display: flex; flex-direction: column; gap: 5px;
-      min-height: 100px;
     }
-
-    .chat-input-area {
-      display: flex; gap: 5px; margin-top: 8px;
-    }
-
-    /* チャット吹き出し・アイコン関連 */
-    .chat-row { display: flex; align-items: flex-start; gap: 10px; max-width: 95%; }
+    .chat-row { display: flex; align-items: flex-start; gap: 10px; }
     .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
-    
     .icon-container { display: flex; flex-direction: column; align-items: center; width: 60px; }
-    
     .chat-name-badge {
       background: #ECDBBF; border: 1px solid #8b4513; border-radius: 10px;
-      z-index: 2; margin-bottom: -10px;
-      width: 50px; height: 18px;
-      display: flex; justify-content: center; align-items: center;
-      padding: 0 4px; overflow: hidden;
+      z-index: 2; margin-bottom: -10px; width: 50px; height: 18px;
+      display: flex; justify-content: center; align-items: center; padding: 0 4px; overflow: hidden;
     }
     .chat-name-text {
       font-size: 12px; font-weight: bold; fill: #333;
       text-anchor: middle; dominant-baseline: central;
     }
-    
     .chat-icon-img { 
-      width: 50px; height: 50px; 
-      border: 3px solid #56ab2f; border-radius: 12px; 
+      width: 50px; height: 50px; border: 3px solid #56ab2f; border-radius: 12px; 
       background: #ECDBBF; object-fit: cover; 
     }
     .chat-row.mine .chat-icon-img { border: 3px solid #FFA500; }
-    
     .chat-bubble { 
       position: relative; padding: 10px; border-radius: 15px; 
       font-size: 0.75rem; font-weight: bold; margin-top: 5px; 
       word-break: break-all; text-align: left;
     }
-    .chat-row .chat-bubble { 
-      background: #ECDBBF; border: 2px solid #e0e0e0; border-top-left-radius: 0; 
-    }
-    .chat-row.mine .chat-bubble { 
-      background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; 
-    }
-    
-    /* モーダルボックスのサイズ調整（チャット用） */
-    #lobbyChatModal .modal-box {
-      height: 85vh; /* 画面の85% */
-      max-width: 800px;
-    }
-
+    .chat-row .chat-bubble { background: #ECDBBF; border: 2px solid #e0e0e0; border-top-left-radius: 0; }
+    .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; }
+    .chat-input-area { display: flex; gap: 5px; margin-top: 10px; }
+    #lobbyChatModal .modal-box { height: 85vh; max-width: 800px; }
   </style>
 </head>
 <body>
@@ -281,12 +257,15 @@
     <div class="list-container">
       <div id="tab-list" class="list-view active">
         <div class="empty-msg">フレンドがいません</div>
+        <div id="friendListContent"></div>
       </div>
       <div id="tab-pending" class="list-view">
         <div class="empty-msg">申請中のユーザーはいません</div>
+        <div id="pendingListContent"></div>
       </div>
       <div id="tab-request" class="list-view">
         <div class="empty-msg">届いているリクエストはありません</div>
+        <div id="requestListContent"></div>
       </div>
     </div>
   </div>
@@ -330,7 +309,7 @@
     const loadingTipsList = [
       "【tips】IDを使って遠くの友達とつながりましょう。",
       "【tips】フレンドになると、いつでもプロフィールを確認できます。",
-      "【tips】対局履歴から相手のIDを確認できます（実装予定）。"
+      "【tips】対局履歴から相手のIDを確認できます。"
     ];
     document.addEventListener("DOMContentLoaded", () => {
         const tipEl = document.getElementById('loading-tips');
@@ -355,12 +334,14 @@
     // --- モーダル ---
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // --- 検索機能 ---
+    // --- ★★★ 検索機能 & 申請送信ロジック (ここを修正) ★★★ ---
     async function searchUser() {
         const input = document.getElementById('searchInput').value.trim();
         if (!input) return;
-        const myUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
-        if(input === myUid) { alert("自分自身です"); return; }
+        
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) { alert("ログインが必要です"); return; }
+        if (input === currentUser.uid) { alert("自分自身です"); return; }
 
         try {
             const docRef = db.collection("users").doc(input);
@@ -370,7 +351,7 @@
                 document.getElementById('foundUserName').textContent = data.name || "名無し";
                 document.getElementById('foundUserId').textContent = "ID: " + input;
                 const btn = document.getElementById('sendRequestBtn');
-                btn.onclick = () => sendFriendRequest(input);
+                btn.onclick = () => sendFriendRequest(input, data.name || "名無し");
                 document.getElementById('searchResultModal').style.display = 'flex';
             } else {
                 alert("ユーザーが見つかりませんでした");
@@ -381,110 +362,277 @@
         }
     }
 
-    function sendFriendRequest(targetUid) {
-        alert("申請を送りました！(デモ)");
-        closeModal('searchResultModal');
+    // ★修正版: 実際にFirestoreに書き込む関数
+    async function sendFriendRequest(targetUid, targetName) {
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) return;
+
+        try {
+            const batch = db.batch();
+            
+            // 1. 相手の受信箱(received_requests)に自分を追加
+            // 注意: 自分の名前を取得する必要があるため、一旦自分のデータを取得するか、auth.currentUser.displayNameを使う
+            // ここでは簡易的に「申請者」としてIDを記録し、読み込み時に名前を解決する方式か、
+            // 自分の名前を保持している変数があればそれを使う（今回はauth.js等の実装依存なのでIDメインで保存）
+            
+            // 自分の名前を取得（非同期）
+            const myDoc = await db.collection("users").doc(currentUser.uid).get();
+            const myName = myDoc.exists ? (myDoc.data().name || "名無し") : "名無し";
+
+            const targetRef = db.collection("users").doc(targetUid).collection("received_requests").doc(currentUser.uid);
+            batch.set(targetRef, {
+                fromUid: currentUser.uid,
+                fromName: myName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 2. 自分の送信済み箱(sent_requests)に相手を追加
+            const myRef = db.collection("users").doc(currentUser.uid).collection("sent_requests").doc(targetUid);
+            batch.set(myRef, {
+                toUid: targetUid,
+                toName: targetName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await batch.commit();
+
+            alert("申請を送りました！");
+            closeModal('searchResultModal');
+            
+            // 申請中タブに切り替えて確認させる
+            switchTab('pending');
+
+        } catch(e) {
+            console.error(e);
+            alert("申請の送信に失敗しました: " + e.message);
+        }
     }
 
-    // --- ★★★ チャット機能 (Home/NewMypage完全移植) ★★★ ---
-    let chatUnsubscribe = null;
+    // --- ★★★ リアルタイム監視機能 (リストの自動更新) ★★★ ---
+    
+    let unsubscribeSent = null;
+    let unsubscribeReceived = null;
+    let unsubscribeFriends = null;
 
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) {
+            initFriendLists(user.uid);
+            // チャット初期化
+            initLobbyChat();
+        } else {
+            // 未ログイン時はリストをクリア
+            document.querySelectorAll('.list-view div[id$="Content"]').forEach(el => el.innerHTML = "");
+        }
+    });
+
+    function initFriendLists(uid) {
+        // 1. 申請中 (Sent) の監視
+        if(unsubscribeSent) unsubscribeSent();
+        unsubscribeSent = db.collection("users").doc(uid).collection("sent_requests")
+            .orderBy("timestamp", "desc")
+            .onSnapshot(snapshot => {
+                const container = document.getElementById("pendingListContent");
+                container.innerHTML = "";
+                const emptyMsg = document.querySelector("#tab-pending .empty-msg");
+                
+                if (snapshot.empty) {
+                    emptyMsg.style.display = "block";
+                } else {
+                    emptyMsg.style.display = "none";
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const div = document.createElement("div");
+                        div.className = "friend-item";
+                        div.innerHTML = `
+                            <div class="friend-info">
+                                <div class="friend-avatar"></div>
+                                <div class="friend-name">${data.toName}</div>
+                            </div>
+                            <button class="action-btn btn-cancel" onclick="cancelRequest('${doc.id}')">取消</button>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            });
+
+        // 2. リクエスト (Received) の監視
+        if(unsubscribeReceived) unsubscribeReceived();
+        unsubscribeReceived = db.collection("users").doc(uid).collection("received_requests")
+            .orderBy("timestamp", "desc")
+            .onSnapshot(snapshot => {
+                const container = document.getElementById("requestListContent");
+                container.innerHTML = "";
+                const emptyMsg = document.querySelector("#tab-request .empty-msg");
+                
+                if (snapshot.empty) {
+                    emptyMsg.style.display = "block";
+                } else {
+                    emptyMsg.style.display = "none";
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const div = document.createElement("div");
+                        div.className = "friend-item";
+                        div.innerHTML = `
+                            <div class="friend-info">
+                                <div class="friend-avatar"></div>
+                                <div class="friend-name">${data.fromName}</div>
+                            </div>
+                            <div>
+                                <button class="action-btn btn-accept" onclick="acceptRequest('${doc.id}', '${data.fromName}')">承認</button>
+                                <button class="action-btn btn-reject" onclick="rejectRequest('${doc.id}')">拒否</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            });
+
+        // 3. フレンド一覧 (friends) の監視
+        // ここでは users/{uid}/friends コレクションを想定
+        if(unsubscribeFriends) unsubscribeFriends();
+        unsubscribeFriends = db.collection("users").doc(uid).collection("friends")
+            .onSnapshot(snapshot => {
+                const container = document.getElementById("friendListContent");
+                container.innerHTML = "";
+                const emptyMsg = document.querySelector("#tab-list .empty-msg");
+                
+                if (snapshot.empty) {
+                    emptyMsg.style.display = "block";
+                } else {
+                    emptyMsg.style.display = "none";
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        const div = document.createElement("div");
+                        div.className = "friend-item";
+                        // クリックで相手のマイページへ
+                        div.innerHTML = `
+                            <div class="friend-info" onclick="location.href='new_mypage.html?uid=${doc.id}'">
+                                <div class="friend-avatar"></div>
+                                <div class="friend-name">${data.name}</div>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
+                }
+            });
+    }
+
+    // --- 各種アクション (取消・承認・拒否) ---
+    async function cancelRequest(targetUid) {
+        if(!confirm("申請を取り消しますか？")) return;
+        const myUid = firebase.auth().currentUser.uid;
+        const batch = db.batch();
+        batch.delete(db.collection("users").doc(myUid).collection("sent_requests").doc(targetUid));
+        batch.delete(db.collection("users").doc(targetUid).collection("received_requests").doc(myUid));
+        await batch.commit();
+    }
+
+    async function rejectRequest(targetUid) {
+        if(!confirm("申請を拒否しますか？")) return;
+        const myUid = firebase.auth().currentUser.uid;
+        const batch = db.batch();
+        batch.delete(db.collection("users").doc(myUid).collection("received_requests").doc(targetUid));
+        batch.delete(db.collection("users").doc(targetUid).collection("sent_requests").doc(myUid));
+        await batch.commit();
+    }
+
+    async function acceptRequest(targetUid, targetName) {
+        const myUid = firebase.auth().currentUser.uid;
+        
+        // 自分の名前を取得
+        const myDoc = await db.collection("users").doc(myUid).get();
+        const myName = myDoc.data().name || "名無し";
+
+        const batch = db.batch();
+
+        // 1. お互いの friends コレクションに追加
+        batch.set(db.collection("users").doc(myUid).collection("friends").doc(targetUid), {
+            name: targetName,
+            since: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        batch.set(db.collection("users").doc(targetUid).collection("friends").doc(myUid), {
+            name: myName,
+            since: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. 申請データを削除
+        batch.delete(db.collection("users").doc(myUid).collection("received_requests").doc(targetUid));
+        batch.delete(db.collection("users").doc(targetUid).collection("sent_requests").doc(myUid));
+
+        await batch.commit();
+        alert("フレンドになりました！");
+        switchTab('list');
+    }
+
+    // --- チャット機能 ---
+    let chatUnsubscribe = null;
     function openLobbyChat() {
       document.getElementById('lobbyChatModal').style.display = 'flex';
       initLobbyChat();
     }
-
     function initLobbyChat() {
         const historyDiv = document.getElementById("lobbyChatHistory");
         if (!historyDiv) return;
         if (chatUnsubscribe) return; 
-
-        chatUnsubscribe = db.collection("lobby_chat")
-            .orderBy("createdAt", "desc")
-            .limit(50)
-            .onSnapshot((snapshot) => {
-                const historyDiv = document.getElementById("lobbyChatHistory");
-                let messages = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    data.id = doc.id;
-                    messages.push(data);
-                });
-                
-                historyDiv.innerHTML = "";
-                messages.forEach(msg => addMessageToLobbyChatFirestore(msg));
-                historyDiv.scrollTop = 0;
-            });
+        chatUnsubscribe = db.collection("lobby_chat").orderBy("createdAt", "desc").limit(50).onSnapshot((snapshot) => {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            let messages = [];
+            snapshot.forEach(doc => { const data = doc.data(); data.id = doc.id; messages.push(data); });
+            historyDiv.innerHTML = "";
+            messages.forEach(msg => addMessageToLobbyChatFirestore(msg));
+            historyDiv.scrollTop = 0;
+        });
     }
-
     function addMessageToLobbyChatFirestore(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         const user = firebase.auth().currentUser;
         const currentMyId = user ? user.uid : null;
-        const msgUserId = data.userId || "unknown";
-        const isMe = (msgUserId === currentMyId);
+        const isMe = (data.userId === currentMyId);
 
         const rowDiv = document.createElement("div");
-        rowDiv.className = "chat-row";
-        if (isMe) rowDiv.classList.add("mine");
+        rowDiv.className = "chat-row" + (isMe ? " mine" : "");
 
         const iconCol = document.createElement("div");
         iconCol.className = "icon-container";
-
         const nameDiv = document.createElement("div");
         nameDiv.className = "chat-name-badge";
         const safeName = data.name || "名無し";
         const textWidth = Math.max(80, safeName.length * 12); 
         nameDiv.innerHTML = `<svg viewBox="0 0 ${textWidth} 20" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"><text x="50%" y="50%" class="chat-name-text">${safeName}</text></svg>`;
-
         const iconImg = document.createElement("img");
         iconImg.src = data.icon || "script/image/test.icon.PNG";
         iconImg.className = "chat-icon-img";
         iconImg.onerror = function() { this.style.backgroundColor = "#ccc"; };
-
-        iconCol.appendChild(nameDiv);
-        iconCol.appendChild(iconImg);
+        iconCol.appendChild(nameDiv); iconCol.appendChild(iconImg);
 
         const bubbleDiv = document.createElement("div");
         bubbleDiv.className = "chat-bubble";
         bubbleDiv.textContent = data.text;
 
-        rowDiv.appendChild(iconCol);
-        rowDiv.appendChild(bubbleDiv);
+        rowDiv.appendChild(iconCol); rowDiv.appendChild(bubbleDiv);
         historyDiv.appendChild(rowDiv);
     }
-
     function sendLobbyMessage() {
         const input = document.getElementById("lobbyChatInput");
-        const text = input.value.trim();
-        if (!text) return;
-
+        if (!input.value.trim()) return;
         const user = firebase.auth().currentUser;
         let myName = "ゲスト";
         let myId = "guest";
-        let iconUrl = "script/image/test.icon.PNG";
-
-        if (user) {
-            myId = user.uid;
-            myName = "フレンド画面の人"; // ※auth.js等で名前取得ロジックがあればそちらを使用
-            // ここでは簡易的にこう書いていますが、本来はUserドキュメントを取得して名前を入れるのがベスト
+        
+        if(user) {
+             myId = user.uid;
+             // 簡易的にDOMから取得するか、Firestoreから取るか。ここではDOMがあればそれを使う
+             const nameEl = document.getElementById("userNameDisplay"); // friend.htmlにはないので注意
+             myName = nameEl ? nameEl.textContent : "名無し";
         }
 
         db.collection("lobby_chat").add({
-            text: text,
-            name: myName,
-            userId: myId,
-            icon: iconUrl,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            role: 'lobby'
-        }).then(() => {
-            input.value = "";
+            text: input.value, name: myName, userId: myId, icon: "script/image/test.icon.PNG",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(), role: 'lobby'
         });
+        input.value = "";
     }
-    
-    document.getElementById("lobbyChatInput").addEventListener("keypress", (e) => {
-        if (e.key === "Enter") sendLobbyMessage();
-    });
+    document.getElementById("lobbyChatInput").addEventListener("keypress", (e) => { if (e.key === "Enter") sendLobbyMessage(); });
   </script>
 </body>
 </html>
