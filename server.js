@@ -440,9 +440,13 @@ socket.on('change room mode', (data) => {
 
     // --- 切断処理 ---
     socket.on('disconnect', () => {
-        console.log('切断: ' + socket.id);
-        waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
-        delete playerCharIds[socket.id];
+        console.log('切断: ' + socket.id);
+        
+        // ★修正：両方のキューから削除する
+        waitingQueueCasual = waitingQueueCasual.filter(u => u.socketId !== socket.id);
+        waitingQueueFormal = waitingQueueFormal.filter(u => u.socketId !== socket.id);
+        
+        delete playerCharIds[socket.id];
 
         const roomId = socket.roomId;
         const userId = socket.userId;
