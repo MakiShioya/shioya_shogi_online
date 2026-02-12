@@ -130,6 +130,10 @@
     .btn-gray {
       background: linear-gradient(to bottom, #bdc3c7 0%, #2c3e50 100%);
     }
+    /* ★追加：紫色（履歴用）：マイページへ移動 */
+.btn-purple {
+  background: linear-gradient(to bottom, #9b59b6 0%, #6C4B9C 100%);
+}
 
     /* ユーザー情報バー */
     .user-info-bar {
@@ -214,6 +218,7 @@
     <textarea id="kifuInput" placeholder="ここに棋譜をペースト"></textarea>
     
     <button class="action-btn btn-green" onclick="startAnalysis()">解析を開始する</button>
+    <button class="action-btn btn-purple" onclick="window.location.href='mypage.html'">対局履歴から解析する</button>
     <button class="action-btn btn-gray" onclick="window.location.href='home.html'">ホームに戻る</button>
   </div>
 
@@ -270,3 +275,4 @@
 
 </body>
 </html>
+
