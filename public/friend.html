@@ -324,11 +324,23 @@
     });
 
     // --- タブ切り替え ---
+    // --- タブ切り替え（修正版） ---
     function switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        // 1. リストの表示切り替え
         document.querySelectorAll('.list-view').forEach(div => div.classList.remove('active'));
-        document.getElementById('tab-' + tabName).classList.add('active');
+        const targetList = document.getElementById('tab-' + tabName);
+        if (targetList) {
+            targetList.classList.add('active');
+        }
+
+        // 2. ボタンの見た目切り替え（eventを使わずに判定する方式に変更）
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            // ボタンの onclick 属性に tabName が含まれているかチェックして判定
+            if (btn.getAttribute('onclick').includes(`'${tabName}'`)) {
+                btn.classList.add('active');
+            }
+        });
     }
 
     // --- モーダル ---
