@@ -50,7 +50,7 @@ const LEVEL_CONFIG = [
     { id: 22, name: "Lv22", nodes: 100000, depth: 15, multiPV: 1, noise: 0, useBook: true },
     { id: 23, name: "Lv23", nodes: 120000, depth: 16, multiPV: 1, noise: 0, useBook: true },
     { id: 24, name: "Lv24", nodes: 140000, depth: 16, multiPV: 1, noise: 0, useBook: true },
-    { id: 25, name: "Lv25", nodes: 160000, depth: 17, multiPV: 1, noise: 0, useBook: true },
+    { id: 25, name: "Lv25", nodes: 160000, depth: 17, multiPV: 1, noise: 0, useBook: false },
     { id: 26, name: "Lv26", nodes: 180000, depth: 17, multiPV: 1, noise: 0, useBook: true },
     { id: 27, name: "Lv27", nodes: 200000, depth: 18, multiPV: 1, noise: 0, useBook: true },
     { id: 28, name: "Lv28", nodes: 250000, depth: 18, multiPV: 1, noise: 0, useBook: true },
@@ -2009,6 +2009,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
