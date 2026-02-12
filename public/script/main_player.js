@@ -1,5 +1,6 @@
 // script/main_player.js (Fixed for PvP)
-
+const isFormalMode = localStorage.getItem('shogi_game_mode') === 'formal';
+console.log("Offline PvP Mode:", isFormalMode ? "Formal (必殺技なし)" : "Casual (必殺技あり)");
 // ★★★ 1. グローバル変数・設定定義 (必ず一番上に書く) ★★★
 let p1Skill = null;       // 先手の技オブジェクト
 let p2Skill = null;       // 後手の技オブジェクト
@@ -321,15 +322,18 @@ window.executeMove = function(sel, x, y, doPromote) {
       }
       
       // 動かしたプレイヤーにポイントを加算
-      if (sel.player === "black") {
-          blackSkillPoint += gain;
-          if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
-      } else if (sel.player === "white") {
-          whiteSkillPoint += gain;
-          if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+      if (!isFormalMode) {
+          // 動かしたプレイヤーにポイントを加算
+          if (sel.player === "black") {
+              blackSkillPoint += gain;
+              if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
+          } else if (sel.player === "white") {
+              whiteSkillPoint += gain;
+              if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+          }
+          
+          updatePvPGaugeUI();
       }
-      
-      updatePvPGaugeUI();
   }
 
   window.render(); 
@@ -465,7 +469,13 @@ window.addEventListener("load", () => {
 
   // イベントリスナー
   if (resignBtn) resignBtn.addEventListener("click", resignGame);
-
+if (isFormalMode) {
+        // class="skill-gauge-wrapper" をすべて隠す (opacity:0 または visibility:hidden 推奨)
+        const gauges = document.querySelectorAll('.skill-gauge-wrapper');
+        gauges.forEach(el => {
+            el.style.visibility = 'hidden'; 
+        });
+    }
   // ゲーム開始
   playBGM();
   startTimer();
@@ -769,8 +779,21 @@ function closeResignModal() {
 }
 
 function updateSkillButton() {
-  const skillBtn = document.getElementById("skillBtn");
-  if (!skillBtn) return;
+    const skillBtn = document.getElementById("skillBtn");
+    if (!skillBtn) return;
+
+    // ▼▼▼ 追加：ふぉーまるモードなら強制無効化 ▼▼▼
+    if (isFormalMode) {
+        skillBtn.style.display = "inline-block";
+        skillBtn.textContent = "---";
+        skillBtn.disabled = true;
+        skillBtn.style.backgroundColor = "#555";
+        skillBtn.style.color = "#888";
+        skillBtn.style.border = "2px solid #333";
+        skillBtn.style.cursor = "default";
+        skillBtn.style.opacity = "0.5";
+        return;
+    }
   
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
@@ -1021,3 +1044,4 @@ function updatePvPGaugeUI() {
     }
     updateSkillButton();
 }
+
