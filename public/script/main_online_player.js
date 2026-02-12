@@ -2,7 +2,13 @@
 
 // ★★★ 1. Socket初期化 ★★★
 const socket = io({ autoConnect: false });
-
+// ▼▼▼ 追加：モードの取得 ▼▼▼
+const urlParams = new URLSearchParams(window.location.search);
+// URLパラメータ(room.htmlから) > localStorage(ランダム) > デフォルト の順で判定
+const currentMode = urlParams.get('mode') || localStorage.getItem('shogi_game_mode') || 'casual';
+const isFormalMode = (currentMode === 'formal');
+console.log("Online Mode:", isFormalMode ? "Formal (必殺技なし)" : "Casual (必殺技あり)");
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 // DOM要素
 const board = document.getElementById("board");
 const blackHandDiv = document.getElementById("blackHand");
@@ -86,6 +92,16 @@ window.addEventListener("load", () => {
     applyPlayerImage(); 
 
     if (resignBtn) resignBtn.addEventListener("click", resignGame);
+
+
+    if (isFormalMode) {
+        // class="skill-gauge-wrapper" をすべて隠す
+        const gauges = document.querySelectorAll('.skill-gauge-wrapper');
+        gauges.forEach(el => {
+            el.style.visibility = 'hidden'; // レイアウトを崩さないよう非表示にする
+        });
+    }
+
 
     playBGM();
     statusDiv.textContent = "認証を確認中..."; 
@@ -389,6 +405,18 @@ function syncGlobalSkillState() {
 function updateSkillButton() {
     const skillBtn = document.getElementById("skillBtn");
     if (!skillBtn) return;
+
+  if (isFormalMode) {
+        skillBtn.style.display = "inline-block";
+        skillBtn.textContent = "---";
+        skillBtn.disabled = true;
+        skillBtn.style.backgroundColor = "#555";
+        skillBtn.style.color = "#888";
+        skillBtn.style.border = "2px solid #333";
+        skillBtn.style.cursor = "default";
+        skillBtn.style.opacity = "0.5";
+        return;
+    }
 
     let mySkill = null;
     if (myRole === "black") mySkill = p1Skill;
@@ -821,15 +849,16 @@ function executeMove(sel, x, y, doPromote, fromNetwork = false) {
         }
         
         // ポイント加算
-        if (sel.player === "black") {
-            blackSkillPoint += gain;
-            if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
-        } else if (sel.player === "white") {
-            whiteSkillPoint += gain;
-            if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+        if (!isFormalMode) {
+            if (sel.player === "black") {
+                blackSkillPoint += gain;
+                if(blackSkillPoint > MAX_SKILL_POINT) blackSkillPoint = MAX_SKILL_POINT;
+            } else if (sel.player === "white") {
+                whiteSkillPoint += gain;
+                if(whiteSkillPoint > MAX_SKILL_POINT) whiteSkillPoint = MAX_SKILL_POINT;
+            }
+            updatePvPGaugeUI();
         }
-        
-        updatePvPGaugeUI();
     }
     // ▲▲▲ ここまで ▲▲▲
 
