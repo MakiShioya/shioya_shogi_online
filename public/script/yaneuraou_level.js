@@ -103,6 +103,7 @@ let ponderTimer = null;  // 休憩用のタイマー
 let isStoppingPonder = false;// Ponder停止中かどうかのフラグ
 let hasShownEndEffect = false;
 let candidateMoves = [];
+let targetRookFile = 0;
 
 // ▼▼▼ この部分が足りていません！ここに追加してください ▼▼▼
 
@@ -236,102 +237,97 @@ function sendToEngine(msg) {
 
 // script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
 
+// script/yaneuraou_level.js の handleEngineMessage をこれに書き換え
+
 function handleEngineMessage(msg) {
-    // デバッグ：エンジンからの生の出力を確認したい場合はコメントアウトを外す
-    // if (msg.startsWith("info")) console.log("[EngineRaw]", msg);
+    // 1. 候補手情報の解析
+    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
+        let pvIndex = 1;
+        const matchPv = msg.match(/multipv (\d+)/);
+        if (matchPv) pvIndex = parseInt(matchPv[1]);
 
-    // 1. 候補手情報の解析（info ... pv ...）
-    if (typeof msg === "string" && msg.startsWith("info") && msg.includes("pv")) {
-        
-        // 何番目の手か（multipv）を取得
-        let pvIndex = 1;
-        const matchPv = msg.match(/multipv (\d+)/);
-        if (matchPv) pvIndex = parseInt(matchPv[1]);
+        let score = 0;
+        const matchScore = msg.match(/score cp ([\-\d]+)/);
+        const matchMate = msg.match(/score mate ([\-\d]+)/);
 
-        // スコアを取得
-        let score = 0;
-        const matchScore = msg.match(/score cp ([\-\d]+)/);
-        const matchMate = msg.match(/score mate ([\-\d]+)/);
+        if (matchScore) {
+            score = parseInt(matchScore[1]);
+        } else if (matchMate) {
+            score = (parseInt(matchMate[1]) > 0) ? 30000 : -30000;
+        }
 
-        if (matchScore) {
-            score = parseInt(matchScore[1]);
-        } else if (matchMate) {
-            const mateVal = parseInt(matchMate[1]);
-            score = (mateVal > 0) ? 30000 : -30000;
-        }
+        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
+        if (matchMove) {
+            const move = matchMove[1];
+            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
+            if (existingIdx !== -1) {
+                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
+            } else {
+                candidateMoves.push({ id: pvIndex, move: move, score: score });
+            }
+        }
+        
+        if (pvIndex === 1) {
+            let graphScore = score;
+            if (turn === "white") graphScore = -graphScore;
+            evalHistory[moveCount] = graphScore;
+            updateChart();
+        }
+    }
 
-        // 指し手を取得
-        const matchMove = msg.match(/\bpv\s+([a-zA-Z0-9\+\*]+)/);
-        if (matchMove) {
-            const move = matchMove[1];
-            
-            // リストに保存（デバッグ用にログ出力）
-            // console.log(`[候補発見] PV:${pvIndex}, Move:${move}, Score:${score}`);
+    if (msg === "usiok") {
+        sendToEngine("isready");
+    }
+    else if (msg === "readyok") {
+        isEngineReady = true;
+        
+        // ★対局開始時：今回の「振り飛車の種類」をランダムに決める！
+        // 0: 中飛車, 1: 四間飛車, 2: 三間飛車, 3: 向かい飛車
+        const strategyType = Math.floor(Math.random() * 4);
+        
+        if (cpuSide === "white") {
+            // 後手番(White)の場合の筋: 5(中), 4(四), 3(三), 2(向)
+            const files = [5, 4, 3, 2];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦決定] 今回のCPU(後手)は【${targetRookFile}筋】に振ります！`);
+        } else {
+            // 先手番(Black)の場合の筋: 5(中), 6(四), 7(三), 8(向)
+            const files = [5, 6, 7, 8];
+            targetRookFile = files[strategyType];
+            console.log(`[作戦決定] 今回のCPU(先手)は【${targetRookFile}筋】に振ります！`);
+        }
 
-            const existingIdx = candidateMoves.findIndex(c => c.id === pvIndex);
-            if (existingIdx !== -1) {
-                candidateMoves[existingIdx] = { id: pvIndex, move: move, score: score };
-            } else {
-                candidateMoves.push({ id: pvIndex, move: move, score: score });
-            }
-        }
-        
-        // グラフ用には最善手(multipv 1)のスコアだけ使う
-        if (pvIndex === 1) {
-            let graphScore = score;
-            if (turn === "white") graphScore = -graphScore;
-            evalHistory[moveCount] = graphScore;
-            for(let i = 0; i < moveCount; i++) {
-                if (evalHistory[i] === undefined) evalHistory[i] = evalHistory[i-1] || 0;
-            }
-            updateChart();
-        }
-    }
+        // 定跡の設定
+        if (currentLevelSetting.useBook) {
+            console.log("定跡をONにします");
+            sendToEngine("setoption name BookFile value user_book1.db"); 
+        } else {
+            console.log("定跡をOFFにします");
+            sendToEngine("setoption name BookFile value no_book"); 
+        }
 
-    if (msg === "usiok") {
-        sendToEngine("isready");
-    }
-    else if (msg === "readyok") {
-        isEngineReady = true;
-        
-        if (currentLevelSetting.useBook) {
-            console.log("定跡をONにします");
-            sendToEngine("setoption name BookFile value user_book1.db"); 
-        } else {
-            console.log("定跡をOFFにします");
-            sendToEngine("setoption name BookFile value no_book"); 
-        }
+        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
+        
+        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
+    }
+    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
+        const parts = msg.split(" ");
+        let bestMove = parts[1];
+        
+        if (isStoppingPonder) {
+             isStoppingPonder = false;
+             return;
+        }
+        if (turn !== cpuSide) return;
+        
+        if (bestMove === "resign") { resignGame(); return; }
+        else if (bestMove === "win") { gameOver = true; return; }
 
-        statusDiv.textContent = (cpuSide === "white") ? "対局開始！ あなたは【先手】です。" : "対局開始！ あなたは【後手】です。";
-        console.log("Ready OK!");
-
-        if (turn === cpuSide) setTimeout(() => cpuMove(), 1000);
-    }
-    else if (typeof msg === "string" && msg.startsWith("bestmove")) {
-        const parts = msg.split(" ");
-        let bestMove = parts[1]; // エンジンが推奨する最善手
-        
-        if (isStoppingPonder) {
-             console.log("Ponder停止によるbestmoveを無視");
-             isStoppingPonder = false;
-             return;
-        }
-        if (turn !== cpuSide) return;
-        
-        if (bestMove === "resign") {
-            resignGame(); 
-            return;
-        } else if (bestMove === "win") {
-            statusDiv.textContent = "エンジンの勝ち宣言";
-            gameOver = true;
-            return;
-        }
-
-        // ... (bestMove === "win" ブロックの直後)
-
-        // ★修正：ノイズが0でも、奇数レベルの序盤なら選択ロジックを動かす
+        // ▼▼▼ ノイズ・振り飛車ボーナス処理 ▼▼▼
+        
+        // ノイズ0でも、奇数レベルの序盤なら選択ロジックを動かす
         const isOddLevel = (currentLevelSetting.id % 2 !== 0); 
-        const isOpening = (moveCount <= 16); // 手数条件も少し緩和
+        const isOpening = (moveCount <= 10); 
         const shouldRunLogic = (currentLevelSetting.noise > 0) || (isOddLevel && isOpening);
 
         if (shouldRunLogic && candidateMoves.length > 0) {
@@ -339,27 +335,35 @@ function handleEngineMessage(msg) {
             const noiseRange = currentLevelSetting.noise;
 
             const noisyCandidates = candidateMoves.map(c => {
-                // ノイズ計算（ノイズ0なら 0 になる）
+                // ノイズ計算
                 const noise = (noiseRange > 0) ? (Math.random() - 0.5) * 2 * noiseRange : 0;
-                
                 let finalScore = c.score + noise;
                 let bonusLog = "";
 
-                // 2. ★振り飛車ボーナス判定
+                // ★特定の筋への振り飛車ボーナス判定
                 if (isOddLevel && isOpening) {
-                    let isRangingRook = false;
+                    let isTargetStrategy = false;
+                    
+                    // move文字列から移動先の筋（数字）を取得する
+                    // USI形式: "7g7f" -> 3文字目の "7" が移動先の筋
+                    // ただし "R*5e" のような打つ手は除外する必要があるが、
+                    // 飛車を振る手は盤上の移動なので "2h5h" のような形式になる
                     
                     if (turn === "black") {
-                        // 先手(2h)から 3h～8h への移動
-                        if (c.move.match(/^2h[3-8]h/)) isRangingRook = true;
+                        // 先手: 元が2h(28)で、移動先が targetRookFile + "h"
+                        // 例: "2h5h" (中飛車)
+                        const targetStr = `2h${targetRookFile}h`;
+                        if (c.move === targetStr) isTargetStrategy = true;
                     } else {
-                        // 後手(8b)から 7b～2b への移動
-                        if (c.move.match(/^8b[2-7]b/)) isRangingRook = true;
+                        // 後手: 元が8b(82)で、移動先が targetRookFile + "b"
+                        // 例: "8b4b" (四間飛車)
+                        const targetStr = `8b${targetRookFile}b`;
+                        if (c.move === targetStr) isTargetStrategy = true;
                     }
 
-                    if (isRangingRook) {
-                        finalScore += 3000; // ボーナスを強化 (+3000点)
-                        bonusLog = " [振り飛車!]";
+                    if (isTargetStrategy) {
+                        finalScore += 500; // ★ボーナスを500点に設定
+                        bonusLog = ` [狙い通りの${targetRookFile}筋!]`;
                     }
                 }
 
@@ -383,9 +387,9 @@ function handleEngineMessage(msg) {
         }
         // ▲▲▲▲▲▲
 
-        applyUsiMove(bestMove);
-        if (!gameOver) setTimeout(startPondering, 500);
-    }
+        applyUsiMove(bestMove);
+        if (!gameOver) setTimeout(startPondering, 500);
+    }
 }
 
 
@@ -1291,7 +1295,7 @@ function cpuMove() {
     const isOddLevel = (currentLevelSetting.id % 2 !== 0);
     
     // 16手目までは、奇数レベルなら最低でも5手は読む
-    if (isOddLevel && usiHistory.length <= 16) {
+    if (isOddLevel && usiHistory.length <= 10) {
         if (pvNum < 20) pvNum =20;
     }
     
@@ -1983,6 +1987,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
