@@ -111,7 +111,7 @@ window.skillUsed = false;
 window.isCaptureRestricted = false;
 let lastSkillKifu = "";
 let pendingMove = null;
-let lastMoveFrom = null;
+
 // ★CPU 2回行動用
 let isCpuDoubleAction = false;
 let cpuSkillUseCount = 0;
@@ -1972,5 +1972,6 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
