@@ -14,7 +14,7 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <style>
-    /* --- 基本設定 (共通) --- */
+    /* --- 基本設定 --- */
     @font-face {
       font-family: 'SetoFont';
       src: url('script/font/setofont.ttf') format('truetype');
@@ -45,7 +45,7 @@
       background-size: cover; background-position: center;
     }
 
-    /* --- ① ロード画面 (Home.htmlより移植) --- */
+    /* --- ロード画面 --- */
     #loading-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background-color: #432517;
@@ -70,15 +70,18 @@
     /* --- メインコンテンツ --- */
     .container {
       width: 95%; max-width: 600px; margin: 20px auto;
-      height: 80vh; /* 下部メニュー分を空ける */
-      display: flex; flex-direction: column; gap: 10px;
+      height: 80vh; 
+      display: flex; flex-direction: column;
+      /* gapは削除し、個別にマージン制御してくっつける */
     }
 
-    /* ③ ID検索エリア */
+    /* 検索エリア */
     .search-area {
       background: rgba(236, 219, 191, 0.95);
       border: 3px solid #8b4513; border-radius: 10px;
       padding: 10px; display: flex; gap: 5px; align-items: center;
+      margin-bottom: 15px; /* タブとの隙間 */
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     .search-input {
       flex: 1; padding: 8px; border: 1px solid #8b4513; border-radius: 5px;
@@ -90,29 +93,62 @@
       font-weight: bold;
     }
 
-    /* ② タブ切り替え */
+    /* --- ★★★ 修正箇所：タブとリストの一体化デザイン ★★★ --- */
+    
     .tab-container {
-      display: flex; gap: 5px;
+      display: flex;
+      padding-left: 10px; /* 左端を少し空ける */
+      align-items: flex-end; /* 下揃え */
+      position: relative;
+      z-index: 1; /* リストより奥に配置 */
+      margin-bottom: -3px; /* リストの枠線分だけ食い込ませる */
     }
+
     .tab-btn {
-      flex: 1; padding: 10px 0; border: none;
-      background: rgba(67, 37, 23, 0.6); color: #ccc;
-      border-radius: 10px 10px 0 0; cursor: pointer;
-      font-weight: bold; font-size: 0.9rem;
-      transition: all 0.2s;
+      flex: 1;
+      padding: 10px 0;
+      border: 3px solid #8b4513; /* 枠線 */
+      background: #6d4c41; /* 非アクティブ時は暗く */
+      color: #ccc;
+      border-radius: 10px 10px 0 0; /* 上だけ丸く */
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      position: relative;
+      margin-right: -2px; /* タブ同士の隙間を埋める */
+      transition: background 0.2s; /* 色だけアニメーション */
+      height: 45px; /* 高さを固定 */
+      
+      /* ガタつき防止：変形(scale)を使わず固定サイズで管理 */
     }
+
     .tab-btn.active {
-      background: #ECDBBF; color: #432517;
-      border: 3px solid #8b4513; border-bottom: none;
-      transform: scaleY(1.1) translateY(2px); /* 少し大きくして繋げる */
+      background: #ECDBBF; /* リストと同じ色（ベージュ） */
+      color: #432517;
+      
+      /* ★重要：下の線を消して「くっついている」ように見せる */
+      border-bottom: 3px solid #ECDBBF; 
+      
+      /* 前面に持ってくる */
+      z-index: 10;
+      
+      /* 少しだけ高く見せる（ガタつかない範囲で） */
+      height: 50px; 
     }
 
     /* リスト表示エリア */
     .list-container {
-      flex: 1; background: #ECDBBF;
-      border: 3px solid #8b4513; border-radius: 0 0 10px 10px;
-      padding: 10px; overflow-y: auto;
+      flex: 1; 
+      background: #ECDBBF;
+      border: 3px solid #8b4513; 
+      border-radius: 0 10px 10px 10px; /* 左上だけ角張らせる */
+      padding: 10px; 
+      overflow-y: auto;
       box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+      
+      /* タブより手前に表示 */
+      position: relative;
+      z-index: 5;
     }
     
     .list-view { display: none; }
@@ -132,17 +168,9 @@
       padding: 5px 10px; border-radius: 5px; border: none;
       font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-left: 5px;
     }
-    .btn-accept { background: #28a745; color: white; }
-    .btn-reject { background: #d32f2f; color: white; }
-    .btn-cancel { background: #666; color: white; }
-    .btn-delete { background: #666; color: white; font-size: 0.7rem; }
+    .empty-msg { text-align: center; color: #888; margin-top: 30px; }
 
-    /* 空の状態のメッセージ */
-    .empty-msg {
-      text-align: center; color: #888; margin-top: 30px;
-    }
-
-    /* --- ④ 下部メニュー (Mypageと共通デザイン) --- */
+    /* --- 下部メニュー --- */
     .bottom-menu {
       position: absolute; bottom: 10px; width: 96%; left: 2%;
       display: flex; justify-content: space-around; align-items: flex-end; gap: 5px;
@@ -157,7 +185,6 @@
     }
     .menu-btn:active { transform: scale(0.95); }
 
-    /* 配色クラス */
     .mypage-color { background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
     .analysis-color { background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
     .ready-color { background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
@@ -181,7 +208,7 @@
       border-radius: 5px; cursor: pointer; margin-top: 10px;
     }
 
-    /* チャット用スタイル (共通) */
+    /* チャット用スタイル */
     .close-small-btn {
       position: absolute; top: 8px; right: 8px; padding: 4px 10px;
       background: #666; color: #ECDBBF; border: none; border-radius: 12px;
@@ -225,19 +252,15 @@
     </div>
 
     <div class="list-container">
-      
       <div id="tab-list" class="list-view active">
         <div class="empty-msg">フレンドがいません</div>
-        </div>
-
+      </div>
       <div id="tab-pending" class="list-view">
         <div class="empty-msg">申請中のユーザーはいません</div>
       </div>
-
       <div id="tab-request" class="list-view">
         <div class="empty-msg">届いているリクエストはありません</div>
       </div>
-
     </div>
   </div>
 
@@ -276,19 +299,16 @@
   <script src="script/auth.js"></script>
 
   <script>
-    // --- ロード画面処理 ---
+    // --- ロード画面 ---
     const loadingTipsList = [
       "【tips】IDを使って遠くの友達とつながりましょう。",
       "【tips】フレンドになると、いつでもプロフィールを確認できます。",
       "【tips】対局履歴から相手のIDを確認できます。"
     ];
-    
     document.addEventListener("DOMContentLoaded", () => {
-        // Tips表示
         const tipEl = document.getElementById('loading-tips');
         if(tipEl) tipEl.textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
     });
-
     window.addEventListener('load', () => {
         const loader = document.getElementById('loading-screen');
         setTimeout(() => {
@@ -299,70 +319,50 @@
 
     // --- タブ切り替え ---
     function switchTab(tabName) {
-        // ボタンのアクティブ化
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         event.target.classList.add('active');
-
-        // リストの表示切り替え
         document.querySelectorAll('.list-view').forEach(div => div.classList.remove('active'));
         document.getElementById('tab-' + tabName).classList.add('active');
     }
 
-    // --- モーダル操作 ---
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
+    // --- モーダル ---
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-    // --- ユーザー検索機能 ---
+    // --- 検索機能 ---
     async function searchUser() {
         const input = document.getElementById('searchInput').value.trim();
         if (!input) return;
-
-        // 自分自身の検索は除外などのロジックはお好みで
         const myUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
-        if(input === myUid) {
-            alert("自分自身です");
-            return;
-        }
+        if(input === myUid) { alert("自分自身です"); return; }
 
         try {
-            // FirestoreからIDで検索 (ドキュメントID = user ID と仮定)
             const docRef = db.collection("users").doc(input);
             const doc = await docRef.get();
-
             if (doc.exists) {
                 const data = doc.data();
                 document.getElementById('foundUserName').textContent = data.name || "名無し";
                 document.getElementById('foundUserId').textContent = "ID: " + input;
-                
-                // 申請ボタンの設定
                 const btn = document.getElementById('sendRequestBtn');
                 btn.onclick = () => sendFriendRequest(input);
-                
                 document.getElementById('searchResultModal').style.display = 'flex';
             } else {
                 alert("ユーザーが見つかりませんでした");
             }
         } catch(e) {
             console.error(e);
-            alert("検索中にエラーが発生しました");
+            alert("検索エラー");
         }
     }
 
-    // フレンド申請送信 (簡易実装)
     function sendFriendRequest(targetUid) {
         alert("申請を送りました！(デモ)");
-        // ここにFirestoreへの書き込み処理を実装します
-        // db.collection('users').doc(targetUid).collection('requests').add({...})
         closeModal('searchResultModal');
     }
 
-    // --- チャット機能 (共通) ---
-    // 他のページと同様のFirestoreチャット実装
+    // --- チャット ---
     let chatUnsubscribe = null;
     function openLobbyChat() {
         document.getElementById('lobbyChatModal').style.display = 'flex';
-        // チャット初期化ロジック (他ページと同様)
         if(!chatUnsubscribe) {
             const historyDiv = document.getElementById("lobbyChatHistory");
             chatUnsubscribe = db.collection("lobby_chat").orderBy("createdAt", "desc").limit(50)
@@ -371,7 +371,6 @@
                 const msgs = [];
                 snapshot.forEach(doc => msgs.push(doc.data()));
                 msgs.forEach(msg => {
-                    // 簡易表示
                     const div = document.createElement("div");
                     div.textContent = (msg.name||"") + ": " + msg.text;
                     div.style.background = "#fff"; div.style.padding="5px"; div.style.borderRadius="5px";
@@ -380,14 +379,11 @@
             });
         }
     }
-    
     function sendLobbyMessage() {
         const input = document.getElementById("lobbyChatInput");
         if(!input.value) return;
-        // Firestoreへの送信処理 (省略)
         input.value = "";
     }
-
   </script>
 </body>
 </html>
