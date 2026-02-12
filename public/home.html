@@ -1460,17 +1460,14 @@ function initLobbyChat() {
                 messages.push(data);
             });
 
-            // 新しい順(desc)で取得したので、表示のために古い順に直す
-            messages.reverse();
-
             // 画面を一度クリアして再描画
             historyDiv.innerHTML = "";
             messages.forEach(msg => {
                 addMessageToLobbyChatFirestore(msg);
             });
 
-            // 一番下へスクロール
-            historyDiv.scrollTop = historyDiv.scrollHeight;
+            // ★ 修正ポイント2: スクロール位置を一番上（最新）に固定
+            historyDiv.scrollTop = 0;
         });
 }
 
@@ -1973,6 +1970,7 @@ function updateModeButtonUI(mode) {
 
 </body>
 </html>
+
 
 
 
