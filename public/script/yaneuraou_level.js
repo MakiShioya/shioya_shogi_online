@@ -279,7 +279,7 @@ function handleEngineMessage(msg) {
         isEngineReady = true;
         
         // 作戦決定
-        const strategyType = Math.floor(Math.random() * 4);
+        const strategyType = Math.floor(Math.random() * 3);
         
         if (cpuSide === "white") {
             const files = [5, 4, 3];
@@ -2055,4 +2055,5 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
