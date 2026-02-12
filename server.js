@@ -186,6 +186,7 @@ socket.on('change room mode', (data) => {
     });
 
     // --- 入室処理 (ここでキャラ固定を行う) ---
+    // --- 入室処理 ---
     socket.on('enter game', (data) => {
         let roomId, userId, userCharId;
         if (typeof data === 'object') { 
@@ -198,13 +199,13 @@ socket.on('change room mode', (data) => {
             userCharId = 'default';
         }
 
-      if (!games[roomId]) {
-        console.log(`部屋作成: ${roomId}`);
-        games[roomId] = createNewGame(); // 上記の関数を使用
-        // ※もしURLパラメータ等で最初からモードを指定して入室する仕様にするなら、ここで設定
-    }
-    const game = games[roomId];
-      
+        // 部屋がなければ作成
+        if (!games[roomId]) {
+            console.log(`部屋作成: ${roomId}`);
+            games[roomId] = createNewGame();
+        }
+        
+        const game = games[roomId]; // 宣言は1回だけにする
 
         socket.join(roomId);
         socket.roomId = roomId;
@@ -214,30 +215,6 @@ socket.on('change room mode', (data) => {
             playerCharIds[socket.id] = userCharId;
         }
 
-        // 新規作成
-        if (!games[roomId]) {
-            console.log(`部屋作成: ${roomId}`);
-            games[roomId] = {
-                boardState: JSON.parse(JSON.stringify(INITIAL_BOARD)),
-                hands: { black: [], white: [] },
-                turn: "black",
-                moveCount: 0,
-                kifu: [],
-                players: { black: null, white: null },
-                ready: { black: false, white: false },
-                status: 'waiting',
-                blackCharId: 'default',
-                whiteCharId: 'default',
-                blackSkillPoint: 0, 
-                whiteSkillPoint: 0,
-                isGameOver: false,
-                // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
-                remainingTime: { black: 1200, white: 1200 }, // ★ここにカンマが必要でした
-                lastMoveTime: Date.now()
-            };
-        }
-        const game = games[roomId];
-
         // 席の割り当て
         let myRole = "spectator";
         if (game.players.black === userId) myRole = "black";
@@ -245,15 +222,13 @@ socket.on('change room mode', (data) => {
         else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
         else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
 
-        // ★★★ キャラクター情報の固定ロジック ★★★
+        // キャラクター情報の固定ロジック
         const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
 
         if (myRole === 'black') {
             if (game.blackCharId === 'default') {
                 game.blackCharId = incomingCharId;
                 console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
-            } else {
-                console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
             }
         }
         
@@ -261,42 +236,32 @@ socket.on('change room mode', (data) => {
             if (game.whiteCharId === 'default') {
                 game.whiteCharId = incomingCharId;
                 console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
-            } else {
-                console.log(`部屋[${roomId}] 後手キャラ固定済み(${game.whiteCharId})。上書き拒否。`);
             }
         }
 
         socket.emit('role assigned', myRole); 
         
-        // ★★★ 【修正】ここから時間計算ロジックを追加 ★★★
+        // 時間計算ロジック
         setTimeout(() => {
-            // 1. 送信用のデータをコピー作成（サーバーの元のデータを汚さないため）
             const gameToSend = JSON.parse(JSON.stringify(game));
 
-            // 2. 対局中(playing)であれば、経過時間を計算して減算する
             if (game.status === 'playing') {
                 const now = Date.now();
-                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); // 経過秒数
+                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000);
 
-                // 現在の手番プレイヤーから時間を引く
                 if (game.turn === 'black') {
                     gameToSend.remainingTime.black -= elapsedSeconds;
-                    // マイナスにならないように調整（0で止める）
                     if (gameToSend.remainingTime.black < 0) gameToSend.remainingTime.black = 0;
                 } else {
                     gameToSend.remainingTime.white -= elapsedSeconds;
                     if (gameToSend.remainingTime.white < 0) gameToSend.remainingTime.white = 0;
                 }
-                
-                console.log(`再接続補正: ${elapsedSeconds}秒経過。補正後の残り -> ▲${gameToSend.remainingTime.black} / △${gameToSend.remainingTime.white}`);
+                console.log(`再接続補正: ${elapsedSeconds}秒経過。`);
             }
 
-            // 3. 補正済みのデータを送信
             socket.emit('restore game', gameToSend); 
-            
             sendRoomUpdate(roomId);
         }, 50);
-        // ★★★ 修正ここまで ★★★
     });
 
     // --- 準備完了トグル ---
