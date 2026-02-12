@@ -429,7 +429,7 @@
   <script src="script/serifu/d.js"></script>
   <script src="script/auth.js"></script>
 
-  <script>
+ <script>
     // --- 初期化処理 ---
     document.addEventListener("DOMContentLoaded", () => {
       const savedCharId = localStorage.getItem('selected_character_id') || 'komiya';
@@ -449,24 +449,47 @@
                 if (doc.exists) {
                     const data = doc.data();
                     
+                    // ★デバッグ用: コンソールにデータを表示
+                    console.log("【ユーザーデータ取得】:", data);
+
                     // 基本情報
                     document.getElementById("userNameDisplay").textContent = data.name || "名無し";
                     document.getElementById("userIdDisplay").textContent = "ID: " + user.uid.substring(0, 8);
                     
-                    // ④ 勝敗の計算 (history配列から集計)
+                    // --- ④ 勝敗の計算ロジック（修正版） ---
                     let wins = 0;
                     let loses = 0;
 
+                    // パターンA: history配列から集計するタイプ
+                    let historyWins = 0;
+                    let historyLoses = 0;
+                    
                     if (data.history && Array.isArray(data.history)) {
                         data.history.forEach(h => {
-                            if (h.result === 'win') wins++;
-                            if (h.result === 'lose') loses++;
+                            // 結果の文字を小文字に統一して判定 (Win, win, WIN すべて対応)
+                            const res = (h.result || "").toString().toLowerCase();
+                            
+                            if (res === 'win' || res === 'victory' || res === 'sente_win' || res === 'gote_win') {
+                                // もし winner ID がある場合は自分のIDか確認する等の詳細ロジックが必要ですが、
+                                // 一旦「win」という文字が含まれていれば勝ちとみなす簡易判定にします
+                                historyWins++;
+                            }
+                            if (res === 'lose' || res === 'defeat') {
+                                historyLoses++;
+                            }
                         });
-                    } else {
-                        // historyがない場合は直接フィールドがあれば使う
-                        wins = data.wins || 0;
-                        loses = data.loses || 0;
+                        console.log("集計結果(history):", historyWins, "勝", historyLoses, "敗");
                     }
+
+                    // パターンB: 直接 wins/loses フィールドを持っているタイプ
+                    // (history集計が0だった場合や、直接フィールドの方が大きい場合はこちらを採用する保険)
+                    const directWins = data.wins || data.win || 0;
+                    const directLoses = data.loses || data.lose || 0;
+                    console.log("直接データ(wins):", directWins, "勝", directLoses, "敗");
+
+                    // 大きい方を採用する
+                    wins = Math.max(historyWins, directWins);
+                    loses = Math.max(historyLoses, directLoses);
 
                     document.getElementById("statsWin").textContent = wins;
                     document.getElementById("statsLose").textContent = loses;
@@ -476,6 +499,8 @@
                       document.getElementById("bioTextDisplay").textContent = data.bio;
                       document.getElementById("bioInput").value = data.bio;
                     }
+                } else {
+                    console.log("データが見つかりません");
                 }
             });
             
@@ -615,3 +640,4 @@
   </script>
 </body>
 </html>
+
