@@ -308,10 +308,10 @@ button { padding: 6px 12px; font-size: 14px; cursor: pointer; }
 .cut-in-active { display: block !important; animation: cut-in-anim 2.5s ease-out forwards; }
 @keyframes cut-in-anim { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); } }
 
-.flash-silver { animation: flash-silver-anim 1.5s ease-out; }
-.flash-red { animation: flash-red-anim 1.5s ease-out; }
-.flash-blue { animation: flash-blue-anim 1.5s ease-out; }
-.flash-yellow { animation: flash-yellow-anim 1.5s ease-out; }
+.flash-silver { animation: flash-silver-anim 2s ease-out; }
+.flash-red { animation: flash-red-anim 2s ease-out; }
+.flash-blue { animation: flash-blue-anim 2s ease-out; }
+.flash-yellow { animation: flash-yellow-anim 2s ease-out; }
 /* シルバー（戦法・美濃囲いなど） */
 @keyframes flash-silver-anim { 
     0% { 
