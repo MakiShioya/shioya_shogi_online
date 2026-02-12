@@ -19,7 +19,8 @@
 // multiPV: 候補手の数（多いほど、悪手を選ぶ余地が生まれる）
 // noise: 評価値に加える乱数の幅。大きいほど判断が狂う。
 // useBook: 定跡を使うかどうか（Lv21からON）
-
+const isFormalMode = localStorage.getItem('shogi_game_mode') === 'formal';
+console.log("現在のモード:", isFormalMode ? "ふぉーまる(必殺技なし)" : "かじゅある(必殺技あり)");
 const LEVEL_CONFIG = [
 
     { id: 1,  name: "Lv1",  nodes: 1000,  depth: 1,  multiPV: 10, noise: 4000, useBook: false },
@@ -184,6 +185,7 @@ window.addEventListener("load", () => {
 
   updateSkillButton();
 
+  
   playBGM();
   startTimer();
   
@@ -929,8 +931,8 @@ function executeMove(sel, x, y, doPromote) {
   if (typeof stopPondering === "function") stopPondering();
 
   // ▼▼▼ CPU必殺技（2回行動）の発動チェック ▼▼▼
-  if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
-      const cost = CpuDoubleAction.getCost();
+  if (!gameOver && turn === cpuSide && !isFormalMode && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
+        const cost = CpuDoubleAction.getCost();
       if (cpuSkillPoint >= cost) {
           consumeCpuSkillPoint(cost);
           isCpuDoubleAction = true;
@@ -1226,8 +1228,21 @@ function closeSkillModal() {
 }
 
 function updateSkillButton() {
-  const skillBtn = document.getElementById("skillBtn");
-  if (!skillBtn) return;
+    const skillBtn = document.getElementById("skillBtn");
+    if (!skillBtn) return;
+
+    // ★★★ 追加：ふぉーまるモードの場合 ★★★
+    if (isFormalMode) {
+        skillBtn.style.display = "inline-block"; // レイアウト維持のため表示はする
+        skillBtn.textContent = "---";           // テキストを無効な感じに
+        skillBtn.disabled = true;                // 押せなくする
+        skillBtn.style.backgroundColor = "#555"; // グレー背景
+        skillBtn.style.color = "#888";           // 薄い文字色
+        skillBtn.style.border = "2px solid #333";
+        skillBtn.style.cursor = "default";       // マウスカーソルも通常に
+        skillBtn.style.opacity = "0.5";          // 半透明にして存在感を消す
+        return; // ここで終了
+    }
   
   if (currentSkill) {
     skillBtn.style.display = "inline-block";
@@ -1977,10 +1992,13 @@ function applyUserSkin() {
 // --- ゲージ管理用の関数群 ---
 
 function addSkillPoint(amount) {
-    playerSkillPoint += amount;
-    if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
-    updateSkillGaugeUI();
-    updateSkillButton(); 
+    // ★追加：ふぉーまるモードならポイントを加算しない
+    if (isFormalMode) return;
+
+    playerSkillPoint += amount;
+    if (playerSkillPoint > MAX_SKILL_POINT) playerSkillPoint = MAX_SKILL_POINT;
+    updateSkillGaugeUI();
+    updateSkillButton(); 
 }
 
 function consumeSkillPoint(amount) {
@@ -2008,9 +2026,12 @@ function updateSkillGaugeUI() {
 }
 
 function addCpuSkillPoint(amount) {
-    cpuSkillPoint += amount;
-    if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
-    updateCpuSkillGaugeUI();
+    // ★追加：CPUもポイントを加算しない
+    if (isFormalMode) return;
+
+    cpuSkillPoint += amount;
+    if (cpuSkillPoint > MAX_SKILL_POINT) cpuSkillPoint = MAX_SKILL_POINT;
+    updateCpuSkillGaugeUI();
 }
 
 function consumeCpuSkillPoint(amount) {
@@ -2032,3 +2053,4 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
