@@ -21,7 +21,8 @@ app.use(express.static('public'));
 // --- ゲーム管理変数 ---
 let games = {}; 
 let playerCharIds = {}; 
-let waitingQueue = []; 
+let waitingQueueCasual = []; 
+let waitingQueueFormal = [];
 
 let chatHistory = [];
 if (fs.existsSync(DATA_FILE)) {
@@ -110,130 +111,173 @@ io.on('connection', (socket) => {
     });
 
     // --- ランダムマッチ ---
-    socket.on('join random queue', (userId) => {
-        waitingQueue = waitingQueue.filter(user => user.userId !== userId);
-        socket.userId = userId;
-        waitingQueue.push({ socketId: socket.id, userId: userId });
+    // --- ランダムマッチ ---
+    socket.on('join random queue', (data) => {
+        // データ形式の確認（文字列なら旧仕様、オブジェクトなら新仕様）
+        let userId, mode;
+        if (typeof data === 'object') {
+            userId = data.userId;
+            mode = data.mode || 'casual';
+        } else {
+            userId = data;
+            mode = 'casual';
+        }
 
-        if (waitingQueue.length >= 2) {
-            const p1 = waitingQueue.shift();
-            const p2 = waitingQueue.shift();
-            const autoRoomId = `rank_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-            
-            io.to(p1.socketId).emit('match found', autoRoomId);
-            io.to(p2.socketId).emit('match found', autoRoomId);
-        }
-    });
+        // 二重登録防止：両方のキューから削除
+        waitingQueueCasual = waitingQueueCasual.filter(u => u.userId !== userId);
+        waitingQueueFormal = waitingQueueFormal.filter(u => u.userId !== userId);
 
-    socket.on('leave random queue', () => {
-        waitingQueue = waitingQueue.filter(u => u.socketId !== socket.id);
-    });
+        socket.userId = userId;
+        
+        // モードに応じたキューに追加
+        const targetQueue = (mode === 'formal') ? waitingQueueFormal : waitingQueueCasual;
+        targetQueue.push({ socketId: socket.id, userId: userId });
 
+        console.log(`ランダム待機[${mode}]: ${userId} (現在: ${targetQueue.length}人)`);
+
+        // 2人揃ったらマッチング
+        if (targetQueue.length >= 2) {
+            const p1 = targetQueue.shift();
+            const p2 = targetQueue.shift();
+            const autoRoomId = `rank_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            
+            // ★部屋を作成し、モード情報をセットする
+            games[autoRoomId] = {
+                boardState: JSON.parse(JSON.stringify(INITIAL_BOARD)),
+                hands: { black: [], white: [] },
+                turn: "black",
+                moveCount: 0,
+                kifu: [],
+                players: { black: null, white: null },
+                ready: { black: false, white: false },
+                status: 'waiting',
+                blackCharId: 'default',
+                whiteCharId: 'default',
+                blackSkillPoint: 0, 
+                whiteSkillPoint: 0,
+                isGameOver: false,
+                remainingTime: { black: 1200, white: 1200 },
+                lastMoveTime: Date.now(),
+                mode: mode // ★ここでモードを保存！
+            };
+
+            io.to(p1.socketId).emit('match found', autoRoomId);
+            io.to(p2.socketId).emit('match found', autoRoomId);
+        }
+    });
+
+    socket.on('leave random queue', () => {
+        waitingQueueCasual = waitingQueueCasual.filter(u => u.socketId !== socket.id);
+        waitingQueueFormal = waitingQueueFormal.filter(u => u.socketId !== socket.id);
+    });
+
+
+  // --- ★追加：部屋のモード変更 ---
+socket.on('change room mode', (data) => {
+    const roomId = data.roomId;
+    const mode = data.mode;
+
+    if (games[roomId]) {
+        // 対局中（playing）は変更できないようにする
+        if (games[roomId].status === 'playing') return;
+
+        games[roomId].mode = mode;
+        // 部屋内の全員に通知
+        io.to(roomId).emit('update room mode', mode);
+        console.log(`部屋[${roomId}] モード変更: ${mode}`);
+    }
+});
+
+  
     // --- 入室処理 (ここでキャラ固定を行う) ---
-    socket.on('enter game', (data) => {
-        let roomId, userId, userCharId;
-        if (typeof data === 'object') { 
-            roomId = data.roomId; 
-            userId = data.userId; 
-            userCharId = data.charId;
-        } else { 
-            roomId = data || "default"; 
-            userId = 'guest_' + socket.id; 
-            userCharId = 'default';
-        }
+    socket.on('enter game', (data) => {
+        let roomId, userId, userCharId;
+        if (typeof data === 'object') { 
+            roomId = data.roomId; 
+            userId = data.userId; 
+            userCharId = data.charId;
+        } else { 
+            roomId = data || "default"; 
+            userId = 'guest_' + socket.id; 
+            userCharId = 'default';
+        }
 
-        socket.join(roomId);
-        socket.roomId = roomId;
-        socket.userId = userId;
+        socket.join(roomId);
+        socket.roomId = roomId;
+        socket.userId = userId;
 
-        if (userCharId) {
-            playerCharIds[socket.id] = userCharId;
-        }
+        if (userCharId) {
+            playerCharIds[socket.id] = userCharId;
+        }
 
-        // 新規作成
-        if (!games[roomId]) {
-            console.log(`部屋作成: ${roomId}`);
-            games[roomId] = {
-                boardState: JSON.parse(JSON.stringify(INITIAL_BOARD)),
-                hands: { black: [], white: [] },
-                turn: "black",
-                moveCount: 0,
-                kifu: [],
-                players: { black: null, white: null },
-                ready: { black: false, white: false },
-                status: 'waiting',
-                blackCharId: 'default',
-                whiteCharId: 'default',
-                blackSkillPoint: 0, 
-                whiteSkillPoint: 0,
-                isGameOver: false,
-                // ★★★ 【追加】時間の初期値をサーバーでも持つ ★★★
-                remainingTime: { black: 1200, white: 1200 }, // ★ここにカンマが必要でした
-                lastMoveTime: Date.now()
-            };
-        }
-        const game = games[roomId];
+        // 新規作成（ここで createNewGame を使うように統一）
+        if (!games[roomId]) {
+            console.log(`部屋作成: ${roomId}`);
+            games[roomId] = createNewGame(); 
+        }
+        const game = games[roomId];
 
-        // 席の割り当て
-        let myRole = "spectator";
-        if (game.players.black === userId) myRole = "black";
-        else if (game.players.white === userId) myRole = "white";
-        else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
-        else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
+        // 席の割り当て
+        let myRole = "spectator";
+        if (game.players.black === userId) myRole = "black";
+        else if (game.players.white === userId) myRole = "white";
+        else if (game.players.black === null) { game.players.black = userId; myRole = "black"; }
+        else if (game.players.white === null) { game.players.white = userId; myRole = "white"; }
 
-        // ★★★ キャラクター情報の固定ロジック ★★★
-        const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
+        // ★★★ キャラクター情報の固定ロジック ★★★
+        const incomingCharId = playerCharIds[socket.id] || userCharId || 'default';
 
-        if (myRole === 'black') {
-            if (game.blackCharId === 'default') {
-                game.blackCharId = incomingCharId;
-                console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
-            } else {
-                console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
-            }
-        }
-        
-        if (myRole === 'white') {
-            if (game.whiteCharId === 'default') {
-                game.whiteCharId = incomingCharId;
-                console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
-            } else {
-                console.log(`部屋[${roomId}] 後手キャラ固定済み(${game.whiteCharId})。上書き拒否。`);
-            }
-        }
+        if (myRole === 'black') {
+            if (game.blackCharId === 'default') {
+                game.blackCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 先手キャラ確定: ${incomingCharId}`);
+            } else {
+                console.log(`部屋[${roomId}] 先手キャラ固定済み(${game.blackCharId})。上書き拒否。`);
+            }
+        }
+        
+        if (myRole === 'white') {
+            if (game.whiteCharId === 'default') {
+                game.whiteCharId = incomingCharId;
+                console.log(`部屋[${roomId}] 後手キャラ確定: ${incomingCharId}`);
+            } else {
+                console.log(`部屋[${roomId}] 後手キャラ固定済み(${game.whiteCharId})。上書き拒否。`);
+            }
+        }
 
-        socket.emit('role assigned', myRole); 
-        
-        // ★★★ 【修正】ここから時間計算ロジックを追加 ★★★
-        setTimeout(() => {
-            // 1. 送信用のデータをコピー作成（サーバーの元のデータを汚さないため）
-            const gameToSend = JSON.parse(JSON.stringify(game));
+        socket.emit('role assigned', myRole); 
+        
+        // ★重要：現在の部屋のモードをクライアントに通知する
+        socket.emit('update room mode', game.mode);
+        
+        // ★★★ 時間計算ロジック（再接続対応） ★★★
+        setTimeout(() => {
+            // 1. 送信用のデータをコピー作成
+            const gameToSend = JSON.parse(JSON.stringify(game));
 
-            // 2. 対局中(playing)であれば、経過時間を計算して減算する
-            if (game.status === 'playing') {
-                const now = Date.now();
-                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); // 経過秒数
+            // 2. 対局中(playing)であれば、経過時間を計算して減算する
+            if (game.status === 'playing') {
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - game.lastMoveTime) / 1000); // 経過秒数
 
-                // 現在の手番プレイヤーから時間を引く
-                if (game.turn === 'black') {
-                    gameToSend.remainingTime.black -= elapsedSeconds;
-                    // マイナスにならないように調整（0で止める）
-                    if (gameToSend.remainingTime.black < 0) gameToSend.remainingTime.black = 0;
-                } else {
-                    gameToSend.remainingTime.white -= elapsedSeconds;
-                    if (gameToSend.remainingTime.white < 0) gameToSend.remainingTime.white = 0;
-                }
-                
-                console.log(`再接続補正: ${elapsedSeconds}秒経過。補正後の残り -> ▲${gameToSend.remainingTime.black} / △${gameToSend.remainingTime.white}`);
-            }
+                // 現在の手番プレイヤーから時間を引く
+                if (game.turn === 'black') {
+                    gameToSend.remainingTime.black -= elapsedSeconds;
+                    if (gameToSend.remainingTime.black < 0) gameToSend.remainingTime.black = 0;
+                } else {
+                    gameToSend.remainingTime.white -= elapsedSeconds;
+                    if (gameToSend.remainingTime.white < 0) gameToSend.remainingTime.white = 0;
+                }
+                
+                console.log(`再接続補正: ${elapsedSeconds}秒経過`);
+            }
 
-            // 3. 補正済みのデータを送信
-            socket.emit('restore game', gameToSend); 
-            
-            sendRoomUpdate(roomId);
-        }, 50);
-        // ★★★ 修正ここまで ★★★
-    });
+            // 3. 補正済みのデータを送信
+            socket.emit('restore game', gameToSend); 
+            
+            sendRoomUpdate(roomId);
+        }, 50);
+    });
 
     // --- 準備完了トグル ---
     socket.on('toggle ready', () => {
@@ -454,4 +498,27 @@ function scheduleRoomCleanup(roomId) {
     if (games[roomId]) {
         games[roomId].cleanupTimer = timer;
     }
+}
+
+
+// 新しいゲームオブジェクトを作成するヘルパー関数
+function createNewGame() {
+    return {
+        boardState: JSON.parse(JSON.stringify(INITIAL_BOARD)),
+        hands: { black: [], white: [] },
+        turn: "black",
+        moveCount: 0,
+        kifu: [],
+        players: { black: null, white: null },
+        ready: { black: false, white: false },
+        status: 'waiting',
+        blackCharId: 'default',
+        whiteCharId: 'default',
+        blackSkillPoint: 0, 
+        whiteSkillPoint: 0,
+        isGameOver: false,
+        remainingTime: { black: 1200, white: 1200 },
+        lastMoveTime: Date.now(),
+        mode: 'casual' // ★初期値は casual
+    };
 }
