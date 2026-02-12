@@ -1292,7 +1292,7 @@ function cpuMove() {
     
     // 16手目までは、奇数レベルなら最低でも5手は読む
     if (isOddLevel && usiHistory.length <= 16) {
-        if (pvNum < 5) pvNum = 5;
+        if (pvNum < 20) pvNum =20;
     }
     
     sendToEngine(`setoption name MultiPV value ${pvNum}`);
@@ -1983,6 +1983,7 @@ function updateCpuSkillGaugeUI() {
     }
 
 }
+
 
 
 
