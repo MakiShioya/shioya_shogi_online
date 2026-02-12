@@ -260,7 +260,52 @@ input, textarea {
       text-shadow: 1px 1px 2px #432517;
     }
     .menu-btn:active { transform: scale(0.95); }
+/* --- ★追加：モード切替ボタンのスタイル --- */
+#modeSwitchContainer {
+  position: absolute;
+  top: 60px; /* ユーザー情報の少し下 */
+  right: 20px;
+  z-index: 50; /* 他のメニューより手前 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+#modeSwitchBtn {
+  background: linear-gradient(to bottom, #ff9800, #f57c00); /* 初期はオレンジ（かじゅある） */
+  border: 3px solid #ECDBBF;
+  border-radius: 20px;
+  color: #fff;
+  font-family: "SetoFont", sans-serif;
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 8px 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+  text-shadow: 1px 1px 2px #432517;
+  transition: all 0.3s ease;
+  width: 160px;
+}
+
+#modeSwitchBtn:active {
+  transform: scale(0.95);
+}
+
+/* ふぉーまるモード時のスタイル（JSでクラスを付け替え） */
+#modeSwitchBtn.mode-formal {
+  background: linear-gradient(to bottom, #607d8b, #455a64); /* 渋い青グレー */
+  border-color: #cfd8dc;
+}
+
+#modeDescription {
+  margin-top: 5px;
+  font-size: 0.8rem;
+  color: #ECDBBF;
+  text-shadow: 1px 1px 2px #000;
+  background: rgba(0,0,0,0.5);
+  padding: 2px 8px;
+  border-radius: 5px;
+}
 /* ▼▼▼ 右側のゲームモードメニュー（コンテナ） ▼▼▼ */
     .right-mode-menu {
       position: absolute;
@@ -776,6 +821,11 @@ input, textarea {
     </button>
   </div>
 
+  <div id="modeSwitchContainer">
+  <button id="modeSwitchBtn" onclick="toggleGameMode()">かじゅある</button>
+  <div id="modeDescription">必殺技あり</div>
+</div>
+  
   <div class="right-mode-menu">
     <button class="mode-rect-btn online-color delay-1" onclick="goToCharacterSelect('online')">
       オンライン
@@ -1871,10 +1921,58 @@ window.addEventListener('load', () => {
 
     });
 });
+
+    // --- ★追加：ゲームモード管理ロジック ---
+
+// 初期ロード時の処理
+document.addEventListener("DOMContentLoaded", () => {
+    // 保存された設定を読み込む（なければ 'casual'）
+    const currentMode = localStorage.getItem('shogi_game_mode') || 'casual';
+    updateModeButtonUI(currentMode);
+});
+
+// ボタンが押されたときの処理
+function toggleGameMode() {
+    let currentMode = localStorage.getItem('shogi_game_mode') || 'casual';
+    
+    // 切り替え
+    if (currentMode === 'casual') {
+        currentMode = 'formal';
+    } else {
+        currentMode = 'casual';
+    }
+
+    // 保存して表示更新
+    localStorage.setItem('shogi_game_mode', currentMode);
+    updateModeButtonUI(currentMode);
+    
+    // 音を鳴らす（もし効果音があれば）
+    // const audio = new Audio('script/audio/select.mp3');
+    // audio.play();
+}
+
+// 画面の表示を更新する関数
+function updateModeButtonUI(mode) {
+    const btn = document.getElementById('modeSwitchBtn');
+    const desc = document.getElementById('modeDescription');
+
+    if (mode === 'casual') {
+        // かじゅあるモード（必殺技あり）
+        btn.textContent = "かじゅある";
+        btn.classList.remove('mode-formal');
+        desc.textContent = "必殺技あり";
+    } else {
+        // ふぉーまるモード（必殺技なし）
+        btn.textContent = "ふぉーまる";
+        btn.classList.add('mode-formal');
+        desc.textContent = "必殺技なし・実力勝負";
+    }
+}
     
 </script>
 
 </body>
 </html>
+
 
 
