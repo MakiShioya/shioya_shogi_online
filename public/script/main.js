@@ -279,7 +279,7 @@ function executeMove(sel, x, y, doPromote) {
   // 2. まだ技を使っていない（!isCpuDoubleAction）
   // 3. 技ファイルが読み込まれている
   // 4. ゲーム中で、ポイントが足りている
-  if (!gameOver && turn === cpuSide && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
+if (!gameOver && turn === cpuSide && !isFormalMode && !isCpuDoubleAction && typeof CpuDoubleAction !== 'undefined') {
       const cost = CpuDoubleAction.getCost();
       
       if (cpuSkillPoint >= cost) {
