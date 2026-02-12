@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <title>しおや将棋 - フレンド</title>
+  
+  <link rel="preload" href="script/font/setofont.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="icon" href="script/image/komiya_icon.png"> 
+  
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    /* --- 基本設定 (共通) --- */
+    @font-face {
+      font-family: 'SetoFont';
+      src: url('script/font/setofont.ttf') format('truetype');
+      font-display: block;
+    }
+
+    * {
+      font-family: 'SetoFont', "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      position: fixed; background-color: #2c3e50;
+      overflow: hidden; overscroll-behavior: none;
+      -webkit-user-select: none; user-select: none; touch-action: none;
+    }
+
+    input, textarea {
+      user-select: text; -webkit-user-select: text; touch-action: auto;
+    }
+
+    /* 背景 */
+    #bg-image {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      z-index: -1;
+      background-image: linear-gradient(rgba(44, 62, 80, 0.6), rgba(44, 62, 80, 0.6)), url('script/image/shogi_title.PNG');
+      background-size: cover; background-position: center;
+    }
+
+    /* --- ① ロード画面 (Home.htmlより移植) --- */
+    #loading-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: #432517;
+      display: flex; justify-content: center; align-items: center;
+      z-index: 9999; transition: opacity 0.5s ease;
+    }
+    .loader-content { text-align: center; color: #ECDBBF; }
+    .spinner {
+      width: 50px; height: 50px;
+      border: 5px solid rgba(236, 219, 191, 0.3);
+      border-top: 5px solid #ECDBBF; border-radius: 50%;
+      animation: spin 1s linear infinite; margin: 0 auto 15px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #loading-tips {
+      margin-top: 20px; padding: 10px 20px;
+      background: rgba(236, 219, 191, 0.1);
+      border-radius: 10px; font-size: 0.9rem; max-width: 250px;
+      line-height: 1.5; min-height: 3em; color: #ECDBBF;
+    }
+
+    /* --- メインコンテンツ --- */
+    .container {
+      width: 95%; max-width: 600px; margin: 20px auto;
+      height: 80vh; /* 下部メニュー分を空ける */
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    /* ③ ID検索エリア */
+    .search-area {
+      background: rgba(236, 219, 191, 0.95);
+      border: 3px solid #8b4513; border-radius: 10px;
+      padding: 10px; display: flex; gap: 5px; align-items: center;
+    }
+    .search-input {
+      flex: 1; padding: 8px; border: 1px solid #8b4513; border-radius: 5px;
+      font-size: 1rem; font-family: "SetoFont";
+    }
+    .search-btn {
+      background: #432517; color: #ECDBBF; border: none;
+      padding: 8px 15px; border-radius: 5px; cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* ② タブ切り替え */
+    .tab-container {
+      display: flex; gap: 5px;
+    }
+    .tab-btn {
+      flex: 1; padding: 10px 0; border: none;
+      background: rgba(67, 37, 23, 0.6); color: #ccc;
+      border-radius: 10px 10px 0 0; cursor: pointer;
+      font-weight: bold; font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #ECDBBF; color: #432517;
+      border: 3px solid #8b4513; border-bottom: none;
+      transform: scaleY(1.1) translateY(2px); /* 少し大きくして繋げる */
+    }
+
+    /* リスト表示エリア */
+    .list-container {
+      flex: 1; background: #ECDBBF;
+      border: 3px solid #8b4513; border-radius: 0 0 10px 10px;
+      padding: 10px; overflow-y: auto;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+    
+    .list-view { display: none; }
+    .list-view.active { display: block; }
+
+    .friend-item {
+      background: rgba(255,255,255,0.6);
+      border: 1px solid #8b4513; border-radius: 8px;
+      padding: 10px; margin-bottom: 8px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .friend-info { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .friend-avatar { width: 40px; height: 40px; border-radius: 50%; background: #ccc; border: 2px solid #8b4513; }
+    .friend-name { font-weight: bold; color: #432517; font-size: 1.1rem; }
+    
+    .action-btn {
+      padding: 5px 10px; border-radius: 5px; border: none;
+      font-size: 0.8rem; font-weight: bold; cursor: pointer; margin-left: 5px;
+    }
+    .btn-accept { background: #28a745; color: white; }
+    .btn-reject { background: #d32f2f; color: white; }
+    .btn-cancel { background: #666; color: white; }
+    .btn-delete { background: #666; color: white; font-size: 0.7rem; }
+
+    /* 空の状態のメッセージ */
+    .empty-msg {
+      text-align: center; color: #888; margin-top: 30px;
+    }
+
+    /* --- ④ 下部メニュー (Mypageと共通デザイン) --- */
+    .bottom-menu {
+      position: absolute; bottom: 10px; width: 96%; left: 2%;
+      display: flex; justify-content: space-around; align-items: flex-end; gap: 5px;
+      z-index: 20;
+    }
+    .menu-btn {
+      flex: 1; height: 60px; border-radius: 10px;
+      color: #ECDBBF; font-weight: bold; font-size: 1.1rem;
+      cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      text-shadow: 1px 1px 2px #432517;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .menu-btn:active { transform: scale(0.95); }
+
+    /* 配色クラス */
+    .mypage-color { background: linear-gradient(to bottom, #6C4B9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .analysis-color { background: linear-gradient(to bottom, #4B6C9C 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .ready-color { background: linear-gradient(to bottom, #7B9C4B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .menu-color { background: linear-gradient(to bottom, #9C804B 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+    .chat-color { background: linear-gradient(to bottom, #747474 0%, #ECDBBF 100%) !important; border: 2px solid #432517 !important; }
+
+    /* --- モーダル共通 --- */
+    .overlay {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); z-index: 100;
+      justify-content: center; align-items: center;
+    }
+    .modal-box {
+      position: relative; background: #fff8dc; padding: 15px;
+      border-radius: 10px; border: 4px solid #8b4513;
+      text-align: center; width: 90%; max-width: 500px;
+      display: flex; flex-direction: column;
+    }
+    .close-modal-btn {
+      background: #666; color: white; border: none; padding: 8px 15px;
+      border-radius: 5px; cursor: pointer; margin-top: 10px;
+    }
+
+    /* チャット用スタイル (共通) */
+    .close-small-btn {
+      position: absolute; top: 8px; right: 8px; padding: 4px 10px;
+      background: #666; color: #ECDBBF; border: none; border-radius: 12px;
+      font-size: 0.75rem; font-weight: bold; cursor: pointer; z-index: 101;
+    }
+    #lobbyChatHistory {
+      height: 60vh; overflow-y: auto; background: rgba(255, 255, 255, 0.5);
+      border: 1px solid #ccc; padding: 8px; border-radius: 8px; margin-top: 10px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .chat-row { display: flex; align-items: flex-start; gap: 10px; }
+    .chat-row.mine { align-self: flex-end; flex-direction: row-reverse; }
+    .chat-bubble { background: #ECDBBF; padding: 10px; border-radius: 10px; font-size: 0.8rem; }
+    .chat-row.mine .chat-bubble { background: #fff8dc; border: 2px solid #f0e68c; }
+    .chat-input-area { display: flex; gap: 5px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="spinner"></div>
+      <div id="loading-tips"></div>
+      <p style="font-size: 0.8rem; margin-top: 10px; opacity: 0.8;">読み込み中...</p>
+    </div>
+  </div>
+
+  <div id="bg-image"></div>
+
+  <div class="container">
+    <div class="search-area">
+      <span style="font-weight:bold; color:#432517;">🔍</span>
+      <input type="text" id="searchInput" class="search-input" placeholder="IDを入力して検索">
+      <button class="search-btn" onclick="searchUser()">検索</button>
+    </div>
+
+    <div class="tab-container">
+      <button class="tab-btn active" onclick="switchTab('list')">フレンド一覧</button>
+      <button class="tab-btn" onclick="switchTab('pending')">申請中</button>
+      <button class="tab-btn" onclick="switchTab('request')">リクエスト</button>
+    </div>
+
+    <div class="list-container">
+      
+      <div id="tab-list" class="list-view active">
+        <div class="empty-msg">フレンドがいません</div>
+        </div>
+
+      <div id="tab-pending" class="list-view">
+        <div class="empty-msg">申請中のユーザーはいません</div>
+      </div>
+
+      <div id="tab-request" class="list-view">
+        <div class="empty-msg">届いているリクエストはありません</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bottom-menu">
+    <button class="menu-btn mypage-color" onclick="window.location.href='home.html'">ホーム</button>
+    <button class="menu-btn analysis-color" onclick="window.location.href='mypage.html'">対局履歴</button>
+    <button class="menu-btn ready-color" onclick="window.location.href='new_mypage.html'">マイページ</button>
+    <button class="menu-btn menu-color" onclick="window.location.href='collection.html'">所持品</button>
+    <button class="menu-btn chat-color" onclick="openLobbyChat()">チャット</button>
+  </div>
+
+  <div id="searchResultModal" class="overlay">
+    <div class="modal-box">
+      <h3 style="color:#8b4513;">ユーザーが見つかりました</h3>
+      <div style="margin: 20px 0;">
+        <div style="font-size:1.5rem; font-weight:bold; color:#d35400;" id="foundUserName">名称</div>
+        <div style="color:#666;" id="foundUserId">ID: ---</div>
+      </div>
+      <button id="sendRequestBtn" style="background:#28a745; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; font-size:1rem; cursor:pointer;">申請を送る</button>
+      <button class="close-modal-btn" onclick="closeModal('searchResultModal')">閉じる</button>
+    </div>
+  </div>
+
+  <div id="lobbyChatModal" class="overlay">
+    <div class="modal-box" style="height: 85vh; max-width: 800px;">
+      <button class="close-small-btn" onclick="closeModal('lobbyChatModal')">閉じる</button>
+      <h3 style="color:#005bea; margin:0; text-align:left;">ロビーチャット</h3>
+      <div id="lobbyChatHistory"></div>
+      <div class="chat-input-area">
+        <input type="text" id="lobbyChatInput" placeholder="メッセージを入力" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
+        <button onclick="sendLobbyMessage()" style="background:#28a745; color:#fff; border:none; padding:10px; border-radius:5px; font-weight:bold;">送信</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script/auth.js"></script>
+
+  <script>
+    // --- ロード画面処理 ---
+    const loadingTipsList = [
+      "【tips】IDを使って遠くの友達とつながりましょう。",
+      "【tips】フレンドになると、いつでもプロフィールを確認できます。",
+      "【tips】対局履歴から相手のIDを確認できます。"
+    ];
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        // Tips表示
+        const tipEl = document.getElementById('loading-tips');
+        if(tipEl) tipEl.textContent = loadingTipsList[Math.floor(Math.random() * loadingTipsList.length)];
+    });
+
+    window.addEventListener('load', () => {
+        const loader = document.getElementById('loading-screen');
+        setTimeout(() => {
+            loader.style.opacity = '0';
+            setTimeout(() => { loader.style.display = 'none'; }, 500);
+        }, 800);
+    });
+
+    // --- タブ切り替え ---
+    function switchTab(tabName) {
+        // ボタンのアクティブ化
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // リストの表示切り替え
+        document.querySelectorAll('.list-view').forEach(div => div.classList.remove('active'));
+        document.getElementById('tab-' + tabName).classList.add('active');
+    }
+
+    // --- モーダル操作 ---
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    // --- ユーザー検索機能 ---
+    async function searchUser() {
+        const input = document.getElementById('searchInput').value.trim();
+        if (!input) return;
+
+        // 自分自身の検索は除外などのロジックはお好みで
+        const myUid = firebase.auth().currentUser ? firebase.auth().currentUser.uid : null;
+        if(input === myUid) {
+            alert("自分自身です");
+            return;
+        }
+
+        try {
+            // FirestoreからIDで検索 (ドキュメントID = user ID と仮定)
+            const docRef = db.collection("users").doc(input);
+            const doc = await docRef.get();
+
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('foundUserName').textContent = data.name || "名無し";
+                document.getElementById('foundUserId').textContent = "ID: " + input;
+                
+                // 申請ボタンの設定
+                const btn = document.getElementById('sendRequestBtn');
+                btn.onclick = () => sendFriendRequest(input);
+                
+                document.getElementById('searchResultModal').style.display = 'flex';
+            } else {
+                alert("ユーザーが見つかりませんでした");
+            }
+        } catch(e) {
+            console.error(e);
+            alert("検索中にエラーが発生しました");
+        }
+    }
+
+    // フレンド申請送信 (簡易実装)
+    function sendFriendRequest(targetUid) {
+        alert("申請を送りました！(デモ)");
+        // ここにFirestoreへの書き込み処理を実装します
+        // db.collection('users').doc(targetUid).collection('requests').add({...})
+        closeModal('searchResultModal');
+    }
+
+    // --- チャット機能 (共通) ---
+    // 他のページと同様のFirestoreチャット実装
+    let chatUnsubscribe = null;
+    function openLobbyChat() {
+        document.getElementById('lobbyChatModal').style.display = 'flex';
+        // チャット初期化ロジック (他ページと同様)
+        if(!chatUnsubscribe) {
+            const historyDiv = document.getElementById("lobbyChatHistory");
+            chatUnsubscribe = db.collection("lobby_chat").orderBy("createdAt", "desc").limit(50)
+            .onSnapshot(snapshot => {
+                historyDiv.innerHTML = "";
+                const msgs = [];
+                snapshot.forEach(doc => msgs.push(doc.data()));
+                msgs.forEach(msg => {
+                    // 簡易表示
+                    const div = document.createElement("div");
+                    div.textContent = (msg.name||"") + ": " + msg.text;
+                    div.style.background = "#fff"; div.style.padding="5px"; div.style.borderRadius="5px";
+                    historyDiv.appendChild(div);
+                });
+            });
+        }
+    }
+    
+    function sendLobbyMessage() {
+        const input = document.getElementById("lobbyChatInput");
+        if(!input.value) return;
+        // Firestoreへの送信処理 (省略)
+        input.value = "";
+    }
+
+  </script>
+</body>
+</html>
