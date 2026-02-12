@@ -342,6 +342,23 @@
     .chat-row.mine .chat-bubble { 
       background: #fff8dc; border: 2px solid #f0e68c; border-top-right-radius: 0; 
     }
+    /* ★★★ ID表示の修正箇所 ★★★ */
+    .id-container {
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      background: rgba(255,255,255,0.5); padding: 5px; border-radius: 5px;
+      margin-top: 5px;
+    }
+    .user-id-display {
+      font-size: 0.75rem; color: #555; font-family: monospace;
+      word-break: break-all; /* 長いIDを折り返す */
+      text-align: center;
+    }
+    .copy-btn {
+      background: #8b4513; color: #ECDBBF; border: none;
+      border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; cursor: pointer;
+      white-space: nowrap;
+    }
+    .copy-btn:active { transform: scale(0.95); }
 
     @media (max-aspect-ratio: 1/1) {
       .character-stand {
@@ -370,10 +387,14 @@
 
   <img class="character-stand" src="script/image/komiya_touka.png" alt="Character">
 
-  <div class="profile-panel">
-    <div class="profile-header">
+  <div class="profile-header">
       <div id="userNameDisplay" class="user-name-display">ゲスト</div>
-      <div id="userIdDisplay" class="user-id-display">ID: ---</div>
+      
+      <div class="id-container">
+        <span style="font-size:0.8rem; font-weight:bold; color:#8b4513;">ID:</span>
+        <span id="userIdDisplay" class="user-id-display">---</span>
+        <button class="copy-btn" onclick="copyMyId()">コピー</button>
+      </div>
     </div>
 
     <div class="stats-container">
@@ -476,7 +497,7 @@
                     // --- 基本情報表示 ---
                     document.getElementById("userNameDisplay").textContent = data.name || "名無し";
                     // 他人の場合でもIDは表示してOK（フレンド申請などに使うため）
-                    document.getElementById("userIdDisplay").textContent = "ID: " + fetchUserId.substring(0, 8);
+                    document.getElementById("userIdDisplay").textContent = fetchUserId;
                     
                     // --- 勝敗の計算ロジック ---
                     let wins = 0;
@@ -605,6 +626,21 @@
             });
     }
 
+  // --- コピー機能 ---
+    function copyMyId() {
+      const idText = document.getElementById("userIdDisplay").textContent;
+      if (!idText || idText === "---") return;
+      
+      navigator.clipboard.writeText(idText).then(() => {
+        const btn = document.querySelector(".copy-btn");
+        const originalText = btn.textContent;
+        btn.textContent = "OK!";
+        setTimeout(() => btn.textContent = originalText, 1500);
+      }).catch(err => {
+        alert("コピーできませんでした");
+      });
+    }
+
     function addMessageToLobbyChatFirestore(data) {
         const historyDiv = document.getElementById("lobbyChatHistory");
         const user = firebase.auth().currentUser;
@@ -675,5 +711,6 @@
   </script>
 </body>
 </html>
+
 
 
