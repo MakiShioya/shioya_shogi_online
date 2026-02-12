@@ -43,7 +43,7 @@ function formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber) {
     move += `(${srcFileNum}${srcRankNum})`;
   }
 
-  // 4. 成り・不成の表記
+// 4. 成り・不成の表記
   const player = pieceBefore === pieceBefore.toLowerCase() ? "white" : "black";
   const wasPromoted = pieceBefore.includes("+");
 
@@ -56,12 +56,10 @@ function formatMove(sel, x, y, pieceBefore, boardBefore, moveNumber) {
     }
   }
 
+  // ★5. 定跡の表記を追加
+  if (isBookMove) {
+      move += "(定跡)";
+  }
+
   return move;
 }
-
-function showKifu() {
-  const kifuDiv = document.getElementById("kifu");
-  kifuDiv.innerHTML = kifu.join("<br>");//内容をここに書く
-}
-
-// 以前の複雑な曖昧さ回避ロジック（findOtherSamePieceMoves, getDisambiguation）は削除しました
